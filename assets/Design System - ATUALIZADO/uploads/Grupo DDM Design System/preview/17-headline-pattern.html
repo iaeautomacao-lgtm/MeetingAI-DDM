@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DDM — Headline Pattern</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 36px 28px; background: var(--bg-1); font-family: var(--font-body); }
+  .demo { font-family: var(--font-display); font-weight: 700; font-size: 44px; line-height: 1.08; letter-spacing: -0.02em; color: var(--fg-1); }
+  .scribble { color: var(--ddm-orange); position: relative; display: inline-block; }
+  .scribble::after { content:""; position:absolute; left:-2%; right:-2%; bottom:-0.14em; height:0.24em; background: url("../assets/underline-scribble.png") center/100% 100% no-repeat; }
+  .cap { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-top: 14px; line-height: 1.55; }
+  .cap b { color: var(--fg-2); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="demo">Eficiência na <span class="scribble">Recuperação Financeira.</span></div>
+  <div class="cap"><b>Pattern:</b> opening clause in plain ink, ending phrase wrapped in <code>.scribble</code> → orange + hand-drawn underline. One scribble per heading. Don't underline more than 2–3 words.</div>
+</body>
+</html>

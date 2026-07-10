@@ -1,0 +1,195 @@
+/* =============================================================
+   Grupo DDM — Colors & Type
+   Source: https://grupoddm.tech/
+   Sampled from logo + screenshots; fonts approximated to nearest
+   Google Fonts equivalent (see README "Fonts" — Poppins flagged
+   as substitute pending real font files).
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* -------- Brand --------------------------------------------------- */
+  --ddm-orange:        #FF5706;   /* primary brand — logo, CTAs, accents */
+  --ddm-orange-600:    #E84B00;   /* hover / pressed                     */
+  --ddm-orange-700:    #C23E00;   /* deepest                             */
+  --ddm-orange-300:    #FF8754;   /* lighter accent / illustrations      */
+  --ddm-orange-200:    #FFB897;   /* tints                               */
+  --ddm-orange-100:    #FFE0D1;   /* tints / hover bg                    */
+  --ddm-orange-50:     #FFF3EC;   /* surface tint                        */
+
+  /* -------- Neutrals (logo wordmark sample = #939598) --------------- */
+  --ddm-ink:           #1F1F1F;   /* primary text on light               */
+  --ddm-ink-2:         #3D3D3D;   /* secondary text                      */
+  --ddm-gray:          #939598;   /* logo wordmark / muted text          */
+  --ddm-gray-2:        #BFBFC1;   /* dividers / placeholder              */
+  --ddm-gray-3:        #E5E5E7;   /* hairlines                           */
+  --ddm-gray-4:        #F4F4F6;   /* surface alt                         */
+  --ddm-white:         #FFFFFF;
+  --ddm-cream:         #FAF7F4;   /* warm off-white surface              */
+
+  /* -------- Semantic ------------------------------------------------ */
+  --ddm-success:       #2BAE66;
+  --ddm-warning:       #E8A100;
+  --ddm-danger:        #D8362F;
+  --ddm-info:          #1F7AE0;
+
+  /* -------- Foreground / background tokens -------------------------- */
+  --fg-1: var(--ddm-ink);
+  --fg-2: var(--ddm-ink-2);
+  --fg-3: var(--ddm-gray);
+  --fg-on-orange: var(--ddm-white);
+
+  --bg-1: var(--ddm-white);
+  --bg-2: var(--ddm-cream);
+  --bg-3: var(--ddm-gray-4);
+  --bg-accent: var(--ddm-orange);
+  --bg-accent-soft: var(--ddm-orange-50);
+
+  --border: var(--ddm-gray-3);
+  --border-strong: var(--ddm-gray-2);
+
+  /* -------- Type system --------------------------------------------- */
+  --font-display: "Poppins", "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    "Inter", "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* Scale — site uses big bold display + clean body */
+  --fs-hero:    clamp(40px, 5.6vw, 72px);
+  --fs-h1:      clamp(32px, 4vw, 56px);
+  --fs-h2:      clamp(26px, 3vw, 40px);
+  --fs-h3:      clamp(22px, 2.2vw, 30px);
+  --fs-h4:      20px;
+  --fs-body-lg: 18px;
+  --fs-body:    16px;
+  --fs-small:   14px;
+  --fs-eyebrow: 13px;
+
+  --lh-tight: 1.1;
+  --lh-snug:  1.25;
+  --lh-body:  1.55;
+  --lh-loose: 1.7;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+  --fw-bold:    700;
+  --fw-black:   800;
+
+  /* -------- Spacing (4-pt scale, common Zyro builder defaults) ----- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+  --sp-10: 128px;
+
+  /* -------- Radii — site uses generously rounded cards ------------- */
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-xl: 32px;     /* card / illustration squircle */
+  --r-2xl: 48px;
+  --r-pill: 999px;
+
+  /* -------- Shadow / elevation ------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(20, 16, 12, 0.06);
+  --shadow-md: 0 8px 24px rgba(20, 16, 12, 0.08);
+  --shadow-lg: 0 24px 60px rgba(20, 16, 12, 0.12);
+  --shadow-orange: 0 12px 30px rgba(255, 87, 6, 0.28);
+
+  /* -------- Motion ------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+
+  /* -------- Layout ------------------------------------------------- */
+  --container: 1200px;
+  --container-wide: 1360px;
+}
+
+/* =============================================================
+   Semantic element styles — drop into a page or extend below
+   ============================================================= */
+
+html, body {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--fg-1);
+  background: var(--bg-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ddm-hero,
+.ddm-h1,
+.ddm-h2,
+.ddm-h3,
+.ddm-h4,
+.ddm-eyebrow {
+  font-family: var(--font-display);
+  color: var(--fg-1);
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.ddm-hero    { font-size: var(--fs-hero);  font-weight: var(--fw-bold);     line-height: var(--lh-tight); letter-spacing: -0.02em; }
+.ddm-h1      { font-size: var(--fs-h1);    font-weight: var(--fw-bold);     line-height: var(--lh-tight); letter-spacing: -0.015em; }
+.ddm-h2      { font-size: var(--fs-h2);    font-weight: var(--fw-semibold); line-height: var(--lh-snug); letter-spacing: -0.01em; }
+.ddm-h3      { font-size: var(--fs-h3);    font-weight: var(--fw-semibold); line-height: var(--lh-snug); }
+.ddm-h4      { font-size: var(--fs-h4);    font-weight: var(--fw-semibold); line-height: var(--lh-snug); }
+.ddm-eyebrow { font-size: var(--fs-eyebrow); font-weight: var(--fw-semibold);
+               text-transform: uppercase; letter-spacing: 0.12em; color: var(--ddm-orange); }
+
+.ddm-p       { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--fg-2); }
+.ddm-lead    { font-size: var(--fs-body-lg); line-height: var(--lh-loose); color: var(--fg-2); }
+.ddm-small   { font-size: var(--fs-small); color: var(--fg-3); }
+
+/* highlight word — the "scribbled" effect on hero ("Recuperação Financeira") */
+.ddm-highlight {
+  color: var(--ddm-orange);
+  position: relative;
+  display: inline-block;
+}
+.ddm-highlight::after {
+  content: "";
+  position: absolute;
+  left: -2%; right: -2%; bottom: -0.18em;
+  height: 0.28em;
+  background: url("./assets/underline-scribble.png") center/100% 100% no-repeat;
+}
+
+/* CTA button — orange filled, generous radius, shadow lift on hover */
+.ddm-btn {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: 14px 28px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-body);
+  background: var(--ddm-orange);
+  color: var(--ddm-white);
+  border: none;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
+  box-shadow: var(--shadow-orange);
+}
+.ddm-btn:hover  { background: var(--ddm-orange-600); transform: translateY(-1px); }
+.ddm-btn:active { transform: translateY(0); background: var(--ddm-orange-700); }
+
+.ddm-btn--ghost {
+  background: transparent;
+  color: var(--fg-1);
+  box-shadow: none;
+  border: 1.5px solid var(--border-strong);
+}
+.ddm-btn--ghost:hover { background: var(--bg-3); }

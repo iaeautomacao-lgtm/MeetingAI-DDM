@@ -1,0 +1,32 @@
+# Segredos — NUNCA commitar
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Instância Flask (uploads temporários)
+instance/
+
+# Uploads de áudio
+*.mp3
+*.mp4
+*.wav
+*.m4a
+
+# Config local (Claude Code / agente)
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Prints/temporários de trabalho
+image.jpeg
+email.png

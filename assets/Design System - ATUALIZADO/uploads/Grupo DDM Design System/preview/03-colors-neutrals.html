@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DDM — Neutrals</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-1); font-family: var(--font-body); }
+  .row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; align-items: stretch; height: 200px; }
+  .swatch { border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; font-family: var(--font-display); font-size: 13px; font-weight: 600; border: 1px solid transparent; }
+  .swatch .h { font-family: var(--font-mono); font-weight: 400; opacity: 0.7; font-size: 11px; }
+  .ink   { background: var(--ddm-ink); color: white; }
+  .ink2  { background: var(--ddm-ink-2); color: white; }
+  .gray  { background: var(--ddm-gray); color: white; }
+  .gray2 { background: var(--ddm-gray-2); color: var(--ddm-ink); }
+  .gray3 { background: var(--ddm-gray-3); color: var(--ddm-ink); }
+  .cream { background: var(--ddm-cream); color: var(--ddm-ink); border-color: var(--border); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="swatch ink"><div>Ink<br><span style="opacity:.7;font-weight:400">fg-1</span></div><div class="h">#1F1F1F</div></div>
+    <div class="swatch ink2"><div>Ink-2<br><span style="opacity:.7;font-weight:400">fg-2</span></div><div class="h">#3D3D3D</div></div>
+    <div class="swatch gray"><div>Gray<br><span style="opacity:.7;font-weight:400">fg-3 · logo</span></div><div class="h">#939598</div></div>
+    <div class="swatch gray2"><div>Gray-2<br><span style="opacity:.6;font-weight:400">divider</span></div><div class="h">#BFBFC1</div></div>
+    <div class="swatch gray3"><div>Gray-3<br><span style="opacity:.6;font-weight:400">hairline</span></div><div class="h">#E5E5E7</div></div>
+    <div class="swatch cream"><div>Cream<br><span style="opacity:.6;font-weight:400">bg-2</span></div><div class="h">#FAF7F4</div></div>
+  </div>
+</body>
+</html>

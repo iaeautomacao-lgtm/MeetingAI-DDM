@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DDM — Form Inputs</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 26px 24px; background: var(--bg-1); font-family: var(--font-body); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--fg-2); }
+  .field label .req { color: var(--ddm-orange); }
+  .field input, .field select {
+    font-family: var(--font-body); font-size: 15px; color: var(--fg-1);
+    padding: 13px 16px; border-radius: 12px;
+    border: 1.5px solid var(--border); background: white;
+    transition: border-color 140ms;
+  }
+  .field input::placeholder { color: var(--ddm-gray-2); }
+  .field.focus input { border-color: var(--ddm-orange); box-shadow: 0 0 0 4px rgba(255,87,6,0.12); outline: none; }
+  .field.error input { border-color: var(--ddm-danger); }
+  .field .help { font-size: 12px; color: var(--fg-3); }
+  .field.error .help { color: var(--ddm-danger); }
+  .radio-row { display: flex; gap: 10px; }
+  .radio-row label { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 999px; font-size: 14px; cursor: pointer; }
+  .radio-row label.on { background: var(--ddm-orange-50); border-color: var(--ddm-orange); color: var(--ddm-orange-700); font-weight: 600; }
+  .radio-row label .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); position: relative; }
+  .radio-row label.on .dot { border-color: var(--ddm-orange); }
+  .radio-row label.on .dot::after { content:""; position:absolute; inset: 2px; background: var(--ddm-orange); border-radius: 50%; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="field">
+      <label>Nome e sobrenome <span class="req">*</span></label>
+      <input value="Mariana Albuquerque">
+    </div>
+    <div class="field focus">
+      <label>Seu E-mail <span class="req">*</span></label>
+      <input value="mariana@colegio.edu.br" placeholder="seu@email.com">
+    </div>
+    <div class="field">
+      <label>Seu celular</label>
+      <input placeholder="(21) 99999-0000">
+    </div>
+    <div class="field error">
+      <label>Sua instituição é</label>
+      <input value="">
+      <span class="help">Selecione uma opção</span>
+    </div>
+    <div class="field" style="grid-column: 1 / -1;">
+      <label>Tipo de instituição</label>
+      <div class="radio-row">
+        <label class="on"><span class="dot"></span>Somos colégio</label>
+        <label><span class="dot"></span>Somos ensino superior</label>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

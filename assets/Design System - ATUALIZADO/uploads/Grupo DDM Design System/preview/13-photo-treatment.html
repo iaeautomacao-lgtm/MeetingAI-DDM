@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DDM — Photo Treatment</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-1); font-family: var(--font-body); display: flex; gap: 28px; align-items: center; min-height: 360px; }
+  .photo-wrap { position: relative; width: 240px; height: 320px; flex-shrink: 0; }
+  .photo-wrap .squircle { position: absolute; left: 30%; top: 22%; width: 70%; height: 78%; background: var(--ddm-orange); border-radius: 48px; }
+  .photo-wrap img { position: relative; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+  .desc { display: flex; flex-direction: column; gap: 14px; max-width: 360px; }
+  .desc h3 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--fg-1); letter-spacing: -0.01em; }
+  .desc p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--fg-2); }
+  .desc ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-2); }
+  .desc li::before { content: "·  "; color: var(--ddm-orange); font-weight: 800; }
+</style>
+</head>
+<body>
+  <div class="photo-wrap">
+    <div class="squircle"></div>
+    <img src="../assets/hero-illustration.png" alt="Subject on orange squircle">
+  </div>
+  <div class="desc">
+    <h3>Photography treatment</h3>
+    <p>Lifestyle subject on pure white. Vivid orange squircle (radius 48) sits behind the subject, peeking out from one side. Subject overlaps the squircle so it doesn't read as a frame.</p>
+    <ul>
+      <li>Background <b>always</b> white</li>
+      <li>Squircle uses <code>--ddm-orange</code></li>
+      <li>Subject smiling, mid-action (phone, laptop)</li>
+    </ul>
+  </div>
+</body>
+</html>

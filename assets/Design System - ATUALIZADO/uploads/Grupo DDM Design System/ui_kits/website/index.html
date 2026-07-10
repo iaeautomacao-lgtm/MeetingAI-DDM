@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Grupo DDM — Tecnologia financeira para instituições de ensino</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="NavBar.jsx"></script>
+  <script type="text/babel" src="Hero.jsx"></script>
+  <script type="text/babel" src="StatRow.jsx"></script>
+  <script type="text/babel" src="ProductGrid.jsx"></script>
+  <script type="text/babel" src="FeatureBand.jsx"></script>
+  <script type="text/babel" src="EmpresarialBand.jsx"></script>
+  <script type="text/babel" src="ContactForm.jsx"></script>
+  <script type="text/babel" src="Footer.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function Toast({ msg, onDone }) {
+      React.useEffect(() => { const t = setTimeout(onDone, 2400); return () => clearTimeout(t); }, [msg]);
+      return (
+        <div style={{
+          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--ddm-ink)', color: 'white', padding: '12px 20px',
+          borderRadius: 14, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14,
+          boxShadow: 'var(--shadow-lg)', zIndex: 1000,
+        }}>{msg}</div>
+      );
+    }
+
+    function App() {
+      const [toast, setToast] = useState(null);
+      return (
+        <>
+          <NavBar />
+          <Hero />
+          <FeatureBand />
+          <StatRow />
+          <ProductGrid onClick={(name) => setToast(`Página de ${name} — em construção neste protótipo.`)} />
+          <EmpresarialBand />
+          <ContactForm onSubmit={() => setToast('Formulário enviado (mock).')} />
+          <Footer />
+          {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

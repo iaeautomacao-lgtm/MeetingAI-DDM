@@ -8,13 +8,19 @@ from app.api import bp
 from app.extensions import get_supabase
 from app.auth import (
     require_auth,
+    require_admin,
     check_master_password,
     verificar_login,
-    precisa_definir_senha,
-    definir_senha,
+    status_cadastro,
+    registrar_acesso,
+    dominio_permitido,
+    listar_acessos,
+    aprovar_acesso,
+    rejeitar_acesso,
     login_session,
     logout_session,
     is_authed,
+    is_admin,
     sessao_email,
 )
 
@@ -34,41 +40,46 @@ def auth_login():
     email = (body.get("email") or "").strip().lower()
     senha = body.get("senha", "")
 
-    from app.auth import email_permitido
-
-    # 1) login-mestre (diretor): só senha, sem e-mail
+    # 1) login-mestre (diretor/admin): só senha, sem e-mail
     if not email and check_master_password(senha):
-        login_session("")
+        login_session("", admin=True)
         return jsonify({"ok": True})
 
     if email:
-        # 2) senha-mestre vale para qualquer e-mail já permitido (acesso de emergência)
-        if check_master_password(senha) and email_permitido(email):
-            login_session(email)
-            return jsonify({"ok": True})
-        # 3) e-mail + senha própria
+        # 2) e-mail + senha própria (precisa estar aprovado)
         if verificar_login(email, senha):
             login_session(email)
             return jsonify({"ok": True})
-        # 4) e-mail permitido mas ainda sem senha → fluxo de 1º acesso
-        if precisa_definir_senha(email):
-            return jsonify({"erro": "primeiro_acesso", "definir_senha": True}), 403
+        # 3) senha bate mas ainda não aprovado → aguardando
+        if status_cadastro(email, senha) == "pendente":
+            return jsonify({"erro": "aguardando_aprovacao", "pendente": True}), 403
 
     return jsonify({"erro": "credenciais inválidas"}), 401
 
 
 @bp.post("/auth/registrar")
 def auth_registrar():
-    """Define a senha no 1º acesso (só e-mail permitido e sem senha ainda)."""
+    """Auto-cadastro: cria pedido PENDENTE (não loga). Admin aprova no painel."""
     body = request.get_json(silent=True) or {}
     email = (body.get("email") or "").strip().lower()
     senha = body.get("senha", "")
+    nome = (body.get("nome") or "").strip()
+
     if not email or len(str(senha)) < 6:
         return jsonify({"erro": "e-mail e senha (mín. 6 caracteres) obrigatórios"}), 400
-    if definir_senha(email, senha):
-        login_session(email)
-        return jsonify({"ok": True})
-    return jsonify({"erro": "e-mail não autorizado ou senha já definida"}), 403
+    if not dominio_permitido(email):
+        return jsonify({"erro": "dominio_nao_permitido",
+                        "msg": "Use um e-mail da empresa (@ddm.adv.br ou @grupoddm.com.br)."}), 403
+
+    ok, motivo = registrar_acesso(email, senha, nome)
+    if ok:
+        return jsonify({"ok": True, "pendente": True,
+                        "msg": "Cadastro enviado. Aguarde a aprovação do administrador."})
+    if motivo == "ja_cadastrado":
+        return jsonify({"erro": "ja_cadastrado", "msg": "E-mail já cadastrado. Faça login."}), 409
+    if motivo == "senha_curta":
+        return jsonify({"erro": "senha_curta", "msg": "Senha mínima de 6 caracteres."}), 400
+    return jsonify({"erro": "dominio_nao_permitido"}), 403
 
 
 @bp.post("/auth/logout")
@@ -79,7 +90,33 @@ def auth_logout():
 
 @bp.get("/auth/status")
 def auth_status():
-    return jsonify({"autenticado": is_authed(), "email": sessao_email()})
+    return jsonify({"autenticado": is_authed(), "email": sessao_email(), "admin": is_admin()})
+
+
+# ── Gestão de acessos (somente admin) ─────────────────────────────────────────
+
+@bp.get("/acessos")
+@require_admin
+def acessos_listar():
+    return jsonify(listar_acessos())
+
+
+@bp.post("/acessos/aprovar")
+@require_admin
+def acessos_aprovar():
+    email = ((request.get_json(silent=True) or {}).get("email") or "").strip().lower()
+    if aprovar_acesso(email):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
+
+
+@bp.post("/acessos/rejeitar")
+@require_admin
+def acessos_rejeitar():
+    email = ((request.get_json(silent=True) or {}).get("email") or "").strip().lower()
+    if rejeitar_acesso(email):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
 
 
 # ── Live ──────────────────────────────────────────────────────────────────────

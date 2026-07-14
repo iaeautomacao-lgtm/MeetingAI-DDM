@@ -26,17 +26,24 @@ create index if not exists idx_usuarios_ativo on usuarios (ativo);
 create index if not exists idx_usuarios_setor on usuarios (setor);
 
 -- ── Acessos ao painel (allowlist de login) ──────────────────────────────────
--- A tabela É a allowlist: só e-mail presente aqui e ativo=true pode logar.
--- senha_hash null = usuário ainda não definiu senha (1º acesso).
+-- Auto-cadastro com aprovação: pessoa (domínio da empresa) cria conta → fica
+-- pendente (aprovado=false) → admin aprova no painel → só então loga.
+-- Login exige ativo=true E aprovado=true.
 create table if not exists painel_acessos (
     id         uuid primary key default gen_random_uuid(),
     email      text unique not null,
     nome       text default '',
     senha_hash text,
     ativo      boolean default true,
+    aprovado   boolean default false,
     criado_em  timestamptz default now()
 );
 create index if not exists idx_painel_acessos_email on painel_acessos (lower(email));
+
+-- Se a tabela JÁ existe, adicione a coluna e aprove os que já usam:
+--   set search_path to meeting_ai;
+--   alter table painel_acessos add column if not exists aprovado boolean default false;
+--   update painel_acessos set aprovado = true where email = 'gisele.oliveira@ddm.adv.br';
 
 -- ── Setores ─────────────────────────────────────────────────────────────────
 create table if not exists setores (

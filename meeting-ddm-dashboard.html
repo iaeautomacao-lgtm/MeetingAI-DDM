@@ -268,6 +268,11 @@ body {
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
         E-mails
       </div>
+      <div class="nav-item" data-page="acessos" onclick="goto('acessos')" id="nav-acessos" style="display:none">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+        Acessos
+        <span id="acessos-badge" style="display:none;margin-left:auto;background:var(--ddm-orange);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px"></span>
+      </div>
       <div class="nav-item" data-page="config" onclick="goto('config')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         Configurações
@@ -349,15 +354,27 @@ body {
         <h3>Como gravar uma reunião</h3>
         <div class="li">1. Clique em <b>+ Nova Reunião</b> no topo.</div>
         <div class="li">2. Cole o link do Teams / Zoom / Google Meet.</div>
-        <div class="li">3. O bot <b>DDM</b> entra, grava e transcreve.</div>
+        <div class="li">3. O bot <b>Acordito</b> entra, grava e transcreve.</div>
         <div class="li">4. Ao encerrar, a reunião aparece em <b>Reuniões</b> com análise por IA.</div>
       </div>
       <div class="panel">
         <h3>Status do sistema</h3>
-        <div class="li">Captura de reuniões: <b>Recall.ai (bot DDM)</b></div>
+        <div class="li">Captura de reuniões: <b>Recall.ai (bot Acordito)</b></div>
         <div class="li">Análise por IA: <b>Gemini</b></div>
         <div class="li">Banco de dados: <b>Supabase</b></div>
         <div class="li" id="cfg-health">API: verificando…</div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: ACESSOS (admin) ===== -->
+    <section class="page" id="page-acessos">
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Pedidos de acesso pendentes</h3>
+        <div id="acessos-pendentes"><div class="t-sub">Carregando…</div></div>
+      </div>
+      <div class="panel">
+        <h3>Acessos aprovados</h3>
+        <div id="acessos-aprovados"><div class="t-sub">Carregando…</div></div>
       </div>
     </section>
 
@@ -384,7 +401,7 @@ body {
 <div id="modal" class="modal-overlay">
   <div class="modal">
     <h3>Nova Reunião</h3>
-    <p class="modal-sub">O assistente DDM entra na reunião, grava e gera a ata.</p>
+    <p class="modal-sub">O assistente Acordito entra na reunião, grava e gera a ata.</p>
     <label>Link da reunião *</label>
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
     <label>Nome / título</label>
@@ -393,7 +410,7 @@ body {
     <select id="m-setor"><option value="">Selecione…</option></select>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="fecharModal()">Cancelar</button>
-      <button class="btn-primary" id="m-btn" onclick="enviarReuniao()">Enviar assistente DDM</button>
+      <button class="btn-primary" id="m-btn" onclick="enviarReuniao()">Enviar assistente Acordito</button>
     </div>
   </div>
 </div>
@@ -431,9 +448,62 @@ function goto(page, opts={}){
   if(page==='transcricoes') loadTranscricoes();
   if(page==='emails')       loadEmails();
   if(page==='config')       loadHealth();
+  if(page==='acessos')      loadAcessos();
   if(page==='detalhe' && opts.id) loadDetalhe(opts.id);
 }
 function goBack(){ goto(prevPage); }
+
+/* ---------- ACESSOS (admin) ---------- */
+async function checkAdmin(){
+  try{
+    const s = await apiGet('/api/auth/status');
+    if(s && s.admin){
+      document.getElementById('nav-acessos').style.display='flex';
+      atualizarBadgeAcessos();
+    }
+  }catch(e){}
+}
+async function atualizarBadgeAcessos(){
+  try{
+    const lista = await apiGet('/api/acessos');
+    const pend = (lista||[]).filter(a=>!a.aprovado).length;
+    const b = document.getElementById('acessos-badge');
+    if(pend>0){ b.textContent=pend; b.style.display='inline-block'; }
+    else b.style.display='none';
+  }catch(e){}
+}
+async function loadAcessos(){
+  const pDiv=document.getElementById('acessos-pendentes');
+  const aDiv=document.getElementById('acessos-aprovados');
+  pDiv.innerHTML='<div class="t-sub">Carregando…</div>'; aDiv.innerHTML='';
+  try{
+    const lista = await apiGet('/api/acessos');
+    const pend = (lista||[]).filter(a=>!a.aprovado);
+    const apr  = (lista||[]).filter(a=>a.aprovado);
+    pDiv.innerHTML = pend.length ? pend.map(a=>`
+      <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)}</span>
+        <span style="display:flex;gap:6px">
+          <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
+          <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
+        </span>
+      </div>`).join('') : '<div class="t-sub">Nenhum pedido pendente.</div>';
+    aDiv.innerHTML = apr.length ? apr.map(a=>`
+      <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)}</span>
+        <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
+      </div>`).join('') : '<div class="t-sub">Nenhum acesso aprovado.</div>';
+  }catch(e){ pDiv.innerHTML='<div class="t-sub">Erro ao carregar.</div>'; }
+}
+async function aprovar(email){
+  try{ await apiPost('/api/acessos/aprovar',{email}); toast('Acesso aprovado ✓'); loadAcessos(); atualizarBadgeAcessos(); }
+  catch(e){ toast('Erro ao aprovar'); }
+}
+async function rejeitar(email){
+  if(!confirm('Remover o acesso de '+email+'?')) return;
+  try{ await apiPost('/api/acessos/rejeitar',{email}); toast('Acesso removido'); loadAcessos(); atualizarBadgeAcessos(); }
+  catch(e){ toast('Erro ao remover'); }
+}
 
 /* ---------- DASHBOARD ---------- */
 async function loadDashboard(){
@@ -647,10 +717,10 @@ async function enviarReuniao(){
   const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
   try { await apiPost('/api/gravacoes',{meeting_url:url,titulo,setor});
     fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value='';
-    toast('Bot DDM a caminho! A reunião aparecerá ao terminar.',4000);
+    toast('Acordito a caminho! A reunião aparecerá ao terminar.',4000);
     if(curPage==='reunioes') loadReunioes(); else goto('reunioes');
   } catch(e){ toast('Erro: '+e.message,4000); }
-  finally{ btn.disabled=false; btn.textContent='Enviar assistente DDM'; }
+  finally{ btn.disabled=false; btn.textContent='Enviar assistente Acordito'; }
 }
 async function processar(id){
   toast('Puxando transcrição...');
@@ -665,6 +735,7 @@ async function loadHealth(){ try{ await apiGet('/api/health'); document.getEleme
 /* ---------- init ---------- */
 document.getElementById('hoje-data').textContent = 'Hoje é ' + new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 loadDashboard();
+checkAdmin();
 </script>
 </body>
 </html>

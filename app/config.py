@@ -10,6 +10,8 @@ class Config:
 
     # Login de diretores (dashboard). Senha em DIRECTOR_PASSWORD.
     DIRECTOR_PASSWORD = os.getenv("DIRECTOR_PASSWORD", "")
+    # E-mails admin (aprovam novos acessos). Separados por vírgula.
+    ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     # Em produção (HTTPS) definir SESSION_COOKIE_SECURE=1 no .env

@@ -26,6 +26,7 @@ input:focus{border-color:var(--ddm-orange);}
 .btn{width:100%;background:var(--ink);color:#fff;border:none;padding:14px;border-radius:var(--r-md);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;font-family:var(--font-body);}
 .btn:hover{background:var(--ddm-orange);}
 .err{background:#FDECEC;color:var(--danger);padding:12px;border-radius:var(--r-md);font-size:13px;margin-bottom:18px;display:none;}
+.ok{background:#E7F6EC;color:#1E7B45;padding:12px;border-radius:var(--r-md);font-size:13px;margin-bottom:18px;display:none;text-align:left;line-height:1.5;}
 .foot{margin-top:24px;font-size:12px;color:var(--gray);}
 .foot a{color:var(--ddm-orange);text-decoration:none;font-weight:600;}
 </style>
@@ -40,38 +41,42 @@ input:focus{border-color:var(--ddm-orange);}
   <p class="sub" id="subtitulo">Painel restrito à diretoria</p>
 
   <div class="err" id="err"></div>
+  <div class="ok" id="ok"></div>
 
   <!-- LOGIN -->
   <form id="form-login" onsubmit="entrar(event)">
     <label for="email">E-mail</label>
-    <input type="email" id="email" placeholder="voce@grupoddm.com.br" autofocus>
+    <input type="email" id="email" placeholder="voce@ddm.adv.br" autofocus>
     <label for="senha">Senha</label>
     <input type="password" id="senha" placeholder="••••••••" required>
     <button class="btn" type="submit">Entrar</button>
   </form>
 
-  <!-- DEFINIR SENHA (1º acesso) -->
+  <!-- SOLICITAR ACESSO (auto-cadastro, requer aprovação) -->
   <form id="form-registro" onsubmit="registrar(event)" style="display:none">
-    <label for="r-email">E-mail</label>
-    <input type="email" id="r-email" placeholder="voce@grupoddm.com.br" required>
+    <label for="r-nome">Nome</label>
+    <input type="text" id="r-nome" placeholder="Seu nome">
+    <label for="r-email">E-mail da empresa</label>
+    <input type="email" id="r-email" placeholder="voce@ddm.adv.br" required>
     <label for="r-senha">Crie uma senha</label>
     <input type="password" id="r-senha" placeholder="mín. 6 caracteres" minlength="6" required>
     <label for="r-senha2">Confirme a senha</label>
     <input type="password" id="r-senha2" placeholder="repita a senha" minlength="6" required>
-    <button class="btn" type="submit">Definir senha e entrar</button>
+    <button class="btn" type="submit">Solicitar acesso</button>
   </form>
 
   <div class="foot">
-    <a href="#" id="link-toggle" onclick="toggle(event)">Primeiro acesso? Definir senha</a>
+    <a href="#" id="link-toggle" onclick="toggle(event)">Ainda não tem acesso? Solicitar</a>
     <br><br>
     <a href="/">← Registrar uma reunião</a>
   </div>
 </div>
 
 <script>
-const err=document.getElementById('err');
-function showErr(m){ err.textContent=m; err.style.display='block'; }
-function clearErr(){ err.style.display='none'; }
+const err=document.getElementById('err'), ok=document.getElementById('ok');
+function showErr(m){ ok.style.display='none'; err.textContent=m; err.style.display='block'; }
+function showOk(m){ err.style.display='none'; ok.textContent=m; ok.style.display='block'; }
+function clearMsg(){ err.style.display='none'; ok.style.display='none'; }
 
 function toggle(ev){
   ev.preventDefault();
@@ -81,49 +86,48 @@ function toggle(ev){
   const tit=document.getElementById('titulo');
   const sub=document.getElementById('subtitulo');
   const modoLogin = login.style.display!=='none';
-  clearErr();
+  clearMsg();
   if(modoLogin){
     login.style.display='none'; reg.style.display='block';
     link.textContent='← Voltar ao login';
-    tit.textContent='Primeiro acesso'; sub.textContent='Defina sua senha (e-mail precisa estar autorizado)';
-    // leva o e-mail já digitado
+    tit.textContent='Solicitar acesso'; sub.textContent='Cadastro precisa ser aprovado pelo administrador';
     document.getElementById('r-email').value=document.getElementById('email').value;
   }else{
     login.style.display='block'; reg.style.display='none';
-    link.textContent='Primeiro acesso? Definir senha';
+    link.textContent='Ainda não tem acesso? Solicitar';
     tit.textContent='Acesso Executivo'; sub.textContent='Painel restrito à diretoria';
   }
 }
 
 async function entrar(ev){
-  ev.preventDefault(); clearErr();
+  ev.preventDefault(); clearMsg();
   const email=document.getElementById('email').value.trim();
   const senha=document.getElementById('senha').value;
   try{
     const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,senha})});
     if(r.ok){ window.location='/painel'; return; }
     const d=await r.json().catch(()=>({}));
-    if(d.definir_senha){
-      showErr('Primeiro acesso — defina sua senha abaixo.');
-      document.getElementById('email').value=email;
-      toggle(ev);
-      return;
-    }
+    if(d.pendente){ showErr('Seu cadastro ainda está aguardando aprovação do administrador.'); return; }
     showErr('Credenciais inválidas.');
   }catch(e){ showErr('Erro de conexão.'); }
 }
 
 async function registrar(ev){
-  ev.preventDefault(); clearErr();
+  ev.preventDefault(); clearMsg();
+  const nome=document.getElementById('r-nome').value.trim();
   const email=document.getElementById('r-email').value.trim();
   const senha=document.getElementById('r-senha').value;
   const senha2=document.getElementById('r-senha2').value;
   if(senha!==senha2){ showErr('As senhas não conferem.'); return; }
   try{
-    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,senha})});
-    if(r.ok){ window.location='/painel'; return; }
+    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,email,senha})});
     const d=await r.json().catch(()=>({}));
-    showErr(d.erro || 'Não foi possível definir a senha.');
+    if(r.ok){
+      showOk('Cadastro enviado! Aguarde a aprovação do administrador — você poderá entrar assim que for liberado.');
+      document.getElementById('form-registro').reset();
+      return;
+    }
+    showErr(d.msg || 'Não foi possível concluir o cadastro.');
   }catch(e){ showErr('Erro de conexão.'); }
 }
 </script>

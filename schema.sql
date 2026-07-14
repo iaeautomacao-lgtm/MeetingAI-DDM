@@ -59,6 +59,7 @@ create table if not exists reunioes (
     ms_meeting_id     text unique,
     recall_bot_id     text,                       -- id do bot Recall.ai (plataforma=recall)
     titulo            text default 'Reunião',
+    solicitante       text default '',            -- quem cadastrou a reunião
     setor             text default '',
     data              timestamptz,
     plataforma        text default 'teams',      -- teams | recall | avulso
@@ -84,6 +85,7 @@ create index if not exists idx_reunioes_recall_bot on reunioes (recall_bot_id);
 -- Se a tabela reunioes JÁ existe no Supabase (caso do projeto ddm lab), rode:
 --   set search_path to meeting_ai;
 --   alter table reunioes add column if not exists recall_bot_id text;
+--   alter table reunioes add column if not exists solicitante text default '';
 --   create index if not exists idx_reunioes_recall_bot on reunioes (recall_bot_id);
 
 -- ── E-mails ─────────────────────────────────────────────────────────────────

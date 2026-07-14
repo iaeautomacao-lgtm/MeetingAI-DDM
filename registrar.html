@@ -54,8 +54,12 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
       <input type="url" id="url" placeholder="https://teams.microsoft.com/... (Teams, Zoom ou Meet)" required>
     </div>
     <div class="field">
-      <label for="titulo">Nome / título da reunião</label>
+      <label for="titulo">Título da reunião</label>
       <input type="text" id="titulo" placeholder="Ex.: Alinhamento Comercial">
+    </div>
+    <div class="field">
+      <label for="solicitante">Seu nome (quem está cadastrando) *</label>
+      <input type="text" id="solicitante" placeholder="Ex.: Gisele Oliveira" required>
     </div>
     <div class="field">
       <label for="setor">Setor</label>
@@ -83,11 +87,13 @@ async function enviar(ev){
   ev.preventDefault();
   const url=document.getElementById('url').value.trim();
   const titulo=document.getElementById('titulo').value.trim();
+  const solicitante=document.getElementById('solicitante').value.trim();
   const setor=document.getElementById('setor').value;
   if(!url) return;
+  if(!solicitante){ showMsg('Informe seu nome.',false); return; }
   const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Enviando…';
   try{
-    const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({meeting_url:url,titulo,setor})});
+    const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({meeting_url:url,titulo,solicitante,setor})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.erro||('HTTP '+r.status));
     showMsg('✅ Assistente <b>DDM</b> a caminho da reunião! A ata ficará disponível para a diretoria ao final.',true);

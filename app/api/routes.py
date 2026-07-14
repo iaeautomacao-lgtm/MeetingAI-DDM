@@ -320,6 +320,7 @@ def criar_gravacao():
     row = db.table("reunioes").insert(
         {
             "titulo": body.get("titulo") or "Reunião (Recall)",
+            "solicitante": (body.get("solicitante") or "").strip(),
             "setor": body.get("setor", ""),
             "data": datetime.now(timezone.utc).isoformat(),
             "plataforma": "recall",

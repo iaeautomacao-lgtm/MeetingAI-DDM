@@ -404,7 +404,7 @@ body {
     <p class="modal-sub">O assistente Acordito entra na reunião, grava e gera a ata.</p>
     <label>Link da reunião *</label>
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
-    <label>Nome / título</label>
+    <label>Título da reunião</label>
     <input type="text" id="m-titulo" placeholder="Ex.: Alinhamento Comercial">
     <label>Setor</label>
     <select id="m-setor"><option value="">Selecione…</option></select>
@@ -686,6 +686,7 @@ async function loadDetalhe(id){
       <div class="detail-head">
         <h2>${esc(r.titulo||'Reunião')}</h2>
         <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+        ${r.solicitante?`<div class="welcome-date" style="margin-top:4px">Cadastrado por: <b>${esc(r.solicitante)}</b></div>`:''}
         ${r.resumo_executivo?`<p style="margin-top:14px;font-size:14px;line-height:1.6">${esc(r.resumo_executivo)}</p>`:''}
         ${pendControls}
       </div>

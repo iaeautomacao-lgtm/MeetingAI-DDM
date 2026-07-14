@@ -1,0 +1,5 @@
+# Dependências opcionais — instalar só quando for usar transcrição de áudio
+# presencial (v2 / upload de MP3-MP4 via Azure Speech).
+#   pip install -r requirements-optional.txt
+# Não é necessária para o fluxo Recall (reuniões online).
+azure-cognitiveservices-speech==1.41.0

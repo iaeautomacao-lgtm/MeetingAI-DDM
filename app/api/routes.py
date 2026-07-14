@@ -6,6 +6,17 @@ from werkzeug.utils import secure_filename
 
 from app.api import bp
 from app.extensions import get_supabase
+from app.auth import (
+    require_auth,
+    check_master_password,
+    verificar_login,
+    precisa_definir_senha,
+    definir_senha,
+    login_session,
+    logout_session,
+    is_authed,
+    sessao_email,
+)
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -15,9 +26,66 @@ def health():
     return jsonify({"status": "ok"})
 
 
+# ── Auth (login diretor) ──────────────────────────────────────────────────────
+
+@bp.post("/auth/login")
+def auth_login():
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    senha = body.get("senha", "")
+
+    from app.auth import email_permitido
+
+    # 1) login-mestre (diretor): só senha, sem e-mail
+    if not email and check_master_password(senha):
+        login_session("")
+        return jsonify({"ok": True})
+
+    if email:
+        # 2) senha-mestre vale para qualquer e-mail já permitido (acesso de emergência)
+        if check_master_password(senha) and email_permitido(email):
+            login_session(email)
+            return jsonify({"ok": True})
+        # 3) e-mail + senha própria
+        if verificar_login(email, senha):
+            login_session(email)
+            return jsonify({"ok": True})
+        # 4) e-mail permitido mas ainda sem senha → fluxo de 1º acesso
+        if precisa_definir_senha(email):
+            return jsonify({"erro": "primeiro_acesso", "definir_senha": True}), 403
+
+    return jsonify({"erro": "credenciais inválidas"}), 401
+
+
+@bp.post("/auth/registrar")
+def auth_registrar():
+    """Define a senha no 1º acesso (só e-mail permitido e sem senha ainda)."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    senha = body.get("senha", "")
+    if not email or len(str(senha)) < 6:
+        return jsonify({"erro": "e-mail e senha (mín. 6 caracteres) obrigatórios"}), 400
+    if definir_senha(email, senha):
+        login_session(email)
+        return jsonify({"ok": True})
+    return jsonify({"erro": "e-mail não autorizado ou senha já definida"}), 403
+
+
+@bp.post("/auth/logout")
+def auth_logout():
+    logout_session()
+    return jsonify({"ok": True})
+
+
+@bp.get("/auth/status")
+def auth_status():
+    return jsonify({"autenticado": is_authed(), "email": sessao_email()})
+
+
 # ── Live ──────────────────────────────────────────────────────────────────────
 
 @bp.get("/live/teams")
+@require_auth
 def live_teams():
     """Reuniões Teams que iniciaram nas últimas 4h e ainda não concluíram."""
     db = get_supabase()
@@ -35,6 +103,7 @@ def live_teams():
 
 
 @bp.get("/live/processando")
+@require_auth
 def live_processando():
     """Reuniões em transcrição/análise agora."""
     db = get_supabase()
@@ -56,6 +125,7 @@ def live_processando():
 # ── Dashboard summary ─────────────────────────────────────────────────────────
 
 @bp.get("/dashboard/summary")
+@require_auth
 def dashboard_summary():
     db = get_supabase()
     periodo = request.args.get("periodo", "7d")
@@ -95,6 +165,7 @@ def dashboard_summary():
 # ── Dashboard (legado) ────────────────────────────────────────────────────────
 
 @bp.get("/dashboard")
+@require_auth
 def dashboard():
     db = get_supabase()
     hoje = request.args.get("data")
@@ -118,6 +189,7 @@ def dashboard():
 # ── Reuniões ──────────────────────────────────────────────────────────────────
 
 @bp.get("/reunioes")
+@require_auth
 def listar_reunioes():
     db = get_supabase()
     q = db.table("reunioes").select(
@@ -138,6 +210,7 @@ def listar_reunioes():
 
 
 @bp.get("/reunioes/<reuniao_id>")
+@require_auth
 def detalhe_reuniao(reuniao_id: str):
     db = get_supabase()
     resultado = db.table("reunioes").select("*").eq("id", reuniao_id).single().execute()
@@ -147,6 +220,7 @@ def detalhe_reuniao(reuniao_id: str):
 
 
 @bp.post("/reunioes/upload")
+@require_auth
 def upload_audio():
     """Fallback: upload manual de áudio MP3/MP4 para transcrição via Azure Speech."""
     from app.workers.tasks import processar_audio_avulso
@@ -252,6 +326,7 @@ def recall_webhook():
 
 
 @bp.post("/gravacoes/<reuniao_id>/processar")
+@require_auth
 def processar_gravacao_manual(reuniao_id: str):
     """
     Puxa a transcrição manualmente (para testar sem webhook público).
@@ -283,6 +358,7 @@ def processar_gravacao_manual(reuniao_id: str):
 # ── E-mails ───────────────────────────────────────────────────────────────────
 
 @bp.get("/emails")
+@require_auth
 def listar_emails():
     db = get_supabase()
     q = db.table("emails").select(
@@ -318,6 +394,7 @@ def listar_setores():
 # ── Usuários ──────────────────────────────────────────────────────────────────
 
 @bp.get("/usuarios")
+@require_auth
 def listar_usuarios():
     db = get_supabase()
     q = db.table("usuarios").select("id,nome,email,setor,cargo").eq("ativo", True)
@@ -329,6 +406,7 @@ def listar_usuarios():
 # ── Interações (grafo) ────────────────────────────────────────────────────────
 
 @bp.get("/interacoes")
+@require_auth
 def listar_interacoes():
     db = get_supabase()
     resultado = db.table("interacoes").select("*").order("contagem", desc=True).limit(200).execute()
@@ -338,6 +416,7 @@ def listar_interacoes():
 # ── Sync manual ───────────────────────────────────────────────────────────────
 
 @bp.post("/sync/trigger")
+@require_auth
 def trigger_sync():
     from app.workers.tasks import sync_reunioes_teams, sync_emails_outlook, sync_usuarios_ad
 

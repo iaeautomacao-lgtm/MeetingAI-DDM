@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acesso Executivo — Meeting DDM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ddm-orange:#FF5706; --ink:#1F1F1F; --ink-2:#3D3D3D; --gray:#939598;
+  --border:#E8E8EC; --bg-alt:#F4F4F6; --white:#FFF; --danger:#E5484D;
+  --r-md:12px; --font-display:'Poppins',sans-serif; --font-body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-body);background:#EBE5DB;color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.card{background:var(--white);border-radius:32px;box-shadow:0 20px 40px rgba(0,0,0,.06);width:100%;max-width:400px;padding:44px 40px;text-align:center;}
+.logo{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;margin-bottom:28px;}
+.logo img{height:40px;width:auto;}
+h1{font-family:var(--font-display);font-size:22px;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--gray);margin-bottom:28px;}
+label{display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-2);}
+input{width:100%;background:var(--bg-alt);border:1px solid transparent;border-radius:var(--r-md);padding:13px 14px;font-family:var(--font-body);font-size:14px;outline:none;margin-bottom:18px;}
+input:focus{border-color:var(--ddm-orange);}
+.btn{width:100%;background:var(--ink);color:#fff;border:none;padding:14px;border-radius:var(--r-md);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;font-family:var(--font-body);}
+.btn:hover{background:var(--ddm-orange);}
+.err{background:#FDECEC;color:var(--danger);padding:12px;border-radius:var(--r-md);font-size:13px;margin-bottom:18px;display:none;}
+.foot{margin-top:24px;font-size:12px;color:var(--gray);}
+.foot a{color:var(--ddm-orange);text-decoration:none;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/assets/logo-mark.png" alt="DDM" />
+    Meeting DDM
+  </div>
+  <h1 id="titulo">Acesso Executivo</h1>
+  <p class="sub" id="subtitulo">Painel restrito à diretoria</p>
+
+  <div class="err" id="err"></div>
+
+  <!-- LOGIN -->
+  <form id="form-login" onsubmit="entrar(event)">
+    <label for="email">E-mail</label>
+    <input type="email" id="email" placeholder="voce@grupoddm.com.br" autofocus>
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" placeholder="••••••••" required>
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+
+  <!-- DEFINIR SENHA (1º acesso) -->
+  <form id="form-registro" onsubmit="registrar(event)" style="display:none">
+    <label for="r-email">E-mail</label>
+    <input type="email" id="r-email" placeholder="voce@grupoddm.com.br" required>
+    <label for="r-senha">Crie uma senha</label>
+    <input type="password" id="r-senha" placeholder="mín. 6 caracteres" minlength="6" required>
+    <label for="r-senha2">Confirme a senha</label>
+    <input type="password" id="r-senha2" placeholder="repita a senha" minlength="6" required>
+    <button class="btn" type="submit">Definir senha e entrar</button>
+  </form>
+
+  <div class="foot">
+    <a href="#" id="link-toggle" onclick="toggle(event)">Primeiro acesso? Definir senha</a>
+    <br><br>
+    <a href="/">← Registrar uma reunião</a>
+  </div>
+</div>
+
+<script>
+const err=document.getElementById('err');
+function showErr(m){ err.textContent=m; err.style.display='block'; }
+function clearErr(){ err.style.display='none'; }
+
+function toggle(ev){
+  ev.preventDefault();
+  const login=document.getElementById('form-login');
+  const reg=document.getElementById('form-registro');
+  const link=document.getElementById('link-toggle');
+  const tit=document.getElementById('titulo');
+  const sub=document.getElementById('subtitulo');
+  const modoLogin = login.style.display!=='none';
+  clearErr();
+  if(modoLogin){
+    login.style.display='none'; reg.style.display='block';
+    link.textContent='← Voltar ao login';
+    tit.textContent='Primeiro acesso'; sub.textContent='Defina sua senha (e-mail precisa estar autorizado)';
+    // leva o e-mail já digitado
+    document.getElementById('r-email').value=document.getElementById('email').value;
+  }else{
+    login.style.display='block'; reg.style.display='none';
+    link.textContent='Primeiro acesso? Definir senha';
+    tit.textContent='Acesso Executivo'; sub.textContent='Painel restrito à diretoria';
+  }
+}
+
+async function entrar(ev){
+  ev.preventDefault(); clearErr();
+  const email=document.getElementById('email').value.trim();
+  const senha=document.getElementById('senha').value;
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,senha})});
+    if(r.ok){ window.location='/painel'; return; }
+    const d=await r.json().catch(()=>({}));
+    if(d.definir_senha){
+      showErr('Primeiro acesso — defina sua senha abaixo.');
+      document.getElementById('email').value=email;
+      toggle(ev);
+      return;
+    }
+    showErr('Credenciais inválidas.');
+  }catch(e){ showErr('Erro de conexão.'); }
+}
+
+async function registrar(ev){
+  ev.preventDefault(); clearErr();
+  const email=document.getElementById('r-email').value.trim();
+  const senha=document.getElementById('r-senha').value;
+  const senha2=document.getElementById('r-senha2').value;
+  if(senha!==senha2){ showErr('As senhas não conferem.'); return; }
+  try{
+    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,senha})});
+    if(r.ok){ window.location='/painel'; return; }
+    const d=await r.json().catch(()=>({}));
+    showErr(d.erro || 'Não foi possível definir a senha.');
+  }catch(e){ showErr('Erro de conexão.'); }
+}
+</script>
+</body>
+</html>

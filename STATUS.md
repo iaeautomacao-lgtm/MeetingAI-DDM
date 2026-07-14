@@ -64,7 +64,7 @@ Upload manual de áudio → Azure Speech → Claude → reunioes
 
 ### ⚠️ Riscos / bugs a revisar
 - **Listagem de reuniões via Graph**: `get_meetings` usa `/users/{id}/onlineMeetings?$filter=startDateTime ge ...`. A API `onlineMeetings` do Graph **tem limitações** para listar por data — pode não retornar nada. Provável necessidade de usar `callRecords` ou outra estratégia. **Validar cedo.**
-- **Chave com espaço**: a análise retorna `"decisoes estrategicas"` (com espaço) — consistente no código, mas frágil/typo. Padronizar para `decisoes_estrategicas`.
+- ✅ **Chave com espaço** (resolvido 13/07/2026): análise agora usa `"decisoes"`, `_chat` força `response_format=json_object` (Gemini/OpenAI), `max_tokens` 4096, participantes derivados das utterances. Era a causa de "Não foi possível estruturar a análise".
 - **`live_teams`**: dashboard mostra `m.participantes` como número, mas o campo é preenchido como lista (`participantes_ativos`). Inconsistência de contagem.
 - **`gerar_resumo_diario`**: compara coluna `data` (timestamp) com string de data (`hoje`) no `.gte` — revisar se filtra corretamente.
 - **Azure Speech**: `audio_duration_ms` sempre `None` → `duracao_minutos` fica nulo no upload manual.
@@ -165,6 +165,36 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 **Pendente p/ automático:** webhook público no deploy (ou ngrok) → configurar em recall.ai/dashboard/webhooks apontando `<PUBLIC_BASE_URL>/api/recall/webhook`. Aí funcionário aciona e aparece sozinho (hoje puxa manual via `/processar`).
 
 **PRÓXIMO PASSO (quando a Gih quiser):** deploy (Procfile pronto) + Redis gerenciado + webhook Recall → fluxo 100% automático. Opcional: auth no dashboard (ainda aberto), trocar Gemini→OpenAI se houver chave válida.
+
+## 3.4 DASHBOARD REMODELADO + RECUPERAÇÃO DE DADOS (2026-07-10)
+
+**Novo design (Gih substituiu todo o HTML por layout estilo task-manager, Poppins/Inter, cartão flutuante creme, 3 colunas).** Era mockup 100% estático (avatars pravatar, tarefas/calendário/"Plano Pro" falsos, nav só trocava classe active). Claude reescreveu `meeting-ddm-dashboard.html` mantendo o visual mas tornando funcional:
+- **Abas reais** (SPA): Dashboard · Reuniões · Transcrições · E-mails · Config + página Detalhe. `goto(page)` troca `.page.active` e chama o loader.
+- Ligado à API: `/api/dashboard/summary`, `/api/reunioes`, `/api/reunioes/<id>`, `/api/emails`, `/api/health`.
+- 3 KPI cards reais (reuniões/decisões/pendências), Reuniões Recentes, Estatísticas, Agenda (timeline por data), busca, filtro por setor, abas de categoria de e-mail.
+- "+ Nova Reunião" → `novaReuniao()` (Recall). Botão "Puxar" → `/api/gravacoes/<id>/processar` em reuniões pending. Detalhe mostra transcrição/decisões/pendências/tópicos/participantes.
+- Removido: avatars fake, banner "Plano Pro", dados mock. Mantido Google Fonts (CDN) — ok pois é servido pelo Flask (não é Artifact com CSP).
+
+**PERDA DE DADOS detectada:** `reunioes`, `emails`, `usuarios` estavam ZERADOS no Supabase (só `interacoes`=34 sobreviveu). Causa provável: tabelas dropadas/recriadas ao aplicar a coluna `recall_bot_id` (o ALTER fornecido NÃO apaga; re-rodar schema com drop, sim). **Lição: usar só `ALTER TABLE ADD COLUMN`, nunca drop/re-rodar schema.**
+
+**RECUPERAÇÃO:** gravações ainda existiam no Recall (storage 7 dias). Recriadas 2 reuniões `done` (bots b2903f21, a90c26c8) via insert + `_processar_recall` → `completed`. Dashboard repovoado (2 reuniões, 1 pendência). Bot 126cc969 seguia `in_call_recording` (travado, não recuperado).
+
+## 3.5 AUTENTICAÇÃO + TELA PÚBLICA (2026-07-10)
+
+**Separação de acesso:** funcionários comuns só registram reunião (sem ver dados); diretores logam e veem o dashboard completo.
+
+- **`/` (público)** → `registrar.html`: formulário link + nome + **dropdown de setor** (via `/api/setores`) → `POST /api/gravacoes`. Zero dados expostos. Link discreto "Acessar painel executivo".
+- **`/login`** → `login.html`: senha do diretor → `POST /api/auth/login` → sessão → redirect `/painel`.
+- **`/painel` (protegido)** → dashboard; redireciona p/ `/login` se não autenticado.
+- **`app/auth/__init__.py`**: `check_password` (hmac.compare_digest vs `DIRECTOR_PASSWORD`), `is_authed`, `login_session`, `logout_session`, `require_auth` (decorator).
+- **`app/config.py`**: `DIRECTOR_PASSWORD`, cookies `HttpOnly`+`SameSite=Lax`+`Secure` (via `SESSION_COOKIE_SECURE`), sessão 8h.
+- **`app/api/routes.py`**: `/auth/login|logout|status`. `@require_auth` em live/dashboard/reunioes/emails/usuarios/interacoes/upload/processar/sync. **Públicos:** `/health`, `/setores`, `/gravacoes` (funcionário registra), `/recall/webhook` (Recall chama).
+- **Dashboard**: modal "Nova Reunião" com dropdown de setor (substitui prompts), botão **Sair**, redirect a `/login` em 401.
+- **`.env`**: `DIRECTOR_PASSWORD=***REMOVIDO***` (TROCAR) + `SESSION_COOKIE_SECURE=0`.
+
+**Testado (curl, 8 casos):** público 200, /painel sem login → 302 /login, /api/reunioes sem login → 401, senha errada → 401, senha certa → 200 + cookie → /painel 200 + dados. Tudo OK.
+
+**Nota segurança:** senha simples compartilhada (1 senha p/ toda diretoria). Suficiente p/ MVP interno. Evoluções possíveis: contas individuais, SSO Microsoft, rate-limit no login. Em produção: `SESSION_COOKIE_SECURE=1` (HTTPS) + trocar `SECRET_KEY` e `DIRECTOR_PASSWORD`.
 
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.

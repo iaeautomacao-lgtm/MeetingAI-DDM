@@ -25,6 +25,19 @@ create table if not exists usuarios (
 create index if not exists idx_usuarios_ativo on usuarios (ativo);
 create index if not exists idx_usuarios_setor on usuarios (setor);
 
+-- ── Acessos ao painel (allowlist de login) ──────────────────────────────────
+-- A tabela É a allowlist: só e-mail presente aqui e ativo=true pode logar.
+-- senha_hash null = usuário ainda não definiu senha (1º acesso).
+create table if not exists painel_acessos (
+    id         uuid primary key default gen_random_uuid(),
+    email      text unique not null,
+    nome       text default '',
+    senha_hash text,
+    ativo      boolean default true,
+    criado_em  timestamptz default now()
+);
+create index if not exists idx_painel_acessos_email on painel_acessos (lower(email));
+
 -- ── Setores ─────────────────────────────────────────────────────────────────
 create table if not exists setores (
     id    uuid primary key default gen_random_uuid(),
@@ -128,5 +141,6 @@ insert into setores (nome, cor) values
     ('TI',          '#3b82f6'),
     ('RH',          '#ec4899'),
     ('Jurídico',    '#ef4444'),
-    ('Diretoria',   '#8b5cf6')
+    ('Diretoria',   '#8b5cf6'),
+    ('Diretores',   '#8b5cf6')
 on conflict do nothing;

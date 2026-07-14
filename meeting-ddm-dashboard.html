@@ -3,1742 +3,668 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meeting DDM</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Meeting DDM - Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── TOKENS ─────────────────────────────────────── */
 :root {
-  /* DDM brand */
-  --brand:        #FF5706;
-  --brand-hover:  #E84B00;
-  --brand-fg:     #ffffff;
-  --brand-muted:  #FFF3EC;
-  --brand-muted2: #FFE0D1;
+  /* DDM Design System Tokens */
+  --ddm-orange: #FF5706; --ddm-orange-600: #E84B00; --ddm-orange-300: #FF8754; --ddm-orange-50: #FFF3EC;
+  --ink: #1F1F1F; --ink-2: #3D3D3D; --gray: #939598; --border: #E8E8EC;
+  --bg-alt: #F4F4F6; --cream: #FAF7F4; --white: #FFFFFF;
+  --success: #2BAE66; --info: #1F7AE0; --teal: #5EC4CD; --danger: #E5484D;
 
-  /* shadcn/ui zinc light palette */
-  --bg:           #ffffff;
-  --bg-subtle:    #fafafa;
-  --card:         #ffffff;
-  --card-hover:   #fafafa;
-  --border:       #e4e4e7;
-  --border-input: #d4d4d8;
-  --input:        #ffffff;
-
-  /* text */
-  --fg:           #09090b;
-  --fg-2:         #3f3f46;
-  --fg-muted:     #71717a;
-  --fg-subtle:    #a1a1aa;
-
-  /* semantic */
-  --success:      #16a34a;
-  --success-bg:   #f0fdf4;
-  --success-bd:   #bbf7d0;
-  --warn:         #d97706;
-  --warn-bg:      #fffbeb;
-  --warn-bd:      #fde68a;
-  --danger:       #dc2626;
-  --danger-bg:    #fef2f2;
-  --danger-bd:    #fecaca;
-  --info:         #2563eb;
-  --info-bg:      #eff6ff;
-  --info-bd:      #bfdbfe;
-
-  /* layout */
-  --sidebar:      220px;
-  --topbar-h:     52px;
-  --r:            6px;
-  --r-sm:         4px;
-  --r-lg:         8px;
-  --shadow-sm:    0 1px 2px rgba(0,0,0,.05);
-  --shadow:       0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+  --r-sm: 6px; --r-md: 12px; --r-lg: 20px; --r-xl: 32px;
+  --font-display: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--fg);
-  background: var(--bg-subtle);
-  display: flex;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-body);
+  background: #EBE5DB;
+  color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 40px;
 }
 
-/* ── SCROLLBAR ───────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--gray); border-radius: 10px; }
 
-/* ── SIDEBAR ─────────────────────────────────────── */
-.sidebar {
-  width: var(--sidebar);
-  min-width: var(--sidebar);
-  background: var(--bg);
-  border-right: 1px solid var(--border);
+.app-container {
   display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
-  z-index: 100;
+  width: 100%; max-width: 1280px; height: 88vh; min-height: 700px;
+  background: var(--white);
+  border-radius: 36px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+/* ================== SIDEBAR ================== */
+.sidebar { width: 240px; padding: 40px 24px; display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-logo {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 40px;
+  font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--ink);
+}
+.sidebar-logo img { height: 24px; }
+
+.profile { display: flex; flex-direction: column; align-items: center; margin-bottom: 40px; }
+.profile-avatar {
+  width: 64px; height: 64px; border-radius: 50%; margin-bottom: 12px;
+  background: var(--ddm-orange); color: #fff; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 22px;
+}
+.profile-name { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+.profile-email { font-size: 11px; color: var(--gray); }
+
+.nav { flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin-bottom: 8px;
+  border-radius: var(--r-md); cursor: pointer; color: var(--gray); font-size: 13px; font-weight: 500;
+  transition: all 0.2s;
+}
+.nav-item svg { width: 18px; height: 18px; }
+.nav-item:hover { color: var(--ink); background: var(--bg-alt); }
+.nav-item.active { color: #fff; font-weight: 600; background: var(--ink); }
+.nav-item.active svg { color: #fff; }
+
+.sidebar-deco { margin-top: auto; align-self: center; width: 140px; height: auto; display: block; mix-blend-mode: multiply; }
+
+/* ================== MAIN CONTENT ================== */
+.main-area {
+  flex: 1; padding: 40px; display: flex; flex-direction: column;
+  border-left: 1px solid var(--border); border-right: 1px solid var(--border);
   overflow-y: auto;
 }
 
-.sidebar-top {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
+.topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; gap: 16px; }
+.welcome-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+.welcome-date { font-size: 12px; color: var(--gray); }
 
-.logo-box {
-  width: 30px; height: 30px;
-  border-radius: var(--r-sm);
-  flex-shrink: 0;
-  object-fit: contain;
-  display: block;
+.topbar-actions { display: flex; gap: 16px; align-items: center; flex-shrink: 0; }
+.search-box { position: relative; }
+.search-box input {
+  background: var(--bg-alt); border: none; padding: 10px 16px 10px 36px;
+  border-radius: var(--r-md); font-family: var(--font-body); font-size: 12px; outline: none; width: 200px;
 }
-
-.logo-text { line-height: 1.25; }
-.logo-name { font-size: 12px; font-weight: 600; color: var(--fg); }
-.logo-sub  { font-size: 10px; color: var(--fg-muted); }
-
-/* nav */
-.nav { padding: 8px 10px; flex: 1; }
-
-.nav-group { margin-bottom: 4px; }
-.nav-group-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--fg-subtle);
-  text-transform: uppercase;
-  letter-spacing: .7px;
-  padding: 8px 6px 4px;
-  display: block;
-}
-
-.nav-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--r-sm);
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--fg-2);
-  cursor: pointer;
-  transition: background .12s, color .12s;
-  user-select: none;
-  margin-bottom: 1px;
-}
-.nav-item:hover { background: var(--bg-subtle); color: var(--fg); }
-.nav-item.active { background: var(--brand); color: #fff; }
-.nav-item.active svg { color: #fff; }
-
-.nav-item svg { color: var(--fg-muted); flex-shrink: 0; transition: color .12s; }
-.nav-item:hover svg { color: var(--fg); }
-
-.nav-count {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--fg-subtle);
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  padding: 0 5px;
-  border-radius: 10px;
-  min-width: 18px;
-  text-align: center;
-}
-.nav-item.active .nav-count { background: rgba(255,255,255,.2); border-color: transparent; color: #fff; }
-
-.live-pill {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 4px;
-  font-size: 9px; font-weight: 600;
-  color: var(--success);
-  background: var(--success-bg);
-  border: 1px solid var(--success-bd);
-  padding: 1px 6px;
-  border-radius: 10px;
-}
-.live-pill-dot {
-  width: 5px; height: 5px;
-  background: var(--success);
-  border-radius: 50%;
-  animation: blink 1.6s infinite;
-}
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-.sidebar-footer {
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-  display: flex; align-items: center; gap: 9px;
-}
-.user-avatar {
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--brand-muted);
-  color: var(--brand);
-  font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.user-name  { font-size: 12px; font-weight: 600; }
-.user-role  { font-size: 10px; color: var(--fg-muted); }
-
-/* ── MAIN ────────────────────────────────────────── */
-.main {
-  margin-left: var(--sidebar);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--bg-subtle);
-}
-
-/* ── TOPBAR ──────────────────────────────────────── */
-.topbar {
-  height: var(--topbar-h);
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 20px;
-  position: sticky; top: 0; z-index: 50;
-}
-
-.topbar-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--fg);
-  flex: 1;
-}
-
-.seg-group {
-  display: flex;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 2px;
-  gap: 1px;
-}
-.seg-btn {
-  padding: 3px 10px;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--fg-muted);
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  border-radius: calc(var(--r) - 2px);
-  font-family: inherit;
-  transition: all .12s;
-}
-.seg-btn:hover { color: var(--fg); }
-.seg-btn.active {
-  background: var(--bg);
-  color: var(--fg);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
-
-/* search */
-.search-wrap { position: relative; }
-.search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--fg-subtle); pointer-events: none; }
-.search-input {
-  width: 160px;
-  padding: 5px 8px 5px 26px;
-  border: 1px solid var(--border-input);
-  border-radius: var(--r);
-  font-size: 12px;
-  color: var(--fg);
-  background: var(--bg);
-  font-family: inherit;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-}
-.search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(255,87,6,.12); }
-.search-input::placeholder { color: var(--fg-subtle); }
-
-/* btn */
-.btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 12px;
-  border-radius: var(--r);
-  font-size: 12px; font-weight: 500;
-  cursor: pointer;
-  border: 1px solid transparent;
-  font-family: inherit;
-  transition: all .12s;
-  white-space: nowrap;
-  text-decoration: none;
-}
-.btn-default {
-  background: var(--bg);
-  color: var(--fg);
-  border-color: var(--border-input);
-  box-shadow: var(--shadow-sm);
-}
-.btn-default:hover { background: var(--bg-subtle); }
+.search-box svg { position: absolute; left: 12px; top: 10px; width: 14px; height: 14px; color: var(--gray); }
 .btn-primary {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--ink); color: var(--white); border: none; padding: 10px 20px;
+  border-radius: var(--r-md); font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
 }
-.btn-primary:hover { background: var(--fg-2); }
-.btn-brand {
-  background: var(--brand);
-  color: #fff;
-}
-.btn-brand:hover { background: var(--brand-hover); }
+.btn-primary:hover { background: var(--ddm-orange); }
 
-/* hamburger */
-.hamburger { display:none; background:none; border:none; cursor:pointer; padding:4px; color:var(--fg); }
-
-/* ── CONTENT ─────────────────────────────────────── */
-.content { padding: 20px; flex: 1; }
-
+/* Pages */
 .page { display: none; }
 .page.active { display: block; }
 
-/* page header */
-.page-header { margin-bottom: 16px; }
-.page-header h2 { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
-.page-header p  { font-size: 12px; color: var(--fg-muted); margin-top: 2px; }
-
-/* ── CARD ────────────────────────────────────────── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-.card-header {
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.card-title { font-size: 13px; font-weight: 600; }
-.card-description { font-size: 11.5px; color: var(--fg-muted); margin-top: 1px; }
-.card-action { font-size: 11.5px; color: var(--fg-muted); cursor: pointer; transition: color .12s; }
-.card-action:hover { color: var(--brand); }
-.card-body { padding: 0; }
-
-/* ── LIVE GRID ───────────────────────────────────── */
-.live-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.live-header-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10.5px; font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-  border: 1px solid;
-}
-.live-header-badge.live-now { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
-.live-header-badge.processing { color: var(--brand); background: var(--brand-muted); border-color: var(--brand-muted2); }
-.live-dot-sm { width: 5px; height: 5px; border-radius: 50%; }
-.dot-green { background: var(--success); animation: blink 1.6s infinite; }
-.dot-orange { background: var(--brand); animation: blink .9s infinite; }
-
-.live-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 11px 16px;
-  border-bottom: 1px solid var(--border);
-  transition: background .1s;
-}
-.live-item:last-child { border-bottom: none; }
-.live-item:hover { background: var(--bg-subtle); }
-
-.li-icon {
-  width: 30px; height: 30px;
-  border-radius: var(--r);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700;
-  flex-shrink: 0;
-}
-.li-name { font-size: 12.5px; font-weight: 600; }
-.li-meta { font-size: 11px; color: var(--fg-muted); margin-top: 1px; }
-
-.progress-track {
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  margin-top: 5px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--brand) 0%, #ff8754 100%);
-  border-radius: 2px;
-  background-size: 200%;
-  animation: pulse-bar 1.6s ease-in-out infinite alternate;
-}
-@keyframes pulse-bar { from { opacity: .7; } to { opacity: 1; } }
-
-/* ── KPI GRID ────────────────────────────────────── */
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
+/* Cards */
+.cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
 .kpi-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--r-lg); padding: 24px; position: relative; overflow: hidden;
+  color: var(--white); box-shadow: 0 10px 20px rgba(0,0,0,0.05); min-height: 150px;
+  display: flex; flex-direction: column;
 }
-.kpi-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-.kpi-label { font-size: 11px; font-weight: 500; color: var(--fg-muted); }
-.kpi-icon-wrap { color: var(--fg-muted); }
-.kpi-value {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -.5px;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.kpi-footer { display: flex; align-items: center; gap: 8px; }
-.delta {
-  display: inline-flex; align-items: center; gap: 2px;
-  font-size: 10.5px; font-weight: 600;
-  padding: 1px 5px;
-  border-radius: var(--r-sm);
-  border: 1px solid transparent;
-}
-.delta.up   { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
-.delta.down { color: var(--danger);  background: var(--danger-bg);  border-color: var(--danger-bd); }
-.delta.warn { color: var(--warn);    background: var(--warn-bg);    border-color: var(--warn-bd); }
-.kpi-sub { font-size: 10.5px; color: var(--fg-subtle); }
+.c-ink { background: var(--ink); }
+.c-info { background: var(--teal); }
+.c-orange { background: var(--ddm-orange); }
+.kpi-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.18);
+  display:flex; align-items:center; justify-content:center; margin-bottom: 16px; }
+.kpi-icon svg { width: 20px; height: 20px; }
+.kpi-value { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1; }
+.card-title { font-size: 13px; font-weight: 500; margin-top: 6px; opacity: .92; }
+.card-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin: 14px 0 8px; opacity: 0.9; }
+.progress-bar { height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+.progress-fill { height: 100%; background: #fff; border-radius: 2px; }
 
-/* sparkline */
-.sparkline {
-  display: flex; align-items: flex-end; gap: 2px;
-  height: 28px;
-  margin-top: 8px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-}
-.spark-b {
-  flex: 1;
-  border-radius: 2px 2px 0 0;
-  background: var(--border);
-  min-height: 3px;
-  transition: height .3s;
-}
-.spark-b.hi { background: var(--brand); }
+/* Lower section */
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.section-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; margin-bottom: 20px; display:flex; justify-content: space-between; align-items:center; }
+.section-title .link { font-size: 12px; color: var(--ddm-orange); cursor: pointer; font-family: var(--font-body); font-weight:600; }
 
-/* ── BOTTOM GRID ─────────────────────────────────── */
-.bottom-grid {
-  display: grid;
-  grid-template-columns: 1.1fr .9fr;
-  gap: 12px;
+.task-list { display: flex; flex-direction: column; gap: 12px; }
+.task-item {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 16px; display: flex; justify-content: space-between; align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02); border-left: 4px solid var(--ddm-orange); cursor: pointer;
+  transition: box-shadow .15s;
 }
-.col { display: flex; flex-direction: column; gap: 12px; }
+.task-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+.task-item.t-ink { border-left-color: var(--ink); }
+.task-item.t-teal { border-left-color: var(--teal); }
+.t-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.t-title { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-sub { font-size: 11px; color: var(--gray); }
 
-/* ── MEETING ROW ─────────────────────────────────── */
-.m-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background .1s;
-}
-.m-row:last-child { border-bottom: none; }
-.m-row:hover { background: var(--bg-subtle); }
+/* Status badge */
+.badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge.completed { background: #E7F6EE; color: var(--success); }
+.badge.pending, .badge.processing { background: var(--ddm-orange-50); color: var(--ddm-orange); }
+.badge.sem_transcricao { background: var(--bg-alt); color: var(--gray); }
+.badge.error { background: #FDECEC; color: var(--danger); }
+.badge.pos { background:#E7F6EE; color:var(--success);} .badge.neg{background:#FDECEC;color:var(--danger);} .badge.neu{background:var(--bg-alt);color:var(--gray);}
 
-.m-avatar {
-  width: 30px; height: 30px;
-  border-radius: var(--r);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700;
-  flex-shrink: 0;
-}
-.m-name { font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.m-meta { font-size: 11px; color: var(--fg-muted); margin-top: 1px; }
-.m-right { flex-shrink: 0; text-align: right; }
-.m-date { font-size: 10.5px; color: var(--fg-subtle); }
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.stat-box { background: var(--bg-alt); border-radius: var(--r-md); padding: 18px 12px; text-align: center; }
+.stat-val { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.stat-label { font-size: 10px; color: var(--gray); }
 
-/* ── BADGE ───────────────────────────────────────── */
-.badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10.5px; font-weight: 500;
-  padding: 1px 6px;
-  border-radius: var(--r-sm);
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-.b-success { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
-.b-info    { color: var(--info);    background: var(--info-bg);    border-color: var(--info-bd); }
-.b-warn    { color: var(--warn);    background: var(--warn-bg);    border-color: var(--warn-bd); }
-.b-danger  { color: var(--danger);  background: var(--danger-bg);  border-color: var(--danger-bd); }
-.b-muted   { color: var(--fg-muted);background: var(--bg-subtle);  border-color: var(--border); }
-.b-brand   { color: var(--brand);   background: var(--brand-muted);border-color: var(--brand-muted2); }
+.panel { background: var(--cream); border-radius: var(--r-md); padding: 20px; }
+.panel h3 { font-family: var(--font-display); font-size: 13px; margin-bottom: 10px; }
+.panel .li { font-size: 12px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.panel .li:last-child { border-bottom: none; }
 
-/* ── SECTOR BARS ─────────────────────────────────── */
-.sector-wrap { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.s-row {}
-.s-top { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px; }
-.s-label { font-weight: 500; color: var(--fg-2); }
-.s-val   { font-weight: 600; color: var(--fg); }
-.s-track { height: 4px; background: var(--border); border-radius: 2px; }
-.s-fill  { height: 100%; border-radius: 2px; transition: width .5s ease; }
+/* Generic list rows (Reuniões / Transcrições / E-mails) */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.row {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 16px 18px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: box-shadow .15s;
+}
+.row:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+.row .r-main { flex: 1; min-width: 0; }
+.row .r-title { font-weight: 600; font-size: 14px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .r-sub { font-size: 12px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .r-meta { font-size: 11px; color: var(--gray); text-align: right; flex-shrink: 0; }
 
-/* ── LIST ITEM ───────────────────────────────────── */
-.list-item {
-  display: flex; gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.list-item:last-child { border-bottom: none; }
-.list-bullet { width: 5px; height: 5px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-.list-text { font-size: 12.5px; line-height: 1.5; flex: 1; }
-.list-sub  { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
+.tab-btn.active { background: var(--ink); color: #fff; }
 
-/* ── PAGE REUNIÕES ───────────────────────────────── */
-.tabs {
-  display: flex; gap: 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 14px;
-}
-.tab-btn {
-  padding: 7px 14px;
-  font-size: 12.5px; font-weight: 500;
-  color: var(--fg-muted);
-  cursor: pointer;
-  border: none; background: transparent;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all .12s;
-  font-family: inherit;
-}
-.tab-btn:hover { color: var(--fg); }
-.tab-btn.active { color: var(--fg); border-bottom-color: var(--fg); font-weight: 600; }
+.empty { text-align: center; color: var(--gray); font-size: 13px; padding: 40px 0; }
+.skel { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); background-size:200% 100%; animation: sh 1.2s infinite; border-radius: 8px; height: 56px; margin-bottom:10px; }
+@keyframes sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-.table-wrap {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-.table-head {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 90px;
-  gap: 12px;
-  padding: 8px 16px;
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border);
-  font-size: 11px; font-weight: 600;
-  color: var(--fg-muted);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-.table-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 90px;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  align-items: center;
-  cursor: pointer;
-  transition: background .1s;
-}
-.table-row:last-child { border-bottom: none; }
-.table-row:hover { background: var(--bg-subtle); }
-.t-name { font-size: 12.5px; font-weight: 600; }
-.t-sub  { font-size: 11px; color: var(--fg-muted); margin-top: 1px; }
-.t-cell { font-size: 12px; color: var(--fg-2); }
+/* Detail */
+.back-btn { background: none; border: none; color: var(--gray); font-size: 13px; cursor: pointer; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; font-family: var(--font-body); }
+.detail-head { margin-bottom: 24px; }
+.detail-head h2 { font-family: var(--font-display); font-size: 22px; margin-bottom: 6px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.d-card { background: var(--cream); border-radius: var(--r-md); padding: 18px; }
+.d-card h3 { font-family: var(--font-display); font-size: 13px; margin-bottom: 12px; }
+.d-card ul { list-style: none; }
+.d-card li { font-size: 12px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.d-card li:last-child { border-bottom: none; }
+.chip { display:inline-block; background: var(--ddm-orange-50); color: var(--ddm-orange); font-size: 11px; padding: 4px 10px; border-radius: 14px; margin: 0 6px 6px 0; }
+.transcript { background: var(--bg-alt); border-radius: var(--r-md); padding: 18px; max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.7; color: var(--ink-2); }
+.transcript b { color: var(--ink); }
+.btn-sm { background: var(--ddm-orange); color:#fff; border:none; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font-body); }
 
-/* ── TRANSCRIÇÕES ────────────────────────────────── */
-.tr-item {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 12px;
-  box-shadow: var(--shadow-sm);
-  transition: all .12s;
-}
-.tr-item:hover { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(255,87,6,.08); }
-.tr-icon {
-  width: 34px; height: 34px;
-  border-radius: var(--r);
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--fg-muted);
-  flex-shrink: 0;
-}
-.tr-name { font-size: 13px; font-weight: 600; }
-.tr-chips { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-.tr-chip { font-size: 10.5px; color: var(--fg-subtle); display: flex; align-items: center; gap: 3px; }
-.tr-caret { color: var(--fg-subtle); margin-left: auto; }
+/* ================== RIGHT SIDEBAR ================== */
+.right-sidebar { width: 280px; padding: 40px 24px; background: var(--cream); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+.rs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.rs-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.btn-icon { background: var(--white); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: var(--ink); }
 
-/* ── DETALHE ─────────────────────────────────────── */
-.back-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 500; color: var(--fg-muted);
-  border: none; background: none; font-family: inherit;
-  cursor: pointer; padding: 0; margin-bottom: 14px;
-  transition: color .12s;
-}
-.back-btn:hover { color: var(--fg); }
+.timeline-day { margin-bottom: 24px; }
+.tl-date { font-size: 10px; color: var(--gray); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+.tl-item { display: flex; gap: 12px; margin-bottom: 20px; cursor: pointer; }
+.tl-time { font-family: var(--font-display); font-size: 12px; font-weight: 600; width: 40px; flex-shrink: 0; }
+.tl-content { border-left: 2px solid var(--ddm-orange); padding-left: 12px; min-width: 0; }
+.tl-content.teal { border-left-color: var(--teal); }
+.tl-content.ink { border-left-color: var(--ink); }
+.tl-title { font-size: 12px; color: var(--gray); margin-bottom: 2px; }
+.tl-desc { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.detail-top {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 18px 20px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow-sm);
-}
-.detail-title { font-size: 18px; font-weight: 700; letter-spacing: -.4px; margin-bottom: 8px; }
-.detail-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* Toast */
+#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 13px; display: none; z-index: 1001; box-shadow: 0 8px 24px rgba(0,0,0,.2); max-width: 90%; }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.detail-panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
-}
-.dp-label {
-  font-size: 10.5px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .6px; color: var(--fg-muted); margin-bottom: 10px;
-}
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: #fff; border-radius: var(--r-lg); padding: 32px; width: 100%; max-width: 440px; }
+.modal h3 { font-family: var(--font-display); font-size: 20px; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--gray); margin-bottom: 22px; }
+.modal label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 6px; color: var(--ink-2); }
+.modal input, .modal select { width: 100%; background: var(--bg-alt); border: 1px solid transparent; border-radius: var(--r-md); padding: 12px 14px; font-family: var(--font-body); font-size: 14px; outline: none; }
+.modal input:focus, .modal select:focus { border-color: var(--ddm-orange); }
+.modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 26px; }
+.btn-ghost { background: var(--bg-alt); color: var(--ink); border: none; padding: 10px 20px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+.logout-item { color: var(--danger) !important; }
+.logout-item:hover { background: #FDECEC !important; }
 
-.p-row { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
-.p-row:last-child { margin-bottom: 0; }
-.p-av {
-  width: 24px; height: 24px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 700; flex-shrink: 0;
-}
-.p-name { font-size: 12px; font-weight: 500; flex: 1; }
-.p-track { width: 64px; height: 3px; background: var(--border); border-radius: 2px; }
-.p-bar   { height: 100%; border-radius: 2px; }
-.p-pct   { font-size: 10.5px; color: var(--fg-muted); min-width: 28px; text-align: right; }
-
-.dec-item, .pend-item {
-  display: flex; gap: 9px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-.dec-item:last-child, .pend-item:last-child { border-bottom: none; }
-.item-dot { width: 5px; height: 5px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
-.item-sub { font-size: 10.5px; color: var(--fg-muted); margin-top: 2px; }
-
-.transcript-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-}
-.utterance {
-  display: flex; gap: 10px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--border);
-}
-.utterance:last-child { border-bottom: none; }
-.utt-ts { font-size: 10px; color: var(--fg-subtle); min-width: 38px; padding-top: 1px; font-variant-numeric: tabular-nums; }
-.utt-av { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; }
-.utt-content { flex: 1; }
-.utt-sp { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
-.utt-tx { font-size: 12.5px; color: var(--fg-2); line-height: 1.55; }
-
-/* ── SUMMARY BOX ─────────────────────────────────── */
-.summary-box {
-  background: var(--brand-muted);
-  border: 1px solid var(--brand-muted2);
-  border-radius: var(--r);
-  padding: 11px 13px;
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--fg-2);
-  margin-top: 12px;
-}
-.summary-label {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .6px; color: var(--brand);
-  display: block; margin-bottom: 4px;
-}
-
-/* ── SHIMMER ─────────────────────────────────────── */
-.sk {
-  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
-  background-size: 200% 100%;
-  animation: sk 1.4s infinite;
-  border-radius: var(--r-sm);
-  display: block;
-}
-@keyframes sk { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-.sk-line  { height: 11px; margin-bottom: 6px; }
-.sk-block { height: 52px; margin-bottom: 10px; border-radius: var(--r); }
-
-/* ── EMPTY STATE ─────────────────────────────────── */
-.empty {
-  padding: 28px 20px;
-  text-align: center;
-  color: var(--fg-subtle);
-}
-.empty svg { margin: 0 auto 8px; display: block; }
-.empty p { font-size: 12px; }
-.empty strong { color: var(--fg-muted); }
-
-/* ── SEPARATOR ───────────────────────────────────── */
-.sep { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
-
-/* ── TOAST ───────────────────────────────────────── */
-#toast {
-  position: fixed; bottom: 20px; right: 20px;
-  background: var(--fg); color: var(--bg);
-  padding: 9px 14px;
-  border-radius: var(--r);
-  font-size: 12.5px;
-  box-shadow: var(--shadow);
-  z-index: 9999;
-  display: none;
-  animation: toastin .18s ease;
-}
-@keyframes toastin { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-
-/* ── OVERLAY MOBILE ──────────────────────────────── */
-.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:99; }
-.overlay.on { display:block; }
-
-/* ── TAGS ────────────────────────────────────────── */
-.tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
-.tag  { font-size: 10px; padding: 1px 6px; border-radius: var(--r-sm); background: var(--bg-subtle); color: var(--fg-muted); border: 1px solid var(--border); }
-
-/* ── RESPONSIVE ──────────────────────────────────── */
-@media (max-width:960px) {
-  :root { --sidebar: 0px; }
-  .sidebar { transform: translateX(-220px); width: 220px; min-width: 220px; transition: transform .22s; }
-  .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; }
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .live-grid { grid-template-columns: 1fr; }
-  .bottom-grid { grid-template-columns: 1fr; }
-  .detail-grid { grid-template-columns: 1fr; }
-  .table-head, .table-row { grid-template-columns: 2fr 1fr 80px; }
-  .col-dur, .col-par { display: none; }
-  .hamburger { display: flex; }
-}
-@media (max-width:600px) {
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .topbar { gap: 8px; }
-  .seg-group { display: none; }
-  .search-input { width: 120px; }
-  .content { padding: 12px; }
+@media (max-width: 1100px) { .right-sidebar { display: none; } }
+@media (max-width: 820px) {
+  body { padding: 0; }
+  .app-container { border-radius: 0; height: 100vh; }
+  .sidebar { display: none; }
+  .cards-grid, .bottom-grid, .detail-grid { grid-template-columns: 1fr; }
+  .search-box input { width: 130px; }
 }
 </style>
 </head>
 <body>
 
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-
-<!-- ═══ SIDEBAR ═══ -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-top">
-    <img class="logo-box" src="/assets/logo-mark.png" alt="DDM">
-    <div class="logo-text">
-      <div class="logo-name">Grupo DDM</div>
-      <div class="logo-sub">Meeting Intelligence</div>
+<div class="app-container">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/assets/logo-mark.png" alt="DDM" />
+      Meeting DDM
     </div>
-  </div>
 
-  <nav class="nav">
-    <div class="nav-group">
-      <span class="nav-group-label">Visão geral</span>
-      <div class="nav-item active" onclick="goto('dashboard')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <div class="profile">
+      <div class="profile-avatar" id="avatar-inicial">G</div>
+      <div class="profile-name">Gisele Oliveira</div>
+      <div class="profile-email">gisele.oliveira@ddm.adv.br</div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-item active" data-page="dashboard" onclick="goto('dashboard')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
         Dashboard
-        <span class="live-pill" id="live-pill" style="display:none">
-          <span class="live-pill-dot"></span>LIVE
-        </span>
       </div>
-      <div class="nav-item" onclick="goto('reunioes')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div class="nav-item" data-page="reunioes" onclick="goto('reunioes')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"></path></svg>
         Reuniões
-        <span class="nav-count" id="nav-c-reunioes">—</span>
       </div>
-      <div class="nav-item" onclick="goto('emails')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
-        E-mails
-        <span class="nav-count" id="nav-c-emails">—</span>
-      </div>
-      <div class="nav-item" onclick="goto('transcricoes')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <div class="nav-item" data-page="transcricoes" onclick="goto('transcricoes')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
         Transcrições
       </div>
-    </div>
-
-    <hr class="sep">
-
-    <div class="nav-group">
-      <span class="nav-group-label">Sistema</span>
-      <div class="nav-item" onclick="toast('Em breve')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <div class="nav-item" data-page="emails" onclick="goto('emails')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+        E-mails
+      </div>
+      <div class="nav-item" data-page="config" onclick="goto('config')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         Configurações
       </div>
-    </div>
-  </nav>
+      <div class="nav-item logout-item" onclick="logout()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        Sair
+      </div>
+    </nav>
 
-  <div class="sidebar-footer">
-    <div class="user-avatar">DI</div>
-    <div>
-      <div class="user-name">Diretor DDM</div>
-      <div class="user-role">Administrativo</div>
-    </div>
-  </div>
-</aside>
+    <img class="sidebar-deco" src="/assets/Acordito.png" alt="Acordito" />
+  </aside>
 
-<!-- ═══ MAIN ═══ -->
-<div class="main">
+  <!-- MAIN AREA -->
+  <main class="main-area">
+    <header class="topbar">
+      <div>
+        <h1 class="welcome-title">Olá, Gisele</h1>
+        <div class="welcome-date" id="hoje-data"></div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-box">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" id="search" placeholder="Buscar reunião..." oninput="onSearch(this.value)">
+        </div>
+        <button class="btn-primary" onclick="novaReuniao()">+ Nova Reunião</button>
+      </div>
+    </header>
 
-  <!-- TOPBAR -->
-  <header class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-
-    <span class="topbar-title" id="topbar-title">Dashboard</span>
-
-    <div class="seg-group" id="period-seg">
-      <button class="seg-btn active" onclick="setPeriod('7d',this)">7d</button>
-      <button class="seg-btn" onclick="setPeriod('15d',this)">15d</button>
-      <button class="seg-btn" onclick="setPeriod('30d',this)">30d</button>
-    </div>
-
-    <div class="search-wrap">
-      <span class="search-icon">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </span>
-      <input class="search-input" type="text" placeholder="Buscar..." id="search-input" oninput="handleSearch(this.value)">
-    </div>
-
-    <a href="https://teams.microsoft.com/l/meeting/new" target="_blank" class="btn btn-primary">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Nova reunião
-    </a>
-  </header>
-
-  <!-- CONTENT -->
-  <main class="content">
-
-    <!-- ══ PAGE: DASHBOARD ══ -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <h2>Dashboard</h2>
-        <p id="dash-subtitle">Carregando dados...</p>
+    <!-- ===== PAGE: DASHBOARD ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="cards-grid" id="cards-grid">
+        <div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div>
       </div>
 
-      <!-- LIVE -->
-      <div class="live-grid">
-
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title" style="display:flex;align-items:center;gap:8px">
-                Acontecendo agora
-                <span class="live-header-badge live-now" id="live-teams-badge">
-                  <span class="live-dot-sm dot-green"></span>
-                  <span id="live-teams-n">0</span>
-                </span>
-              </div>
-              <div class="card-description">Reuniões Teams ativas</div>
-            </div>
-          </div>
-          <div class="card-body" id="live-teams-body">
-            <div style="padding:12px 16px">
-              <div class="sk sk-line" style="width:55%"></div>
-              <div class="sk sk-line" style="width:75%"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title" style="display:flex;align-items:center;gap:8px">
-                Processando
-                <span class="live-header-badge processing" id="live-proc-badge">
-                  <span class="live-dot-sm dot-orange"></span>
-                  <span id="live-proc-n">0</span>
-                </span>
-              </div>
-              <div class="card-description">Transcrições em andamento</div>
-            </div>
-          </div>
-          <div class="card-body" id="live-proc-body">
-            <div style="padding:12px 16px">
-              <div class="sk sk-line" style="width:65%"></div>
-              <div class="sk sk-line" style="width:45%"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- KPIs -->
-      <div class="kpi-grid" id="kpi-grid">
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-label">Reuniões</span>
-            <span class="kpi-icon-wrap">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-          </div>
-          <div id="sk-kpi-m" class="sk sk-line" style="width:40%;height:26px;margin-bottom:6px"></div>
-          <div class="kpi-value" id="kv-m" style="display:none">—</div>
-          <div class="kpi-footer">
-            <span class="kpi-sub" id="ks-m"></span>
-          </div>
-          <div class="sparkline" id="sp-m"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-label">Decisões</span>
-            <span class="kpi-icon-wrap">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            </span>
-          </div>
-          <div id="sk-kpi-d" class="sk sk-line" style="width:40%;height:26px;margin-bottom:6px"></div>
-          <div class="kpi-value" id="kv-d" style="display:none">—</div>
-          <div class="kpi-footer"><span class="kpi-sub" id="ks-d"></span></div>
-          <div class="sparkline" id="sp-d"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-label">Pendências</span>
-            <span class="kpi-icon-wrap" style="color:var(--warn)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </span>
-          </div>
-          <div id="sk-kpi-p" class="sk sk-line" style="width:40%;height:26px;margin-bottom:6px"></div>
-          <div class="kpi-value" id="kv-p" style="display:none">—</div>
-          <div class="kpi-footer"><span class="kpi-sub" id="ks-p"></span></div>
-          <div class="sparkline" id="sp-p"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-label">Sem responsável</span>
-            <span class="kpi-icon-wrap" style="color:var(--danger)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </span>
-          </div>
-          <div id="sk-kpi-u" class="sk sk-line" style="width:40%;height:26px;margin-bottom:6px"></div>
-          <div class="kpi-value" id="kv-u" style="display:none">—</div>
-          <div class="kpi-footer"><span class="kpi-sub" id="ks-u"></span></div>
-          <div class="sparkline" id="sp-u"></div>
-        </div>
-
-      </div>
-
-      <!-- BOTTOM -->
       <div class="bottom-grid">
-        <div class="col">
-
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Últimas reuniões</div>
-                <div class="card-description">Reuniões recentes do período</div>
-              </div>
-              <span class="card-action" onclick="goto('reunioes')">Ver todas →</span>
-            </div>
-            <div class="card-body" id="latest-body">
-              <div style="padding:12px 16px">
-                <div class="sk sk-block"></div>
-                <div class="sk sk-block"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Volume por setor</div>
-                <div class="card-description" id="vol-period">Últimos 7 dias</div>
-              </div>
-            </div>
-            <div class="sector-wrap" id="sector-body">
-              <div class="sk sk-line"></div>
-              <div class="sk sk-line"></div>
-              <div class="sk sk-line"></div>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="col">
-
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Decisões recentes</div>
-                <div class="card-description">Extraídas por IA das reuniões</div>
-              </div>
-              <span class="card-action" onclick="goto('transcricoes')">Ver mais →</span>
-            </div>
-            <div class="card-body" id="decisions-body">
-              <div style="padding:12px 16px"><div class="sk sk-block"></div></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Pendências sem dono</div>
-                <div class="card-description">Ações ainda não atribuídas</div>
-              </div>
-              <span class="badge b-danger" id="unassigned-count">—</span>
-            </div>
-            <div class="card-body" id="unassigned-body">
-              <div style="padding:12px 16px"><div class="sk sk-block"></div></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div><!-- /dashboard -->
-
-    <!-- ══ PAGE: REUNIÕES ══ -->
-    <div class="page" id="page-reunioes">
-      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div>
-          <h2>Reuniões</h2>
-          <p>Histórico completo de todas as reuniões processadas</p>
+          <h2 class="section-title">Reuniões Recentes <span class="link" onclick="goto('reunioes')">Ver todas →</span></h2>
+          <div class="task-list" id="recentes"><div class="skel"></div><div class="skel"></div></div>
         </div>
-        <button class="seg-btn" style="background:var(--brand);color:#fff;border-color:var(--brand);padding:10px 16px;font-weight:600" onclick="novaGravacao()">+ Nova gravação</button>
-      </div>
-
-      <div class="tabs" id="setor-tabs">
-        <button class="tab-btn active" onclick="filterSetor('todos',this)">Todos</button>
-      </div>
-
-      <div class="table-wrap">
-        <div class="table-head">
-          <span>Reunião</span>
-          <span>Setor</span>
-          <span class="col-dur">Duração</span>
-          <span class="col-par">Participantes</span>
-          <span>Status</span>
-        </div>
-        <div id="table-body">
-          <div style="padding:14px 16px">
-            <div class="sk sk-line"></div>
-            <div class="sk sk-line" style="width:80%"></div>
+        <div>
+          <h2 class="section-title">Estatísticas</h2>
+          <div class="stats-grid" id="stats-grid">
+            <div class="skel" style="height:74px"></div><div class="skel" style="height:74px"></div><div class="skel" style="height:74px"></div>
+          </div>
+          <div class="panel">
+            <h3>Pendências sem responsável</h3>
+            <div id="pend-list"><div class="li">Carregando…</div></div>
           </div>
         </div>
       </div>
-    </div><!-- /reunioes -->
+    </section>
 
-    <!-- ══ PAGE: E-MAILS ══ -->
-    <div class="page" id="page-emails">
-      <div class="page-header">
-        <h2>E-mails</h2>
-        <p>E-mails corporativos capturados e analisados por IA</p>
-      </div>
+    <!-- ===== PAGE: REUNIÕES ===== -->
+    <section class="page" id="page-reunioes">
+      <div class="tabs" id="setor-tabs"></div>
+      <div class="list" id="reunioes-list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    </section>
 
-      <div class="tabs" id="email-cat-tabs">
+    <!-- ===== PAGE: TRANSCRIÇÕES ===== -->
+    <section class="page" id="page-transcricoes">
+      <div class="list" id="transc-list"><div class="skel"></div><div class="skel"></div></div>
+    </section>
+
+    <!-- ===== PAGE: E-MAILS ===== -->
+    <section class="page" id="page-emails">
+      <div class="tabs" id="email-tabs">
         <button class="tab-btn active" onclick="filterEmails('relevantes',this)">Relevantes</button>
         <button class="tab-btn" onclick="filterEmails('notificacao',this)">Notificações</button>
         <button class="tab-btn" onclick="filterEmails('promocional',this)">Promoções</button>
-        <button class="tab-btn" onclick="filterEmails('spam',this)">Spam</button>
         <button class="tab-btn" onclick="filterEmails('todos',this)">Todos</button>
       </div>
+      <div class="list" id="emails-list"><div class="skel"></div><div class="skel"></div></div>
+    </section>
 
-      <div id="email-list">
-        <div class="sk sk-block" style="border-radius:8px;margin-bottom:8px"></div>
-        <div class="sk sk-block" style="border-radius:8px"></div>
+    <!-- ===== PAGE: CONFIG ===== -->
+    <section class="page" id="page-config">
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Como gravar uma reunião</h3>
+        <div class="li">1. Clique em <b>+ Nova Reunião</b> no topo.</div>
+        <div class="li">2. Cole o link do Teams / Zoom / Google Meet.</div>
+        <div class="li">3. O bot <b>DDM</b> entra, grava e transcreve.</div>
+        <div class="li">4. Ao encerrar, a reunião aparece em <b>Reuniões</b> com análise por IA.</div>
       </div>
-    </div><!-- /emails -->
+      <div class="panel">
+        <h3>Status do sistema</h3>
+        <div class="li">Captura de reuniões: <b>Recall.ai (bot DDM)</b></div>
+        <div class="li">Análise por IA: <b>Gemini</b></div>
+        <div class="li">Banco de dados: <b>Supabase</b></div>
+        <div class="li" id="cfg-health">API: verificando…</div>
+      </div>
+    </section>
 
-    <!-- ══ PAGE: TRANSCRIÇÕES ══ -->
-    <div class="page" id="page-transcricoes">
-      <div class="page-header">
-        <h2>Transcrições</h2>
-        <p>Reuniões concluídas com transcrição disponível, ordenadas por data</p>
-      </div>
-      <div id="tr-list">
-        <div class="sk sk-block" style="border-radius:8px;margin-bottom:8px"></div>
-        <div class="sk sk-block" style="border-radius:8px"></div>
-      </div>
-    </div><!-- /transcricoes -->
-
-    <!-- ══ PAGE: DETALHE ══ -->
-    <div class="page" id="page-detalhe">
-      <button class="back-btn" onclick="goBack()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Voltar
-      </button>
-      <div id="detail-content">
-        <div class="sk sk-block" style="height:90px;border-radius:8px;margin-bottom:12px"></div>
-        <div class="sk sk-block" style="height:140px;border-radius:8px"></div>
-      </div>
-    </div><!-- /detalhe -->
-
+    <!-- ===== PAGE: DETALHE ===== -->
+    <section class="page" id="page-detalhe">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <div id="detalhe-content"><div class="skel" style="height:120px"></div></div>
+    </section>
   </main>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="right-sidebar">
+    <div class="rs-header">
+      <h2 class="rs-title">Agenda</h2>
+      <button class="btn-icon" onclick="goto('reunioes')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      </button>
+    </div>
+    <div id="timeline"><div class="skel"></div><div class="skel"></div></div>
+  </aside>
+</div>
+
+<!-- MODAL NOVA REUNIÃO -->
+<div id="modal" class="modal-overlay">
+  <div class="modal">
+    <h3>Nova Reunião</h3>
+    <p class="modal-sub">O assistente DDM entra na reunião, grava e gera a ata.</p>
+    <label>Link da reunião *</label>
+    <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
+    <label>Nome / título</label>
+    <input type="text" id="m-titulo" placeholder="Ex.: Alinhamento Comercial">
+    <label>Setor</label>
+    <select id="m-setor"><option value="">Selecione…</option></select>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-primary" id="m-btn" onclick="enviarReuniao()">Enviar assistente DDM</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-/* ─────────────────────────────────────
-   STATE
-───────────────────────────────────── */
 const BASE = '';
-let period = '7d';
-let curPage = 'dashboard';
-let prevPage = 'transcricoes';
-let allMeetings = [];
-let curSetor = 'todos';
+let curPage = 'dashboard', prevPage = 'dashboard';
+let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'relevantes';
 
-const COLORS = ['#FF5706','#16a34a','#2563eb','#d97706','#8b5cf6','#ec4899'];
+/* ---------- utils ---------- */
+function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
+async function apiGet(path){ const r=await fetch(BASE+path); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
+async function apiPost(path, body){ const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.erro||('HTTP '+r.status)); return d; }
+async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); window.location='/login'; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function fmtHora(iso){ if(!iso) return '--'; const d=new Date(iso); return isNaN(d)?'--':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function statusLabel(s){ return ({completed:'Concluída',pending:'Aguardando',processing:'Processando',sem_transcricao:'Sem transcrição',error:'Erro'}[s]||s||'—'); }
+const setColor = i => ['','t-ink','t-teal'][i%3];
+const tlColor  = i => ['','ink','teal'][i%3];
 
-function colorFor(setor) {
-  const m = {
-    'Jurídico':'#2563eb','Financeiro':'#16a34a','IA':'#FF5706',
-    'Planejamento':'#d97706','Operações':'#8b5cf6','RH':'#ec4899','Diretoria':'#09090b'
-  };
-  return m[setor] || '#71717a';
-}
-
-/* ─────────────────────────────────────
-   UTILS
-───────────────────────────────────── */
-function ini(name) {
-  return (name||'').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '??';
-}
-function fmtDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-}
-function fmtTime(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-function fmtDur(s) {
-  if (!s && s!==0) return '—';
-  const m = Math.floor(s/60), h = Math.floor(m/60);
-  return h>0 ? `${h}h ${m%60}min` : `${m}min`;
-}
-function fmtTs(s) {
-  if (!s && s!==0) return '—';
-  s = Math.floor(s);
-  const m = Math.floor(s/60), h = Math.floor(m/60);
-  if (h>0) return `${h}:${String(m%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-  return `${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-}
-function statusBadge(st) {
-  const m = {
-    'concluida':  ['b-success','Concluída'],
-    'processando':['b-info',   'Processando'],
-    'agendada':   ['b-warn',   'Agendada'],
-    'erro':       ['b-danger', 'Erro'],
-    'pendente':   ['b-muted',  'Pendente'],
-  };
-  const [c,l] = m[st]||['b-muted',st||'—'];
-  return `<span class="badge ${c}">${l}</span>`;
-}
-function sparkHTML(vals) {
-  const max = Math.max(...vals,1);
-  const last = vals.length-1;
-  return vals.map((v,i) => {
-    const pct = Math.max(Math.round(v/max*100),8);
-    return `<div class="spark-b${i===last?' hi':''}" style="height:${pct}%"></div>`;
-  }).join('');
-}
-function emptyHTML(msg) {
-  return `<div class="empty">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <p><strong>${msg}</strong></p>
-  </div>`;
-}
-function toast(msg, dur=2800) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.display='block';
-  setTimeout(()=>{ t.style.display='none'; }, dur);
-}
-
-/* ─────────────────────────────────────
-   NAVIGATION
-───────────────────────────────────── */
-function goto(page, opts={}) {
+/* ---------- navegação ---------- */
+function goto(page, opts={}){
+  if(page!=='detalhe') prevPage = page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   curPage = page;
-  document.getElementById(`page-${page}`).classList.add('active');
-  const navIdx = {dashboard:0,reunioes:1,emails:2,transcricoes:3,detalhe:3};
-  document.querySelectorAll('.nav-item')[navIdx[page]||0]?.classList.add('active');
-  const titles = {dashboard:'Dashboard',reunioes:'Reuniões',emails:'E-mails',transcricoes:'Transcrições',detalhe:'Detalhe'};
-  document.getElementById('topbar-title').textContent = titles[page]||page;
-  const showSeg = page==='dashboard';
-  document.getElementById('period-seg').style.display = showSeg ? 'flex' : 'none';
-  if (page==='reunioes')     loadMeetings();
-  if (page==='emails')       loadEmails();
-  if (page==='transcricoes') loadTranscriptions();
-  if (page==='detalhe' && opts.id) loadDetail(opts.id);
-  closeSidebar();
+  document.getElementById('page-'+page).classList.add('active');
+  const nav = document.querySelector('.nav-item[data-page="'+page+'"]');
+  if(nav) nav.classList.add('active');
+  if(page==='dashboard')    loadDashboard();
+  if(page==='reunioes')     loadReunioes();
+  if(page==='transcricoes') loadTranscricoes();
+  if(page==='emails')       loadEmails();
+  if(page==='config')       loadHealth();
+  if(page==='detalhe' && opts.id) loadDetalhe(opts.id);
 }
-function goBack() { goto(prevPage); }
+function goBack(){ goto(prevPage); }
 
-/* ─────────────────────────────────────
-   PERIOD
-───────────────────────────────────── */
-function setPeriod(p, btn) {
-  period = p;
-  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const labels = {'7d':'Últimos 7 dias','15d':'Últimos 15 dias','30d':'Últimos 30 dias'};
-  document.getElementById('vol-period').textContent = labels[p];
-  loadSummary();
-}
-
-/* ─────────────────────────────────────
-   SIDEBAR MOBILE
-───────────────────────────────────── */
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('on');
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('on');
-}
-
-/* ─────────────────────────────────────
-   SEARCH
-───────────────────────────────────── */
-function handleSearch(v) {
-  if (!v.trim()) { renderTable(allMeetings); return; }
-  const q = v.toLowerCase();
-  renderTable(allMeetings.filter(m => (m.titulo||m.assunto||'').toLowerCase().includes(q) || (m.setor||'').toLowerCase().includes(q)));
-}
-
-/* ─────────────────────────────────────
-   API
-───────────────────────────────────── */
-async function apiFetch(path) {
-  const r = await fetch(BASE + path);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-/* NOVA GRAVAÇÃO (Recall.ai — bot DDM entra na reunião) */
-async function novaGravacao() {
-  const url = prompt('Cole o link da reunião (Teams / Zoom / Google Meet):');
-  if (!url || !url.trim()) return;
-  const titulo = prompt('Título da reunião (opcional):') || '';
-  toast('Enviando bot DDM para a reunião...');
+/* ---------- DASHBOARD ---------- */
+async function loadDashboard(){
+  loadTimeline();
   try {
-    const r = await fetch(BASE + '/api/gravacoes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meeting_url: url.trim(), titulo: titulo.trim() })
-    });
-    const data = await r.json();
-    if (!r.ok) { toast('Erro: ' + (data.erro || r.status), 4000); return; }
-    toast('Bot DDM a caminho! A reunião aparecerá aqui ao terminar.', 4000);
-    loadMeetings();
-  } catch (e) {
-    toast('Falha ao acionar gravação: ' + e.message, 4000);
-  }
-}
-
-/* LIVE TEAMS */
-async function loadLiveTeams() {
-  const body = document.getElementById('live-teams-body');
-  const n    = document.getElementById('live-teams-n');
-  try {
-    const data = await apiFetch('/api/live/teams');
-    const items = Array.isArray(data) ? data : (data.reunioes||[]);
-    n.textContent = items.length;
-    document.getElementById('live-pill').style.display = items.length>0 ? 'inline-flex' : 'none';
-    if (!items.length) { body.innerHTML = emptyHTML('Nenhuma reunião Teams ativa agora'); return; }
-    body.innerHTML = items.map(m=>`
-      <div class="live-item">
-        <div class="li-icon" style="background:${colorFor(m.setor)}18;color:${colorFor(m.setor)}">${ini(m.titulo||m.assunto||'MT')}</div>
-        <div style="flex:1;min-width:0">
-          <div class="li-name">${m.titulo||m.assunto||'Reunião Teams'}</div>
-          <div class="li-meta">${m.setor||'—'} · ${m.participantes||0} participantes</div>
-        </div>
-        <span class="badge b-success">Ao vivo</span>
+    const s = await apiGet('/api/dashboard/summary?periodo=30d');
+    const horas = (s.ultimas_reunioes||[]).reduce((a,r)=>a+(r.duracao_minutos||0),0);
+    // KPI cards
+    const cards = [
+      {cls:'c-ink',   val:s.total_reunioes,   title:'Reuniões processadas', pct: Math.min(100,(s.total_reunioes||0)*10)},
+      {cls:'c-info',  val:s.total_decisoes,   title:'Decisões registradas', pct: Math.min(100,(s.total_decisoes||0)*8)},
+      {cls:'c-orange',val:s.total_pendencias, title:'Pendências abertas',   pct: Math.min(100,(s.total_pendencias||0)*8)},
+    ];
+    document.getElementById('cards-grid').innerHTML = cards.map(c=>`
+      <div class="kpi-card ${c.cls}">
+        <div class="kpi-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg></div>
+        <div class="kpi-value">${c.val||0}</div>
+        <div class="card-title">${c.title}</div>
+        <div class="card-bottom"><span>últimos 30 dias</span><span>${c.pct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${c.pct}%"></div></div>
       </div>`).join('');
-  } catch { body.innerHTML = emptyHTML('Aguardando conexão Azure'); }
+
+    // recentes
+    const rec = (s.ultimas_reunioes||[]).slice(0,4);
+    document.getElementById('recentes').innerHTML = rec.length ? rec.map((r,i)=>`
+      <div class="task-item ${setColor(i)}" onclick="goto('detalhe',{id:'${r.id}'})">
+        <div class="t-info"><div class="t-title">${esc(r.titulo||'Reunião')}</div>
+        <div class="t-sub">${esc(r.setor||'—')} · ${fmtData(r.data)}</div></div>
+        <span class="badge ${r.status}">${statusLabel(r.status)}</span>
+      </div>`).join('') : '<div class="empty">Nenhuma reunião ainda. Clique em "+ Nova Reunião".</div>';
+
+    // stats
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat-box"><div class="stat-val">${Math.round(horas/60*10)/10} h</div><div class="stat-label">Tempo total</div></div>
+      <div class="stat-box"><div class="stat-val">${s.total_decisoes||0}</div><div class="stat-label">Decisões</div></div>
+      <div class="stat-box"><div class="stat-val">${s.sem_responsavel||0}</div><div class="stat-label">Sem responsável</div></div>`;
+
+    const pend = s.pendencias_sem_responsavel||[];
+    document.getElementById('pend-list').innerHTML = pend.length ? pend.slice(0,5).map(p=>`<div class="li">• ${esc(p.tarefa||p)}</div>`).join('') : '<div class="li" style="color:var(--gray)">Nenhuma pendência em aberto 🎉</div>';
+  } catch(e){
+    document.getElementById('cards-grid').innerHTML = '<div class="empty">Erro ao carregar ('+esc(e.message)+')</div>';
+  }
 }
 
-/* LIVE PROCESSING */
-async function loadLiveProc() {
-  const body = document.getElementById('live-proc-body');
-  const n    = document.getElementById('live-proc-n');
+async function loadTimeline(){
   try {
-    const data = await apiFetch('/api/live/processando');
-    const items = Array.isArray(data) ? data : (data.reunioes||[]);
-    n.textContent = items.length;
-    if (!items.length) { body.innerHTML = emptyHTML('Pipeline ocioso'); return; }
-    body.innerHTML = items.map(m=>{
-      const pct = m.progresso || 40;
-      return `<div class="live-item">
-        <div class="li-icon" style="background:var(--brand-muted);color:var(--brand)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div class="li-name">${m.titulo||'Transcrição'}</div>
-          <div class="li-meta">${m.setor||'—'} · ${pct}%</div>
-          <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>
-      </div>`;
-    }).join('');
-  } catch { body.innerHTML = emptyHTML('Pipeline de transcrição ocioso'); }
-}
-
-/* SUMMARY */
-async function loadSummary() {
-  try {
-    const d = await apiFetch(`/api/dashboard/summary?periodo=${period}`);
-    const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const pl = {'7d':'7 dias','15d':'15 dias','30d':'30 dias'}[period];
-    document.getElementById('dash-subtitle').textContent = `Últimos ${pl} · atualizado às ${now}`;
-
-    setKPI('m', d.total_reunioes||d.reunioes||0, d.delta_reunioes, d.spark_reunioes, 'reuniões no período');
-    setKPI('d', d.total_decisoes||d.decisoes||0, d.delta_decisoes, d.spark_decisoes, 'decisões registradas');
-    setKPI('p', d.total_pendencias||d.pendencias||0, d.delta_pendencias, d.spark_pendencias, 'ações em aberto', 'warn');
-    setKPI('u', d.sem_responsavel||0, d.delta_sem_resp, null, 'precisam de atenção', 'down');
-
-    document.getElementById('nav-c-reunioes').textContent = d.total_reunioes||d.reunioes||0;
-    document.getElementById('unassigned-count').textContent = d.sem_responsavel||0;
-
-    renderLatest(d.ultimas_reunioes||[]);
-    renderSectors(d.por_setor||d.volume_por_setor||[]);
-    renderDecisions(d.decisoes_recentes||[]);
-    renderUnassigned(d.pendencias_sem_responsavel||[]);
-  } catch(e) {
-    document.getElementById('dash-subtitle').textContent = 'Erro ao carregar — verifique a API';
-    ['m','d','p','u'].forEach(k=>{
-      document.getElementById(`sk-kpi-${k}`).style.display='none';
-      document.getElementById(`kv-${k}`).style.display='block';
+    const data = await apiGet('/api/reunioes');
+    const byDay = {};
+    (data||[]).slice(0,15).forEach(r=>{
+      const k = r.data ? new Date(r.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : 'Sem data';
+      (byDay[k]=byDay[k]||[]).push(r);
     });
-  }
+    const keys = Object.keys(byDay);
+    document.getElementById('timeline').innerHTML = keys.length ? keys.slice(0,4).map(k=>`
+      <div class="timeline-day"><div class="tl-date">${esc(k)}</div>
+      ${byDay[k].map((r,i)=>`
+        <div class="tl-item" onclick="goto('detalhe',{id:'${r.id}'})">
+          <div class="tl-time">${fmtHora(r.data)}</div>
+          <div class="tl-content ${tlColor(i)}"><div class="tl-title">${esc(r.setor||'Reunião')}</div><div class="tl-desc">${esc(r.titulo||'—')}</div></div>
+        </div>`).join('')}</div>`).join('') : '<div class="empty">Sem reuniões na agenda.</div>';
+  } catch(e){ document.getElementById('timeline').innerHTML='<div class="empty">—</div>'; }
 }
 
-function setKPI(k, val, delta, spark, sub, forceClass) {
-  document.getElementById(`sk-kpi-${k}`).style.display='none';
-  const v = document.getElementById(`kv-${k}`);
-  v.style.display='block'; v.textContent = val;
-
-  const ks = document.getElementById(`ks-${k}`);
-  let html = '';
-  if (delta!=null) {
-    const up = delta>=0;
-    const cls = forceClass==='warn'?'warn': forceClass==='down'?'down': (up?'up':'down');
-    const arrow = up?'▲':'▼';
-    html += `<span class="delta ${cls}">${arrow} ${Math.abs(delta)}%</span> `;
-  }
-  html += `<span>${sub||''}</span>`;
-  ks.innerHTML = html;
-
-  const sp = document.getElementById(`sp-${k}`);
-  const vals = spark||Array.from({length:7},()=>Math.floor(Math.random()*90+10));
-  sp.innerHTML = sparkHTML(vals);
-}
-
-function renderLatest(items) {
-  const b = document.getElementById('latest-body');
-  if (!items.length) { b.innerHTML = emptyHTML('Nenhuma reunião no período'); return; }
-  b.innerHTML = items.slice(0,6).map(m=>`
-    <div class="m-row" onclick="openDetail('${m.id}','dashboard')">
-      <div class="m-avatar" style="background:${colorFor(m.setor)}18;color:${colorFor(m.setor)}">${ini(m.titulo||m.assunto||'')}</div>
-      <div style="flex:1;min-width:0">
-        <div class="m-name">${m.titulo||m.assunto||'Sem título'}</div>
-        <div class="m-meta">${m.setor||'—'} · ${fmtDur(m.duracao_segundos)}</div>
-      </div>
-      <div class="m-right">
-        <div class="m-date">${fmtDate(m.data_inicio||m.created_at)}</div>
-        <div style="margin-top:3px">${statusBadge(m.status)}</div>
-      </div>
-    </div>`).join('');
-}
-
-function renderSectors(sectors) {
-  const b = document.getElementById('sector-body');
-  if (!sectors.length) { b.innerHTML = emptyHTML('Sem dados'); return; }
-  const max = Math.max(...sectors.map(s=>s.total||s.count||0),1);
-  b.innerHTML = sectors.map(s=>{
-    const v = s.total||s.count||0;
-    const pct = Math.round(v/max*100);
-    const c = colorFor(s.setor||s.nome||'');
-    return `<div class="s-row">
-      <div class="s-top"><span class="s-label">${s.setor||s.nome||'—'}</span><span class="s-val">${v}</span></div>
-      <div class="s-track"><div class="s-fill" style="width:${pct}%;background:${c}"></div></div>
-    </div>`;
-  }).join('');
-}
-
-function renderDecisions(items) {
-  const b = document.getElementById('decisions-body');
-  if (!items.length) { b.innerHTML = emptyHTML('Nenhuma decisão registrada'); return; }
-  b.innerHTML = items.slice(0,5).map(d=>`
-    <div class="list-item">
-      <div class="list-bullet" style="background:var(--success)"></div>
-      <div>
-        <div class="list-text">${d.texto||d.descricao||d.decisao||'—'}</div>
-        <div class="list-sub">${d.setor||'—'} · ${fmtDate(d.data||d.created_at)}</div>
-      </div>
-    </div>`).join('');
-}
-
-function renderUnassigned(items) {
-  const b = document.getElementById('unassigned-body');
-  if (!items.length) {
-    b.innerHTML = `<div class="empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p><strong>Tudo atribuído</strong></p></div>`;
-    return;
-  }
-  b.innerHTML = items.slice(0,5).map(p=>`
-    <div class="list-item">
-      <div class="list-bullet" style="background:var(--danger)"></div>
-      <div>
-        <div class="list-text">${p.texto||p.descricao||p.pendencia||'—'}</div>
-        <div class="list-sub">${p.setor||'—'} · ${fmtDate(p.data||p.created_at)}</div>
-      </div>
-    </div>`).join('');
-}
-
-/* MEETINGS PAGE */
-async function loadMeetings() {
-  const b = document.getElementById('table-body');
-  b.innerHTML = `<div style="padding:14px 16px"><div class="sk sk-line"></div><div class="sk sk-line" style="width:70%;margin-top:8px"></div></div>`;
+/* ---------- REUNIÕES ---------- */
+async function loadReunioes(){
   try {
-    const data = await apiFetch('/api/reunioes');
-    allMeetings = Array.isArray(data) ? data : (data.reunioes||[]);
-    buildTabs(allMeetings);
-    renderTable(allMeetings);
-  } catch(e) {
-    b.innerHTML = `<div style="padding:14px 16px;color:var(--danger);font-size:12px">Erro: ${e.message}</div>`;
-  }
+    allReunioes = await apiGet('/api/reunioes') || [];
+    let setores = [];
+    try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
+    // inclui setores que aparecem em reuniões mas não estão na lista oficial
+    allReunioes.forEach(r=>{ if(r.setor && !setores.includes(r.setor)) setores.push(r.setor); });
+    document.getElementById('setor-tabs').innerHTML =
+      `<button class="tab-btn ${setorFiltro==='todos'?'active':''}" onclick="filterSetor('todos',this)">Todos</button>` +
+      setores.map(s=>`<button class="tab-btn ${setorFiltro===s?'active':''}" onclick="filterSetor('${esc(s)}',this)">${esc(s)}</button>`).join('');
+    renderReunioes();
+  } catch(e){ document.getElementById('reunioes-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
+}
+function filterSetor(s, btn){ setorFiltro=s; document.querySelectorAll('#setor-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderReunioes(); }
+function renderReunioes(){
+  let list = setorFiltro==='todos' ? allReunioes : allReunioes.filter(r=>r.setor===setorFiltro);
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  if(q) list = list.filter(r=>(r.titulo||'').toLowerCase().includes(q));
+  document.getElementById('reunioes-list').innerHTML = list.length ? list.map(r=>rowReuniao(r)).join('') : '<div class="empty">Nenhuma reunião.</div>';
+}
+function rowReuniao(r){
+  const dur = r.duracao_minutos!=null ? r.duracao_minutos+' min' : '—';
+  const pend = (r.status==='pending'||r.status==='processing') && r.plataforma==='recall';
+  return `<div class="row" onclick="goto('detalhe',{id:'${r.id}'})">
+    <div class="r-main"><div class="r-title">${esc(r.titulo||'Reunião')}</div>
+    <div class="r-sub">${esc(r.resumo_executivo||r.setor||'—')}</div></div>
+    <div class="r-meta">${fmtData(r.data)}<br>${dur}</div>
+    <span class="badge ${r.status}">${statusLabel(r.status)}</span>
+    ${pend?`<button class="btn-sm" onclick="event.stopPropagation();processar('${r.id}')">Puxar</button>`:''}
+  </div>`;
 }
 
-function buildTabs(meetings) {
-  const setores = [...new Set(meetings.map(m=>m.setor).filter(Boolean))];
-  const el = document.getElementById('setor-tabs');
-  el.innerHTML = `<button class="tab-btn active" onclick="filterSetor('todos',this)">Todos</button>` +
-    setores.map(s=>`<button class="tab-btn" onclick="filterSetor('${s}',this)">${s}</button>`).join('');
-}
-
-function filterSetor(s, btn) {
-  curSetor = s;
-  document.querySelectorAll('#setor-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTable(s==='todos' ? allMeetings : allMeetings.filter(m=>m.setor===s));
-}
-
-function renderTable(meetings) {
-  const b = document.getElementById('table-body');
-  if (!meetings.length) { b.innerHTML = `<div style="padding:24px">${emptyHTML('Nenhuma reunião encontrada')}</div>`; return; }
-  b.innerHTML = meetings.map(m=>`
-    <div class="table-row" onclick="openDetail('${m.id}','reunioes')">
-      <div>
-        <div class="t-name">${m.titulo||m.assunto||'Sem título'}</div>
-        <div class="t-sub">${fmtDate(m.data_inicio||m.created_at)} ${fmtTime(m.data_inicio||m.created_at)}</div>
-        <div class="tags">${(m.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-      </div>
-      <div class="t-cell">
-        <span class="badge b-muted" style="color:${colorFor(m.setor)};border-color:${colorFor(m.setor)}30;background:${colorFor(m.setor)}0d">${m.setor||'—'}</span>
-      </div>
-      <div class="t-cell col-dur">${fmtDur(m.duracao_segundos)}</div>
-      <div class="t-cell col-par">${m.total_participantes||m.participantes?.length||'—'}</div>
-      <div>${statusBadge(m.status)}</div>
-    </div>`).join('');
-}
-
-/* TRANSCRIPTIONS PAGE */
-async function loadTranscriptions() {
-  const b = document.getElementById('tr-list');
-  b.innerHTML = `<div class="sk sk-block" style="border-radius:8px;margin-bottom:8px"></div><div class="sk sk-block" style="border-radius:8px"></div>`;
+/* ---------- TRANSCRIÇÕES ---------- */
+async function loadTranscricoes(){
   try {
-    const data = await apiFetch('/api/reunioes');
-    const all = Array.isArray(data) ? data : (data.reunioes||[]);
-    const done = all.filter(m=>m.status==='concluida'||m.tem_transcricao);
-    done.sort((a,b)=>new Date(b.data_inicio||b.created_at)-new Date(a.data_inicio||a.created_at));
-    if (!done.length) { b.innerHTML = `<div style="padding:40px 0">${emptyHTML('Nenhuma transcrição disponível')}</div>`; return; }
-    b.innerHTML = done.map(m=>`
-      <div class="tr-item" onclick="openDetail('${m.id}','transcricoes')">
-        <div class="tr-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div class="tr-name">${m.titulo||m.assunto||'Sem título'}</div>
-          <div class="tr-chips">
-            <span class="tr-chip">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              ${fmtDate(m.data_inicio||m.created_at)}
-            </span>
-            <span class="tr-chip">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              ${fmtDur(m.duracao_segundos)}
-            </span>
-            <span class="tr-chip">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              ${m.total_participantes||'—'}
-            </span>
-            <span class="badge b-muted" style="color:${colorFor(m.setor)};border-color:${colorFor(m.setor)}30;background:${colorFor(m.setor)}0d">${m.setor||'—'}</span>
-          </div>
-        </div>
-        <span class="tr-caret">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </span>
-      </div>`).join('');
-  } catch(e) {
-    b.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:12px">Erro: ${e.message}</div>`;
-  }
+    const data = await apiGet('/api/reunioes?status=completed') || [];
+    document.getElementById('transc-list').innerHTML = data.length ? data.map(r=>`
+      <div class="row" onclick="goto('detalhe',{id:'${r.id}'})">
+        <div class="r-main"><div class="r-title">${esc(r.titulo||'Reunião')}</div>
+        <div class="r-sub">${esc(r.resumo_executivo||'')}</div></div>
+        <div class="r-meta">${fmtData(r.data)}<br>${r.duracao_minutos!=null?r.duracao_minutos+' min':''}</div>
+      </div>`).join('') : '<div class="empty">Nenhuma transcrição concluída ainda.</div>';
+  } catch(e){ document.getElementById('transc-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
 }
 
-/* EMAILS PAGE */
-const SENT_META = {
-  positivo: {cor:'var(--success)', bg:'var(--success-bg)', bd:'var(--success-bd)', label:'Positivo'},
-  neutro:   {cor:'var(--fg-muted)', bg:'var(--bg-subtle)', bd:'var(--border)', label:'Neutro'},
-  negativo: {cor:'var(--danger)', bg:'var(--danger-bg)', bd:'var(--danger-bd)', label:'Negativo'},
-};
-const CAT_LABEL = {
-  corporativo:'Corporativo', promocional:'Promoção',
-  notificacao:'Notificação', spam:'Spam', pessoal:'Pessoal',
-};
-// mapeia aba → query string da API
-const EMAIL_QUERY = {
-  relevantes:  '?relevante=true',
-  notificacao: '?categoria=notificacao&relevante=todos',
-  promocional: '?categoria=promocional&relevante=todos',
-  spam:        '?categoria=spam&relevante=todos',
-  todos:       '?relevante=todos',
-};
-let emailMode = 'relevantes';
-
-async function loadEmails() {
-  const b = document.getElementById('email-list');
-  b.innerHTML = `<div class="sk sk-block" style="border-radius:8px;margin-bottom:8px"></div><div class="sk sk-block" style="border-radius:8px"></div>`;
+/* ---------- E-MAILS ---------- */
+async function loadEmails(){
   try {
-    const data = await apiFetch('/api/emails' + (EMAIL_QUERY[emailMode]||''));
-    const list = Array.isArray(data) ? data : (data.emails||[]);
-    if (emailMode==='relevantes') {
-      const c = document.getElementById('nav-c-emails');
-      if (c) c.textContent = list.length;
-    }
-    renderEmails(list);
-  } catch(e) {
-    b.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:12px">Erro ao carregar e-mails: ${e.message}</div>`;
-  }
+    let q = '/api/emails';
+    if(emailFiltro==='relevantes') q+='?relevante=true';
+    else if(emailFiltro==='todos') q+='?relevante=todos';
+    else q+='?relevante=todos&categoria='+emailFiltro;
+    allEmails = await apiGet(q) || [];
+    document.getElementById('emails-list').innerHTML = allEmails.length ? allEmails.map(m=>`
+      <div class="row">
+        <div class="r-main"><div class="r-title">${esc(m.assunto||'(sem assunto)')}</div>
+        <div class="r-sub">${esc(m.de_nome||m.de_email||'')} — ${esc(m.resumo||'')}</div></div>
+        <div class="r-meta">${fmtData(m.data)}</div>
+        <span class="badge ${m.sentimento==='positivo'?'pos':m.sentimento==='negativo'?'neg':'neu'}">${esc(m.sentimento||'neutro')}</span>
+      </div>`).join('') : '<div class="empty">Nenhum e-mail nesta categoria.</div>';
+  } catch(e){ document.getElementById('emails-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
+}
+function filterEmails(cat, btn){ emailFiltro=cat; document.querySelectorAll('#email-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); loadEmails(); }
+
+/* ---------- DETALHE ---------- */
+let _reuniaoAtual = null;
+
+function _transcricaoTexto(r){
+  return (r.utterances||[]).map(u=>`${u.speaker||'?'}: ${u.texto||''}`).join('\n');
 }
 
-function filterEmails(mode, btn) {
-  emailMode = mode;
-  document.querySelectorAll('#email-cat-tabs .tab-btn').forEach(x=>x.classList.remove('active'));
-  btn.classList.add('active');
-  loadEmails();
+function _relatorioCompleto(r){
+  const L=[];
+  L.push(r.titulo||'Reunião');
+  L.push(`${r.setor||'—'} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'}`);
+  L.push('');
+  if(r.resumo_executivo){ L.push('RESUMO EXECUTIVO'); L.push(r.resumo_executivo); L.push(''); }
+  const dec=(r.decisoes||[]); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+d)); L.push(''); }
+  const pen=(r.pendencias||[]); if(pen.length){ L.push('PENDÊNCIAS'); pen.forEach(p=>L.push('- '+(p.tarefa||p)+(p.responsavel?' ('+p.responsavel+')':''))); L.push(''); }
+  const top=(r.topicos||[]); if(top.length){ L.push('TÓPICOS'); L.push(top.join(', ')); L.push(''); }
+  const part=(r.participantes||[]); if(part.length){ L.push('PARTICIPANTES'); part.forEach(p=>L.push('- '+(p.nome||p)+(p.percentual_fala!=null?' ('+p.percentual_fala+'%)':''))); L.push(''); }
+  L.push('TRANSCRIÇÃO'); L.push(_transcricaoTexto(r));
+  return L.join('\n');
 }
 
-function renderEmails(list) {
-  const b = document.getElementById('email-list');
-  if (!list.length) { b.innerHTML = `<div style="padding:40px 0">${emptyHTML('Nenhum e-mail nesta categoria')}</div>`; return; }
-  b.innerHTML = list.map(e=>{
-    const sm = SENT_META[e.sentimento] || SENT_META.neutro;
-    const temas = (e.temas||[]).slice(0,4).map(t=>`<span class="tr-chip">${t}</span>`).join('');
-    const catLabel = CAT_LABEL[e.categoria] || 'Corporativo';
-    const isRuido = e.relevante === false;
-    return `
-      <div class="tr-item" style="cursor:default;${isRuido?'opacity:.72':''}">
-        <div class="tr-icon" style="background:${sm.bg};color:${sm.cor}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div class="tr-name">${e.assunto||'(sem assunto)'}</div>
-          <div style="font-size:12px;color:var(--fg-2);margin:3px 0 6px">${e.resumo|| (isRuido?'(filtrado — sem análise)':'—')}</div>
-          <div class="tr-chips">
-            <span class="tr-chip">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              ${e.de_nome||e.de_email||'—'}
-            </span>
-            <span class="tr-chip">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              ${fmtDate(e.data)}
-            </span>
-            <span class="badge b-muted">${catLabel}</span>
-            ${temas}
-          </div>
-        </div>
-        <span class="badge" style="color:${sm.cor};border-color:${sm.bd};background:${sm.bg};align-self:flex-start">${sm.label}</span>
-      </div>`;
-  }).join('');
+async function copiarTranscricao(btn){
+  if(!_reuniaoAtual) return;
+  const txt=_transcricaoTexto(_reuniaoAtual);
+  try { await navigator.clipboard.writeText(txt); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  const orig=btn.textContent; btn.textContent='Copiado ✓'; setTimeout(()=>{btn.textContent=orig;},1500);
 }
 
-/* DETAIL PAGE */
-function openDetail(id, from) {
-  prevPage = from;
-  goto('detalhe', {id});
+function exportarReuniao(){
+  if(!_reuniaoAtual) return;
+  const r=_reuniaoAtual;
+  const nome=((r.titulo||'reuniao').replace(/[^\wÀ-ſ -]/g,'').trim().replace(/\s+/g,'_'))+'.txt';
+  const blob=new Blob([_relatorioCompleto(r)],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
-async function loadDetail(id) {
-  const b = document.getElementById('detail-content');
-  b.innerHTML = `<div class="sk sk-block" style="height:90px;border-radius:8px;margin-bottom:12px"></div><div class="sk sk-block" style="height:140px;border-radius:8px"></div>`;
+async function loadDetalhe(id){
+  goto('detalhe'); document.getElementById('page-detalhe').classList.add('active');
+  document.querySelector('.nav-item[data-page="'+prevPage+'"]')?.classList.add('active');
+  const el = document.getElementById('detalhe-content');
+  el.innerHTML='<div class="skel" style="height:120px"></div>';
   try {
-    const m = await apiFetch(`/api/reunioes/${id}`);
-    b.innerHTML = `
-      <div class="detail-top">
-        <div class="detail-title">${m.titulo||m.assunto||'Sem título'}</div>
-        <div class="detail-chips">
-          <span class="badge b-muted">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${fmtDate(m.data_inicio||m.created_at)} às ${fmtTime(m.data_inicio||m.created_at)}
-          </span>
-          <span class="badge b-muted">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            ${fmtDur(m.duracao_segundos)}
-          </span>
-          <span class="badge b-muted">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            ${(m.participantes||[]).length||m.total_participantes||0} participantes
-          </span>
-          <span class="badge b-muted" style="color:${colorFor(m.setor)};border-color:${colorFor(m.setor)}30;background:${colorFor(m.setor)}0d">${m.setor||'—'}</span>
-          ${statusBadge(m.status)}
-        </div>
-        ${m.resumo?`<div class="summary-box"><span class="summary-label">Resumo executivo</span>${m.resumo}</div>`:''}
+    const r = await apiGet('/api/reunioes/'+id);
+    _reuniaoAtual = r;
+    const dec=(r.decisoes||[]), pen=(r.pendencias||[]), top=(r.topicos||[]), part=(r.participantes||[]);
+    const utt=(r.utterances||[]);
+    const pendControls = (r.status==='pending'||r.status==='processing') && r.plataforma==='recall'
+      ? `<button class="btn-sm" style="margin-top:12px" onclick="processar('${r.id}')">Puxar transcrição agora</button>` : '';
+    el.innerHTML = `
+      <div class="detail-head">
+        <h2>${esc(r.titulo||'Reunião')}</h2>
+        <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+        ${r.resumo_executivo?`<p style="margin-top:14px;font-size:14px;line-height:1.6">${esc(r.resumo_executivo)}</p>`:''}
+        ${pendControls}
       </div>
-
       <div class="detail-grid">
-        <div class="detail-panel">
-          <div class="dp-label">Participação por fala</div>
-          ${renderPart(m.participantes||[])}
-        </div>
-        <div class="detail-panel">
-          <div class="dp-label">Decisões</div>
-          ${renderDecList(m.decisoes||[])}
-        </div>
-        <div class="detail-panel">
-          <div class="dp-label">Pendências</div>
-          ${renderPendList(m.pendencias||m.acoes||[])}
-        </div>
-        <div class="detail-panel">
-          <div class="dp-label">Classificação</div>
-          <div style="margin-bottom:10px">
-            <div style="font-size:10.5px;color:var(--fg-muted);margin-bottom:5px;font-weight:500">Tags</div>
-            <div class="tags">${(m.tags||[]).map(t=>`<span class="badge b-muted">${t}</span>`).join('')||'<span style="font-size:11px;color:var(--fg-subtle)">Nenhuma tag</span>'}</div>
-          </div>
-          ${m.sentimento?`<div><div style="font-size:10.5px;color:var(--fg-muted);margin-bottom:5px;font-weight:500">Sentimento</div><span class="badge ${m.sentimento==='positivo'?'b-success':m.sentimento==='negativo'?'b-danger':'b-muted'}">${m.sentimento}</span></div>`:''}
-        </div>
+        <div class="d-card"><h3>Decisões</h3>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
+        <div class="d-card"><h3>Pendências</h3>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' — <b>'+esc(p.responsavel)+'</b>':''}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
       </div>
-
-      ${renderTranscript(m)}
+      <div class="d-card" style="margin-bottom:16px"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
+      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map(p=>`<li>${esc(p.nome||p)} ${p.percentual_fala!=null?'— '+p.percentual_fala+'% da fala':''}</li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
+      ${utt.length?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><h2 class="section-title" style="margin:0">Transcrição</h2><button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button><button class="btn-sm" onclick="exportarReuniao()">Exportar</button></div><div class="transcript">${utt.map(u=>`<b>${esc(u.speaker||'?')}:</b> ${esc(u.texto||'')}`).join('<br>')}</div>`:''}
     `;
-  } catch(e) {
-    b.innerHTML = `<div style="padding:16px;color:var(--danger);font-size:12px">Erro ao carregar: ${e.message}</div>`;
+  } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- AÇÕES ---------- */
+async function novaReuniao(){
+  const m=document.getElementById('modal'); m.style.display='flex';
+  const sel=document.getElementById('m-setor');
+  if(sel.options.length<=1){
+    try{ const setores=await apiGet('/api/setores'); (setores||[]).forEach(s=>{const o=document.createElement('option');o.value=s.nome;o.textContent=s.nome;sel.appendChild(o);}); }catch(e){}
   }
 }
-
-function renderPart(participants) {
-  if (!participants.length) return emptyHTML('Sem dados de participação');
-  const sorted = [...participants].sort((a,b)=>(b.percentual||b.pct||0)-(a.percentual||a.pct||0));
-  return sorted.map((p,i)=>{
-    const pct = p.percentual||p.pct||0;
-    const c = COLORS[i%COLORS.length];
-    return `<div class="p-row">
-      <div class="p-av" style="background:${c}18;color:${c}">${ini(p.nome||p.speaker||'')}</div>
-      <div class="p-name">${p.nome||p.speaker||'—'}</div>
-      <div class="p-track"><div class="p-bar" style="width:${pct}%;background:${c}"></div></div>
-      <div class="p-pct">${Math.round(pct)}%</div>
-    </div>`;
-  }).join('');
+function fecharModal(){ document.getElementById('modal').style.display='none'; }
+async function enviarReuniao(){
+  const url=document.getElementById('m-url').value.trim();
+  const titulo=document.getElementById('m-titulo').value.trim();
+  const setor=document.getElementById('m-setor').value;
+  if(!url){ toast('Cole o link da reunião.'); return; }
+  const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
+  try { await apiPost('/api/gravacoes',{meeting_url:url,titulo,setor});
+    fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value='';
+    toast('Bot DDM a caminho! A reunião aparecerá ao terminar.',4000);
+    if(curPage==='reunioes') loadReunioes(); else goto('reunioes');
+  } catch(e){ toast('Erro: '+e.message,4000); }
+  finally{ btn.disabled=false; btn.textContent='Enviar assistente DDM'; }
 }
-
-function renderDecList(items) {
-  if (!items.length) return emptyHTML('Nenhuma decisão');
-  return items.map(d=>`
-    <div class="dec-item">
-      <div class="item-dot" style="background:var(--success)"></div>
-      <div>
-        <div>${d.texto||d.descricao||d.decisao||'—'}</div>
-        ${d.responsavel?`<div class="item-sub">Responsável: ${d.responsavel}</div>`:''}
-      </div>
-    </div>`).join('');
+async function processar(id){
+  toast('Puxando transcrição...');
+  try { await apiPost('/api/gravacoes/'+id+'/processar');
+    toast('Processado! Atualizando...',3000);
+    if(curPage==='detalhe') loadDetalhe(id); else loadReunioes();
+  } catch(e){ toast('Erro: '+e.message+' (a reunião já encerrou?)',5000); }
 }
+function onSearch(v){ if(curPage==='reunioes') renderReunioes(); else if(v.trim()){ goto('reunioes'); } }
+async function loadHealth(){ try{ await apiGet('/api/health'); document.getElementById('cfg-health').innerHTML='API: <b style="color:var(--success)">online</b>'; }catch{ document.getElementById('cfg-health').innerHTML='API: <b style="color:var(--danger)">offline</b>'; } }
 
-function renderPendList(items) {
-  if (!items.length) return `<div class="empty"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/></svg><p><strong>Nenhuma pendência</strong></p></div>`;
-  return items.map(p=>`
-    <div class="pend-item">
-      <div class="item-dot" style="background:${p.responsavel?'var(--warn)':'var(--danger)'}"></div>
-      <div>
-        <div>${p.texto||p.descricao||p.pendencia||'—'}</div>
-        <div class="item-sub">
-          ${p.responsavel?`Resp: ${p.responsavel}`:'<span style="color:var(--danger);font-weight:600">Sem responsável</span>'}
-          ${p.prazo?` · Prazo: ${fmtDate(p.prazo)}`:''}
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function renderTranscript(m) {
-  const utts = m.utterances||m.transcricao_utterances||[];
-  const raw  = m.transcricao||m.texto_transcricao||'';
-  const label = `<div class="dp-label" style="margin-bottom:10px">Transcrição</div>`;
-
-  if (!utts.length && !raw) {
-    return `<div class="transcript-card">${label}${emptyHTML('Transcrição não disponível')}</div>`;
-  }
-
-  if (utts.length) {
-    const spMap = {};
-    let ci = 0;
-    utts.forEach(u=>{ if(u.speaker && !spMap[u.speaker]) spMap[u.speaker]=COLORS[ci++%COLORS.length]; });
-    return `<div class="transcript-card">${label}${utts.map(u=>`
-      <div class="utterance">
-        <div class="utt-ts">${fmtTs(u.start||u.inicio)}</div>
-        <div class="utt-av" style="background:${spMap[u.speaker]||'#ccc'}18;color:${spMap[u.speaker]||'#ccc'}">${ini(u.speaker||'')}</div>
-        <div class="utt-content">
-          <div class="utt-sp" style="color:${spMap[u.speaker]||'var(--fg-muted)'}">${u.speaker||'Desconhecido'}</div>
-          <div class="utt-tx">${u.texto||u.text||u.transcricao||''}</div>
-        </div>
-      </div>`).join('')}</div>`;
-  }
-
-  return `<div class="transcript-card">${label}<div style="font-size:12.5px;line-height:1.75;color:var(--fg-2);white-space:pre-wrap">${raw}</div></div>`;
-}
-
-/* ─────────────────────────────────────
-   POLLING
-───────────────────────────────────── */
-function startPolling() {
-  loadLiveTeams();
-  loadLiveProc();
-  setInterval(loadLiveTeams, 8000);
-  setInterval(loadLiveProc,  5000);
-  loadSummary();
-  setInterval(()=>{ if(curPage==='dashboard') loadSummary(); }, 30000);
-}
-
-document.addEventListener('DOMContentLoaded', startPolling);
+/* ---------- init ---------- */
+document.getElementById('hoje-data').textContent = 'Hoje é ' + new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+loadDashboard();
 </script>
 </body>
 </html>

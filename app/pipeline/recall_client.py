@@ -1,14 +1,36 @@
 """
-Recall.ai client — bot "DDM" entra na reunião (Teams/Zoom/Meet), grava e transcreve.
+Recall.ai client — bot "Acordito" entra na reunião (Teams/Zoom/Meet), grava e transcreve.
 Substitui o Microsoft Graph para captura de reuniões (não precisa de App Registration).
 Docs: https://docs.recall.ai
 """
 
+import base64
 import os
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Avatar 1280x720 exibido pelo bot na câmera (gerado por scripts/make_bot_avatar.py)
+_AVATAR_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "assets",
+    "acordito_bot.jpg",
+)
+_avatar_b64_cache: str | None = None
+
+
+def _avatar_b64() -> str | None:
+    """Base64 do avatar do bot (jpeg 16:9). None se o arquivo não existe."""
+    global _avatar_b64_cache
+    if _avatar_b64_cache is not None:
+        return _avatar_b64_cache or None
+    if not os.path.exists(_AVATAR_PATH):
+        _avatar_b64_cache = ""  # marca como "checado, ausente"
+        return None
+    with open(_AVATAR_PATH, "rb") as f:
+        _avatar_b64_cache = base64.b64encode(f.read()).decode("ascii")
+    return _avatar_b64_cache
 
 
 def _region() -> str:
@@ -21,7 +43,7 @@ def _base() -> str:
 
 
 def _bot_name() -> str:
-    return os.getenv("RECALL_BOT_NAME", "DDM").strip() or "DDM"
+    return os.getenv("RECALL_BOT_NAME", "Acordito").strip() or "Acordito"
 
 
 def _headers() -> dict:
@@ -47,6 +69,16 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
             "transcript": {"provider": {"recallai_streaming": {}}}
         },
     }
+
+    # Avatar na câmera do bot (Acordito) enquanto está na reunião.
+    avatar = _avatar_b64()
+    if avatar:
+        img = {"kind": "jpeg", "b64_data": avatar}
+        payload["automatic_video_output"] = {
+            "in_call_recording": img,
+            "in_call_not_recording": img,
+        }
+
     resp = requests.post(f"{_base()}/bot", headers=_headers(), json=payload, timeout=30)
     resp.raise_for_status()
     return resp.json()

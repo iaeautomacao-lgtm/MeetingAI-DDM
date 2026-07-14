@@ -8,6 +8,14 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-inseguro")
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
 
+    # Login de diretores (dashboard). Senha em DIRECTOR_PASSWORD.
+    DIRECTOR_PASSWORD = os.getenv("DIRECTOR_PASSWORD", "")
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    # Em produção (HTTPS) definir SESSION_COOKIE_SECURE=1 no .env
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 8  # 8h
+
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
     SUPABASE_SCHEMA = os.getenv("SUPABASE_SCHEMA", "public")
@@ -24,7 +32,7 @@ class Config:
     # Recall.ai (bot "DDM" entra na reunião, grava e transcreve)
     RECALL_API_KEY = os.getenv("RECALL_API_KEY", "")
     RECALL_REGION = os.getenv("RECALL_REGION", "us-west-2")
-    RECALL_BOT_NAME = os.getenv("RECALL_BOT_NAME", "DDM")
+    RECALL_BOT_NAME = os.getenv("RECALL_BOT_NAME", "Acordito")
     PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")  # URL pública p/ webhook Recall
 
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

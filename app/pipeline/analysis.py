@@ -41,21 +41,25 @@ def _init_client():
         _model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
 
-def _chat(system: str, user: str, max_tokens: int = 2048) -> str | None:
-    """Chamada unificada. Retorna o texto bruto da resposta ou None se sem provedor."""
+def _chat(system: str, user: str, max_tokens: int = 2048, json_mode: bool = False) -> str | None:
+    """Chamada unificada. Retorna o texto bruto da resposta ou None se sem provedor.
+    json_mode=True força resposta JSON pura (OpenAI/Gemini) — evita texto/markdown ao redor."""
     _init_client()
     if _client is None:
         return None
 
     if _provider == "openai_like":
-        resp = _client.chat.completions.create(
-            model=_model,
-            max_tokens=max_tokens,
-            messages=[
+        kwargs = {
+            "model": _model,
+            "max_tokens": max_tokens,
+            "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-        )
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        resp = _client.chat.completions.create(**kwargs)
         return (resp.choices[0].message.content or "").strip()
 
     # anthropic
@@ -91,51 +95,72 @@ Idioma: português-BR."""
 EXTRACTION_PROMPT = """Analise esta transcrição de reunião e extraia:
 
 {{
-  "decisoes estrategicas": ["string"],
+  "decisoes": ["string"],
   "pendencias": [{{"tarefa": "string", "responsavel": "string ou null", "prazo": "string ou null"}}],
   "topicos": ["string"],
-  "participantes_ativos": [{{"nome": "string", "percentual_fala": 0}}],
   "sentimento_geral": "positivo|neutro|tenso",
   "resumo_executivo": "string (max 3 frases, direto ao ponto para diretoria)"
 }}
+
+Regras:
+- "decisoes": decisões concretas tomadas na reunião. [] se nenhuma.
+- "pendencias": tarefas/ações a fazer. responsavel/prazo = null se não citado.
+- "topicos": principais assuntos discutidos.
+- Responda SOMENTE o JSON, sem markdown.
 
 TRANSCRIÇÃO:
 {transcricao}"""
 
 
-def _get_client():
-    global _client
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        return None
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=api_key)
-    return _client
-
-
 def extrair_reuniao(transcricao: str, utterances: list) -> dict:
     if not transcricao.strip():
         return _empty_result()
-        
 
     texto = _formatar_utterances(utterances) if utterances else transcricao
+    prompt = EXTRACTION_PROMPT.format(transcricao=texto[:12000])
+    participantes = _participantes_de_utterances(utterances)
 
-    try:
-        raw = _chat(
-            SYSTEM_PROMPT,
-            EXTRACTION_PROMPT.format(transcricao=texto[:12000]),
-            max_tokens=2048,
-        )
-    except Exception as e:
-        return _fallback_result(f"Erro na análise: {str(e)}")
+    # Gemini/OpenAI ocasionalmente devolvem JSON malformado — tenta até 3x.
+    ultimo_erro = "Não foi possível estruturar a análise."
+    for _ in range(3):
+        try:
+            raw = _chat(SYSTEM_PROMPT, prompt, max_tokens=4096, json_mode=True)
+        except Exception as e:
+            ultimo_erro = f"Erro na análise: {str(e)}"
+            continue
 
-    if raw is None:
-        return _fallback_result("Análise indisponível: nenhuma chave de IA configurada (OPENAI_API_KEY ou ANTHROPIC_API_KEY).")
+        if raw is None:
+            r = _fallback_result("Análise indisponível: nenhuma chave de IA configurada (OPENAI_API_KEY ou ANTHROPIC_API_KEY).")
+            r["participantes_ativos"] = participantes
+            return r
 
-    resultado = _parse_json(raw)
-    if resultado is None:
-        return _fallback_result("Não foi possível estruturar a análise.")
-    return resultado
+        resultado = _parse_json(raw)
+        if resultado is not None:
+            resultado["participantes_ativos"] = participantes
+            return resultado
+
+    r = _fallback_result(ultimo_erro)
+    r["participantes_ativos"] = participantes
+    return r
+
+
+def _participantes_de_utterances(utterances: list) -> list:
+    """Deriva participantes + % de fala (por contagem de falas) das utterances."""
+    if not utterances:
+        return []
+    contagem: dict = {}
+    for u in utterances:
+        nome = (u.get("speaker") or "?").strip()
+        if not nome or nome == "?":
+            continue
+        contagem[nome] = contagem.get(nome, 0) + 1
+    total = sum(contagem.values())
+    if total == 0:
+        return []
+    return [
+        {"nome": nome, "percentual_fala": round(n * 100 / total)}
+        for nome, n in sorted(contagem.items(), key=lambda kv: kv[1], reverse=True)
+    ]
 
 
 def _formatar_utterances(utterances: list) -> str:
@@ -147,7 +172,7 @@ def _formatar_utterances(utterances: list) -> str:
 
 def _empty_result() -> dict:
     return {
-        "decisoes estrategicas": [],
+        "decisoes": [],
         "pendencias": [],
         "topicos": [],
         "participantes_ativos": [],

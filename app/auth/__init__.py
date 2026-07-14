@@ -21,6 +21,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import get_supabase
 
 
+def _hash(senha: str) -> str:
+    # pbkdf2 é suportado em qualquer runtime (o scrypt padrão do Werkzeug
+    # falha no Python serverless da Vercel — OpenSSL sem scrypt → 500).
+    return generate_password_hash(str(senha), method="pbkdf2:sha256")
+
+
 # ── Domínios / admin ──────────────────────────────────────────────────────────
 
 def _corp_domains() -> list[str]:
@@ -92,14 +98,14 @@ def registrar_acesso(email: str, senha: str, nome: str = "") -> tuple[bool, str]
         if acesso.get("aprovado"):
             return False, "ja_cadastrado"
         # pendente: atualiza a senha e segue aguardando
-        _update(email, {"senha_hash": generate_password_hash(str(senha)), "nome": nome or acesso.get("nome", "")})
+        _update(email, {"senha_hash": _hash(senha), "nome": nome or acesso.get("nome", "")})
         return True, "pendente"
 
     db = get_supabase()
     db.table("painel_acessos").insert({
         "email": email,
         "nome": nome or "",
-        "senha_hash": generate_password_hash(str(senha)),
+        "senha_hash": _hash(senha),
         "ativo": True,
         "aprovado": False,
     }).execute()

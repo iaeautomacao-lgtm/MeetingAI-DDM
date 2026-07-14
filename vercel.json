@@ -1,11 +1,17 @@
 {
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 60,
-      "includeFiles": "{assets/**,*.html}"
+  "services": {
+    "web": {
+      "root": ".",
+      "entrypoint": "run.py"
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "web"
+      }
+    }
   ]
 }

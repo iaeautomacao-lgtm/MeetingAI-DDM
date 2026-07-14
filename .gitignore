@@ -30,3 +30,6 @@ Thumbs.db
 # Prints/temporários de trabalho
 image.jpeg
 email.png
+
+.vercel
+.env*

@@ -33,3 +33,7 @@ email.png
 
 .vercel
 .env*
+
+# Vercel CLI gera esses (conflita com pip/requirements)
+pyproject.toml
+uv.lock

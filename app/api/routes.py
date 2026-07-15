@@ -90,7 +90,15 @@ def auth_logout():
 
 @bp.get("/auth/status")
 def auth_status():
-    return jsonify({"autenticado": is_authed(), "email": sessao_email(), "admin": is_admin()})
+    from app.auth import _buscar_acesso
+    email = sessao_email()
+    nome = ""
+    if email:
+        acesso = _buscar_acesso(email)
+        nome = (acesso or {}).get("nome") or email.split("@")[0]
+    elif is_authed():
+        nome = "Diretoria"
+    return jsonify({"autenticado": is_authed(), "email": email, "admin": is_admin(), "nome": nome})
 
 
 # ── Gestão de acessos (somente admin) ─────────────────────────────────────────

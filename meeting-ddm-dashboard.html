@@ -246,9 +246,9 @@ body {
     </div>
 
     <div class="profile">
-      <div class="profile-avatar" id="avatar-inicial">G</div>
-      <div class="profile-name">Gisele Oliveira</div>
-      <div class="profile-email">gisele.oliveira@ddm.adv.br</div>
+      <div class="profile-avatar" id="avatar-inicial">·</div>
+      <div class="profile-name" id="profile-name">—</div>
+      <div class="profile-email" id="profile-email">—</div>
     </div>
 
     <nav class="nav" id="nav">
@@ -290,7 +290,7 @@ body {
   <main class="main-area">
     <header class="topbar">
       <div>
-        <h1 class="welcome-title">Olá, Gisele</h1>
+        <h1 class="welcome-title" id="welcome-title">Olá</h1>
         <div class="welcome-date" id="hoje-data"></div>
       </div>
       <div class="topbar-actions">
@@ -457,6 +457,12 @@ function goBack(){ goto(prevPage); }
 async function checkAdmin(){
   try{
     const s = await apiGet('/api/auth/status');
+    const nome = (s && s.nome) || 'Diretoria';
+    const primeiro = nome.split(' ')[0];
+    document.getElementById('profile-name').textContent = nome;
+    document.getElementById('profile-email').textContent = (s && s.email) || '';
+    document.getElementById('avatar-inicial').textContent = (primeiro[0]||'·').toUpperCase();
+    document.getElementById('welcome-title').textContent = 'Olá, ' + primeiro;
     if(s && s.admin){
       document.getElementById('nav-acessos').style.display='flex';
       atualizarBadgeAcessos();

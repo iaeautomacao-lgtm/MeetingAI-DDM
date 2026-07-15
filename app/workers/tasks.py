@@ -153,13 +153,30 @@ def _processar_recall(reuniao_id: str, bot_id: str):
     Função síncrona — usada tanto pela task Celery quanto pela thread do webhook
     (funciona sem Redis).
     """
-    from app.pipeline.recall_client import fetch_transcript
+    from app.pipeline.skribby_client import get_bot, bot_status, parse_skribby_transcript
 
     db = get_supabase()
     try:
+        bot = get_bot(bot_id)
+        status = bot_status(bot)
+
+        # Bot ainda na reunião / processando — não marca "sem transcrição" cedo demais.
+        # O webhook 'finished' (ou o botão "puxar") chama de novo quando terminar.
+        if status and status != "finished":
+            estados_falha = {
+                "not_admitted", "bot_detected", "auth_required",
+                "invalid_credentials", "invalid_api_key", "failed",
+            }
+            novo = "error" if status in estados_falha else "pending"
+            campos = {"status": novo}
+            if novo == "error":
+                campos["erro_msg"] = f"bot Skribby: {status}"
+            db.table("reunioes").update(campos).eq("id", reuniao_id).execute()
+            return
+
         db.table("reunioes").update({"status": "processing"}).eq("id", reuniao_id).execute()
 
-        utterances = fetch_transcript(bot_id)
+        utterances = parse_skribby_transcript(bot.get("transcript") or [])
         if not utterances:
             db.table("reunioes").update(
                 {"status": "sem_transcricao"}

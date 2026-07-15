@@ -359,7 +359,7 @@ body {
       </div>
       <div class="panel">
         <h3>Status do sistema</h3>
-        <div class="li">Captura de reuniões: <b>Recall.ai (bot Acordito)</b></div>
+        <div class="li">Captura de reuniões: <b>Skribby (bot Acordito)</b></div>
         <div class="li">Análise por IA: <b>Gemini</b></div>
         <div class="li">Banco de dados: <b>Supabase</b></div>
         <div class="li" id="cfg-health">API: verificando…</div>
@@ -596,7 +596,7 @@ function renderReunioes(){
 }
 function rowReuniao(r){
   const dur = r.duracao_minutos!=null ? r.duracao_minutos+' min' : '—';
-  const pend = (r.status==='pending'||r.status==='processing') && r.plataforma==='recall';
+  const pend = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall');
   return `<div class="row" onclick="goto('detalhe',{id:'${r.id}'})">
     <div class="r-main"><div class="r-title">${esc(r.titulo||'Reunião')}</div>
     <div class="r-sub">${esc(r.resumo_executivo||r.setor||'—')}</div></div>
@@ -686,7 +686,7 @@ async function loadDetalhe(id){
     _reuniaoAtual = r;
     const dec=(r.decisoes||[]), pen=(r.pendencias||[]), top=(r.topicos||[]), part=(r.participantes||[]);
     const utt=(r.utterances||[]);
-    const pendControls = (r.status==='pending'||r.status==='processing') && r.plataforma==='recall'
+    const pendControls = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall')
       ? `<button class="btn-sm" style="margin-top:12px" onclick="processar('${r.id}')">Puxar transcrição agora</button>` : '';
     el.innerHTML = `
       <div class="detail-head">

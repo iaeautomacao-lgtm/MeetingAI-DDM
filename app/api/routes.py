@@ -303,15 +303,15 @@ def upload_audio():
     return jsonify({"reuniao_id": reuniao_id, "status": "pending"}), 202
 
 
-# ── Gravações Recall.ai (bot "DDM" entra na reunião) ─────────────────────────
+# ── Gravações Skribby (bot "Acordito" entra na reunião) ──────────────────────
 
 @bp.post("/gravacoes")
 def criar_gravacao():
     """
-    Funcionário aciona a gravação: cola o link da reunião, o bot DDM entra,
+    Funcionário aciona a gravação: cola o link da reunião, o bot Acordito entra,
     grava e transcreve. Cria a reunião com status 'pending'.
     """
-    from app.pipeline.recall_client import create_bot
+    from app.pipeline.skribby_client import create_bot
 
     body = request.get_json(silent=True) or {}
     meeting_url = (body.get("meeting_url") or "").strip()
@@ -321,19 +321,19 @@ def criar_gravacao():
     try:
         bot = create_bot(meeting_url)
     except Exception as e:
-        return jsonify({"erro": f"Recall: {e}"}), 502
+        return jsonify({"erro": f"Skribby: {e}"}), 502
 
     bot_id = bot.get("id")
     db = get_supabase()
     row = db.table("reunioes").insert(
         {
-            "titulo": body.get("titulo") or "Reunião (Recall)",
+            "titulo": body.get("titulo") or "Reunião (Skribby)",
             "solicitante": (body.get("solicitante") or "").strip(),
             "setor": body.get("setor", ""),
             "data": datetime.now(timezone.utc).isoformat(),
-            "plataforma": "recall",
+            "plataforma": "skribby",
             "status": "pending",
-            "recall_bot_id": bot_id,
+            "recall_bot_id": bot_id,  # coluna reaproveitada p/ guardar o id do bot Skribby
         }
     ).execute()
 
@@ -346,20 +346,22 @@ def criar_gravacao():
     ), 202
 
 
-@bp.post("/recall/webhook")
-def recall_webhook():
+@bp.post("/skribby/webhook")
+def skribby_webhook():
     """
-    Recebe eventos do Recall. Em 'bot.done' (mídia pronta) dispara o processamento
-    da transcrição numa thread e responde 200 rápido (Recall exige 2xx em 15s).
+    Recebe eventos do Skribby (type 'status_update'). Quando new_status == 'finished'
+    a transcrição está pronta → dispara o processamento numa thread e responde 200 rápido.
+    Payload: {bot_id, type, data:{old_status, new_status, stop_reason}, custom_metadata}
     """
     import threading
     from app.workers.tasks import _processar_recall
 
     body = request.get_json(silent=True) or {}
-    event = body.get("event", "")
-    bot_id = (((body.get("data") or {}).get("bot")) or {}).get("id")
+    bot_id = body.get("bot_id")
+    tipo = body.get("type", "")
+    novo_status = ((body.get("data") or {}).get("new_status")) or ""
 
-    if event == "bot.done" and bot_id:
+    if tipo == "status_update" and novo_status == "finished" and bot_id:
         db = get_supabase()
         r = db.table("reunioes").select("id").eq("recall_bot_id", bot_id).execute()
         if r.data:
@@ -376,7 +378,7 @@ def recall_webhook():
 def processar_gravacao_manual(reuniao_id: str):
     """
     Puxa a transcrição manualmente (para testar sem webhook público).
-    Só funciona depois que o bot terminou (status Recall 'done').
+    Só funciona depois que o bot terminou (status Skribby 'finished').
     """
     from app.workers.tasks import _processar_recall
 
@@ -392,7 +394,7 @@ def processar_gravacao_manual(reuniao_id: str):
         return jsonify({"erro": "não encontrado"}), 404
     bot_id = r.data.get("recall_bot_id")
     if not bot_id:
-        return jsonify({"erro": "reunião sem bot Recall"}), 400
+        return jsonify({"erro": "reunião sem bot Skribby"}), 400
 
     try:
         _processar_recall(reuniao_id, bot_id)

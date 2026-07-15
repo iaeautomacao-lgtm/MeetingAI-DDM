@@ -1,0 +1,16 @@
+{
+  "appId": "br.ia.grupoddm.meeting",
+  "appName": "Meeting DDM",
+  "webDir": "www",
+  "server": {
+    "url": "https://meeting.grupoddm.ia.br",
+    "cleartext": false,
+    "allowNavigation": [
+      "meeting.grupoddm.ia.br",
+      "*.grupoddm.ia.br"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

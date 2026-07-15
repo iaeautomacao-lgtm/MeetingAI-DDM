@@ -40,7 +40,7 @@ def dominio_permitido(email: str) -> bool:
 
 
 def _admin_emails() -> list[str]:
-    raw = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br")
+    raw = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br,dimaio@ddm.adv.br")
     return [e.strip().lower() for e in raw.split(",") if e.strip()]
 
 

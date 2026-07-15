@@ -138,31 +138,70 @@ def fetch_transcript(bot_id: str) -> list[dict]:
     return parse_skribby_transcript(segments)
 
 
+def _speaker_label(u: dict) -> str:
+    """Nome do locutor de uma fala. Usa speaker_name, senão o palpite, senão Speaker N, senão ?."""
+    nome = u.get("speaker_name")
+    if nome:
+        return nome
+    palpites = u.get("potential_speaker_names") or []
+    if palpites:
+        # pode vir como [{"name":..,"confidence":..}] ou ["Nome"]
+        p0 = palpites[0]
+        if isinstance(p0, dict) and p0.get("name"):
+            return p0["name"]
+        if isinstance(p0, str):
+            return p0
+    if u.get("speaker") is not None:
+        return f"Speaker {u.get('speaker')}"
+    return "?"
+
+
+def _fala(u: dict) -> dict | None:
+    texto = (u.get("transcript") or u.get("text") or "").strip()
+    if not texto:
+        return None
+    start = u.get("start") or 0
+    end = u.get("end") or start
+    return {
+        "speaker": _speaker_label(u),
+        "texto": texto,
+        "start_ms": int(float(start) * 1000),
+        "end_ms": int(float(end) * 1000),
+    }
+
+
 def parse_skribby_transcript(segments: list) -> list[dict]:
     """
-    Converte o array `transcript` do Skribby em utterances.
-    Cada segmento: {transcript, start, end, speaker, speaker_name} (start/end em segundos).
+    Converte o array `transcript` do Skribby em utterances [{speaker, texto, start_ms, end_ms}].
+    Cada segmento traz uma sublista `utterances` (fala a fala) — é ela que dá a divisão
+    por locutor. Se não houver, cai pro texto do próprio segmento.
+    Falas seguidas do MESMO locutor são unidas numa linha só (fica mais limpo).
     """
-    utterances = []
+    brutas = []
     for seg in segments or []:
         if not isinstance(seg, dict):
             continue
-        # o texto pode vir em 'transcript' (REST) ou aninhado em 'data' (evento realtime)
         data = seg.get("data") if isinstance(seg.get("data"), dict) else seg
-        texto = (data.get("transcript") or data.get("text") or "").strip()
-        if not texto:
-            continue
-        speaker = (
-            data.get("speaker_name")
-            or (f"Speaker {data.get('speaker')}" if data.get("speaker") is not None else None)
-            or "?"
-        )
-        start = data.get("start") or 0
-        end = data.get("end") or start
-        utterances.append({
-            "speaker": speaker,
-            "texto": texto,
-            "start_ms": int(float(start) * 1000),
-            "end_ms": int(float(end) * 1000),
-        })
+        subs = data.get("utterances")
+        if isinstance(subs, list) and subs:
+            for u in subs:
+                if isinstance(u, dict):
+                    f = _fala(u)
+                    if f:
+                        brutas.append(f)
+        else:
+            f = _fala(data)
+            if f:
+                brutas.append(f)
+
+    # une falas consecutivas do MESMO locutor (só quando há nome real —
+    # se for tudo "?" mantém quebrado em turnos, senão viraria um blob de novo)
+    utterances = []
+    for f in brutas:
+        if (utterances and utterances[-1]["speaker"] == f["speaker"]
+                and f["speaker"] != "?"):
+            utterances[-1]["texto"] += " " + f["texto"]
+            utterances[-1]["end_ms"] = f["end_ms"]
+        else:
+            utterances.append(f)
     return utterances

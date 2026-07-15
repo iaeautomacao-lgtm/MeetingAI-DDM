@@ -33,6 +33,7 @@ create table if not exists painel_acessos (
     id         uuid primary key default gen_random_uuid(),
     email      text unique not null,
     nome       text default '',
+    setor      text default '',
     senha_hash text,
     ativo      boolean default true,
     aprovado   boolean default false,

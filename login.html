@@ -21,8 +21,8 @@ body{font-family:var(--font-body);background:#EBE5DB;color:var(--ink);min-height
 h1{font-family:var(--font-display);font-size:22px;margin-bottom:6px;}
 .sub{font-size:13px;color:var(--gray);margin-bottom:28px;}
 label{display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--ink-2);}
-input{width:100%;background:var(--bg-alt);border:1px solid transparent;border-radius:var(--r-md);padding:13px 14px;font-family:var(--font-body);font-size:14px;outline:none;margin-bottom:18px;}
-input:focus{border-color:var(--ddm-orange);}
+input,select{width:100%;background:var(--bg-alt);border:1px solid transparent;border-radius:var(--r-md);padding:13px 14px;font-family:var(--font-body);font-size:14px;outline:none;margin-bottom:18px;}
+input:focus,select:focus{border-color:var(--ddm-orange);}
 .btn{width:100%;background:var(--ink);color:#fff;border:none;padding:14px;border-radius:var(--r-md);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;font-family:var(--font-body);}
 .btn:hover{background:var(--ddm-orange);}
 .err{background:#FDECEC;color:var(--danger);padding:12px;border-radius:var(--r-md);font-size:13px;margin-bottom:18px;display:none;}
@@ -58,6 +58,10 @@ input:focus{border-color:var(--ddm-orange);}
     <input type="text" id="r-nome" placeholder="Seu nome">
     <label for="r-email">E-mail da empresa</label>
     <input type="email" id="r-email" placeholder="voce@ddm.adv.br" required>
+    <label for="r-setor">Seu setor</label>
+    <select id="r-setor" required>
+      <option value="">Selecione o setor…</option>
+    </select>
     <label for="r-senha">Crie uma senha</label>
     <input type="password" id="r-senha" placeholder="mín. 6 caracteres" minlength="6" required>
     <label for="r-senha2">Confirme a senha</label>
@@ -92,6 +96,7 @@ function toggle(ev){
     link.textContent='← Voltar ao login';
     tit.textContent='Solicitar acesso'; sub.textContent='Cadastro precisa ser aprovado pelo administrador';
     document.getElementById('r-email').value=document.getElementById('email').value;
+    carregarSetores();
   }else{
     login.style.display='block'; reg.style.display='none';
     link.textContent='Ainda não tem acesso? Solicitar';
@@ -112,15 +117,28 @@ async function entrar(ev){
   }catch(e){ showErr('Erro de conexão.'); }
 }
 
+let _setoresCarregados=false;
+async function carregarSetores(){
+  if(_setoresCarregados) return;
+  try{
+    const r=await fetch('/api/setores'); const setores=await r.json();
+    const sel=document.getElementById('r-setor');
+    (setores||[]).forEach(s=>{const o=document.createElement('option');o.value=s.nome;o.textContent=s.nome;sel.appendChild(o);});
+    _setoresCarregados=true;
+  }catch(e){}
+}
+
 async function registrar(ev){
   ev.preventDefault(); clearMsg();
   const nome=document.getElementById('r-nome').value.trim();
   const email=document.getElementById('r-email').value.trim();
+  const setor=document.getElementById('r-setor').value;
   const senha=document.getElementById('r-senha').value;
   const senha2=document.getElementById('r-senha2').value;
+  if(!setor){ showErr('Escolha o seu setor.'); return; }
   if(senha!==senha2){ showErr('As senhas não conferem.'); return; }
   try{
-    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,email,senha})});
+    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,email,senha,setor})});
     const d=await r.json().catch(()=>({}));
     if(r.ok){
       showOk('Cadastro enviado! Aguarde a aprovação do administrador — você poderá entrar assim que for liberado.');

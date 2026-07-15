@@ -44,6 +44,16 @@ def _admin_emails() -> list[str]:
     return [e.strip().lower() for e in raw.split(",") if e.strip()]
 
 
+# Setores com acesso total (veem todos os setores e todas as reuniões).
+def _setores_diretoria() -> list[str]:
+    raw = os.getenv("DIRECTOR_SECTORS", "Diretores,Diretoria")
+    return [s.strip().lower() for s in raw.split(",") if s.strip()]
+
+
+def setor_diretoria(setor: str) -> bool:
+    return (setor or "").strip().lower() in _setores_diretoria()
+
+
 # ── Consultas ─────────────────────────────────────────────────────────────────
 
 def _buscar_acesso(email: str) -> dict | None:
@@ -54,7 +64,7 @@ def _buscar_acesso(email: str) -> dict | None:
         db = get_supabase()
         resp = (
             db.table("painel_acessos")
-            .select("email,nome,senha_hash,ativo,aprovado")
+            .select("email,nome,setor,senha_hash,ativo,aprovado")
             .eq("email", email)
             .limit(1)
             .execute()
@@ -82,29 +92,38 @@ check_password = check_master_password
 
 # ── Cadastro (self-service, cria pendente) ────────────────────────────────────
 
-def registrar_acesso(email: str, senha: str, nome: str = "") -> tuple[bool, str]:
+def registrar_acesso(email: str, senha: str, nome: str = "", setor: str = "") -> tuple[bool, str]:
     """
     Cria (ou completa) um pedido de acesso PENDENTE.
     Retorna (ok, motivo). Não loga — precisa de aprovação do admin.
+    O setor é escolhido no cadastro e fica travado (só admin muda depois).
     """
     email = (email or "").strip().lower()
+    setor = (setor or "").strip()
     if not dominio_permitido(email):
         return False, "dominio_nao_permitido"
     if len(str(senha or "")) < 6:
         return False, "senha_curta"
+    if not setor:
+        return False, "setor_obrigatorio"
 
     acesso = _buscar_acesso(email)
     if acesso:
         if acesso.get("aprovado"):
             return False, "ja_cadastrado"
-        # pendente: atualiza a senha e segue aguardando
-        _update(email, {"senha_hash": _hash(senha), "nome": nome or acesso.get("nome", "")})
+        # pendente: atualiza senha/nome/setor e segue aguardando
+        _update(email, {
+            "senha_hash": _hash(senha),
+            "nome": nome or acesso.get("nome", ""),
+            "setor": setor or acesso.get("setor", ""),
+        })
         return True, "pendente"
 
     db = get_supabase()
     db.table("painel_acessos").insert({
         "email": email,
         "nome": nome or "",
+        "setor": setor,
         "senha_hash": _hash(senha),
         "ativo": True,
         "aprovado": False,
@@ -151,7 +170,7 @@ def listar_acessos() -> list[dict]:
         db = get_supabase()
         resp = (
             db.table("painel_acessos")
-            .select("email,nome,ativo,aprovado,criado_em")
+            .select("email,nome,setor,ativo,aprovado,criado_em")
             .order("criado_em", desc=True)
             .execute()
         )
@@ -165,6 +184,38 @@ def aprovar_acesso(email: str) -> bool:
         return False
     _update(email, {"aprovado": True, "ativo": True})
     return True
+
+
+def definir_setor(email: str, setor: str) -> bool:
+    """Admin troca o setor de um acesso (usuário comum não pode)."""
+    if not _buscar_acesso(email):
+        return False
+    _update(email, {"setor": (setor or "").strip()})
+    return True
+
+
+def atualizar_nome(email: str, nome: str) -> bool:
+    """Usuário atualiza o próprio nome."""
+    email = (email or "").strip().lower()
+    if not email or not _buscar_acesso(email):
+        return False
+    _update(email, {"nome": (nome or "").strip()})
+    return True
+
+
+def alterar_senha(email: str, senha_atual: str, senha_nova: str) -> tuple[bool, str]:
+    """Troca a senha do próprio usuário. Exige a senha atual correta."""
+    email = (email or "").strip().lower()
+    acesso = _buscar_acesso(email)
+    if not acesso:
+        return False, "nao_encontrado"
+    if len(str(senha_nova or "")) < 6:
+        return False, "senha_curta"
+    atual_hash = acesso.get("senha_hash")
+    if not atual_hash or not check_password_hash(atual_hash, str(senha_atual or "")):
+        return False, "senha_atual_incorreta"
+    _update(email, {"senha_hash": _hash(senha_nova)})
+    return True, "ok"
 
 
 def rejeitar_acesso(email: str) -> bool:
@@ -187,20 +238,33 @@ def is_admin() -> bool:
     return bool(session.get("admin"))
 
 
-def login_session(email: str = "", admin: bool = False) -> None:
+def login_session(email: str = "", admin: bool = False, setor: str = "") -> None:
     session["diretor"] = True
-    session["email"] = (email or "").strip().lower()
-    session["admin"] = bool(admin) or (session["email"] in _admin_emails())
+    email = (email or "").strip().lower()
+    session["email"] = email
+    session["setor"] = (setor or "").strip()
+    is_adm = bool(admin) or (email in _admin_emails())
+    session["admin"] = is_adm
+    # Acesso total = admin OU setor de diretoria OU login-mestre (sem e-mail).
+    session["acesso_total"] = is_adm or setor_diretoria(setor) or (not email)
     session.permanent = True
 
 
 def logout_session() -> None:
-    for k in ("diretor", "email", "admin"):
+    for k in ("diretor", "email", "admin", "setor", "acesso_total"):
         session.pop(k, None)
 
 
 def sessao_email() -> str:
     return session.get("email", "") or ""
+
+
+def sessao_setor() -> str:
+    return session.get("setor", "") or ""
+
+
+def tem_acesso_total() -> bool:
+    return bool(session.get("acesso_total"))
 
 
 def require_auth(fn):

@@ -17,12 +17,25 @@ from app.auth import (
     listar_acessos,
     aprovar_acesso,
     rejeitar_acesso,
+    definir_setor,
+    atualizar_nome,
+    alterar_senha,
     login_session,
     logout_session,
     is_authed,
     is_admin,
     sessao_email,
+    sessao_setor,
+    tem_acesso_total,
+    _buscar_acesso,
 )
+
+
+def _q_reunioes_do_setor(q):
+    """Aplica o filtro de setor: usuário comum só vê o próprio setor; diretoria vê tudo."""
+    if not tem_acesso_total():
+        q = q.eq("setor", sessao_setor())
+    return q
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -47,8 +60,9 @@ def auth_login():
 
     if email:
         # 2) e-mail + senha própria (precisa estar aprovado)
-        if verificar_login(email, senha):
-            login_session(email)
+        acesso = verificar_login(email, senha)
+        if acesso:
+            login_session(email, setor=acesso.get("setor", ""))
             return jsonify({"ok": True})
         # 3) senha bate mas ainda não aprovado → aguardando
         if status_cadastro(email, senha) == "pendente":
@@ -64,14 +78,17 @@ def auth_registrar():
     email = (body.get("email") or "").strip().lower()
     senha = body.get("senha", "")
     nome = (body.get("nome") or "").strip()
+    setor = (body.get("setor") or "").strip()
 
     if not email or len(str(senha)) < 6:
         return jsonify({"erro": "e-mail e senha (mín. 6 caracteres) obrigatórios"}), 400
+    if not setor:
+        return jsonify({"erro": "setor_obrigatorio", "msg": "Escolha o seu setor."}), 400
     if not dominio_permitido(email):
         return jsonify({"erro": "dominio_nao_permitido",
                         "msg": "Use um e-mail da empresa (@ddm.adv.br ou @grupoddm.com.br)."}), 403
 
-    ok, motivo = registrar_acesso(email, senha, nome)
+    ok, motivo = registrar_acesso(email, senha, nome, setor)
     if ok:
         return jsonify({"ok": True, "pendente": True,
                         "msg": "Cadastro enviado. Aguarde a aprovação do administrador."})
@@ -79,6 +96,8 @@ def auth_registrar():
         return jsonify({"erro": "ja_cadastrado", "msg": "E-mail já cadastrado. Faça login."}), 409
     if motivo == "senha_curta":
         return jsonify({"erro": "senha_curta", "msg": "Senha mínima de 6 caracteres."}), 400
+    if motivo == "setor_obrigatorio":
+        return jsonify({"erro": "setor_obrigatorio", "msg": "Escolha o seu setor."}), 400
     return jsonify({"erro": "dominio_nao_permitido"}), 403
 
 
@@ -90,15 +109,57 @@ def auth_logout():
 
 @bp.get("/auth/status")
 def auth_status():
-    from app.auth import _buscar_acesso
     email = sessao_email()
     nome = ""
+    setor = sessao_setor()
     if email:
         acesso = _buscar_acesso(email)
         nome = (acesso or {}).get("nome") or email.split("@")[0]
+        setor = (acesso or {}).get("setor") or setor
     elif is_authed():
         nome = "Diretoria"
-    return jsonify({"autenticado": is_authed(), "email": email, "admin": is_admin(), "nome": nome})
+    return jsonify({
+        "autenticado": is_authed(),
+        "email": email,
+        "admin": is_admin(),
+        "nome": nome,
+        "setor": setor,
+        "acesso_total": tem_acesso_total(),
+    })
+
+
+@bp.post("/auth/perfil")
+@require_auth
+def auth_perfil():
+    """Usuário atualiza o próprio nome (setor é travado — só admin muda)."""
+    email = sessao_email()
+    if not email:
+        return jsonify({"erro": "conta-mestre não tem perfil editável"}), 400
+    nome = ((request.get_json(silent=True) or {}).get("nome") or "").strip()
+    if not nome:
+        return jsonify({"erro": "nome obrigatório"}), 400
+    if atualizar_nome(email, nome):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
+
+
+@bp.post("/auth/senha")
+@require_auth
+def auth_senha():
+    """Usuário troca a própria senha (exige a senha atual)."""
+    email = sessao_email()
+    if not email:
+        return jsonify({"erro": "conta-mestre não troca senha aqui"}), 400
+    body = request.get_json(silent=True) or {}
+    ok, motivo = alterar_senha(email, body.get("senha_atual", ""), body.get("senha_nova", ""))
+    if ok:
+        return jsonify({"ok": True})
+    msgs = {
+        "senha_atual_incorreta": "Senha atual incorreta.",
+        "senha_curta": "A nova senha precisa de no mínimo 6 caracteres.",
+        "nao_encontrado": "Conta não encontrada.",
+    }
+    return jsonify({"erro": motivo, "msg": msgs.get(motivo, "Erro ao trocar senha.")}), 400
 
 
 # ── Gestão de acessos (somente admin) ─────────────────────────────────────────
@@ -127,6 +188,18 @@ def acessos_rejeitar():
     return jsonify({"erro": "não encontrado"}), 404
 
 
+@bp.post("/acessos/setor")
+@require_admin
+def acessos_setor():
+    """Admin troca o setor de um acesso (usuário comum não pode trocar o próprio)."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    setor = (body.get("setor") or "").strip()
+    if definir_setor(email, setor):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
+
+
 # ── Live ──────────────────────────────────────────────────────────────────────
 
 @bp.get("/live/teams")
@@ -135,15 +208,15 @@ def live_teams():
     """Reuniões Teams que iniciaram nas últimas 4h e ainda não concluíram."""
     db = get_supabase()
     desde = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
-    resultado = (
+    q = (
         db.table("reunioes")
         .select("id,titulo,setor,data,participantes,status")
         .gte("data", desde)
         .in_("status", ["pending", "processing"])
         .eq("plataforma", "teams")
         .order("data", desc=True)
-        .execute()
     )
+    resultado = _q_reunioes_do_setor(q).execute()
     return jsonify(resultado.data or [])
 
 
@@ -152,14 +225,14 @@ def live_teams():
 def live_processando():
     """Reuniões em transcrição/análise agora."""
     db = get_supabase()
-    resultado = (
+    q = (
         db.table("reunioes")
         .select("id,titulo,setor,status")
         .eq("status", "processing")
         .order("data", desc=True)
         .limit(20)
-        .execute()
     )
+    resultado = _q_reunioes_do_setor(q).execute()
     items = [
         {**r, "progresso": 60 if r["status"] == "processing" else 20}
         for r in (resultado.data or [])
@@ -177,14 +250,14 @@ def dashboard_summary():
     dias = {"7d": 7, "15d": 15, "30d": 30}.get(periodo, 7)
     desde = (datetime.now(timezone.utc) - timedelta(days=dias)).isoformat()
 
-    reunioes = (
+    q = (
         db.table("reunioes")
         .select("id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,decisoes,pendencias,status")
         .gte("data", desde)
         .eq("status", "completed")
         .order("data", desc=True)
-        .execute()
-    ).data or []
+    )
+    reunioes = (_q_reunioes_do_setor(q).execute()).data or []
 
     todas_decisoes = [d for r in reunioes for d in (r.get("decisoes") or [])]
     todas_pendencias = [p for r in reunioes for p in (r.get("pendencias") or [])]
@@ -215,13 +288,15 @@ def dashboard():
     db = get_supabase()
     hoje = request.args.get("data")
 
-    reunioes = db.table("reunioes").select(
+    q = db.table("reunioes").select(
         "id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,status"
-    ).order("data", desc=True).limit(10).execute().data
+    ).order("data", desc=True).limit(10)
+    reunioes = _q_reunioes_do_setor(q).execute().data
 
     emails_count = db.table("emails").select("id", count="exact").execute().count
 
-    pendencias = db.table("reunioes").select("pendencias").eq("status", "completed").execute().data
+    qp = db.table("reunioes").select("pendencias").eq("status", "completed")
+    pendencias = _q_reunioes_do_setor(qp).execute().data
     todas = [p for r in pendencias for p in (r.get("pendencias") or []) if not p.get("responsavel")]
 
     return jsonify({
@@ -240,9 +315,12 @@ def listar_reunioes():
     q = db.table("reunioes").select(
         "id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,status,plataforma"
     )
+    q = _q_reunioes_do_setor(q)  # usuário comum só vê o próprio setor
 
     if setor := request.args.get("setor"):
-        q = q.eq("setor", setor)
+        # só permite filtrar por setor quem tem acesso total (senão ignora)
+        if tem_acesso_total():
+            q = q.eq("setor", setor)
     if status := request.args.get("status"):
         q = q.eq("status", status)
     if data_inicio := request.args.get("de"):
@@ -260,6 +338,9 @@ def detalhe_reuniao(reuniao_id: str):
     db = get_supabase()
     resultado = db.table("reunioes").select("*").eq("id", reuniao_id).single().execute()
     if not resultado.data:
+        return jsonify({"erro": "não encontrado"}), 404
+    # isolamento por setor: usuário comum não abre reunião de outro setor
+    if not tem_acesso_total() and (resultado.data.get("setor") or "") != sessao_setor():
         return jsonify({"erro": "não encontrado"}), 404
     return jsonify(resultado.data)
 

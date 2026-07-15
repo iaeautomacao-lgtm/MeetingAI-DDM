@@ -173,6 +173,10 @@ body {
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
 .tab-btn.active { background: var(--ink); color: #fff; }
+.cfg-label { display:block; font-size:12px; font-weight:600; color:var(--gray); margin-bottom:5px; }
+.cfg-input { width:100%; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); padding:11px 13px; font-family:var(--font-body); font-size:14px; outline:none; }
+.cfg-input:focus { border-color:var(--ddm-orange); }
+.cfg-input:disabled { opacity:.6; cursor:not-allowed; }
 
 .empty { text-align: center; color: var(--gray); font-size: 13px; padding: 40px 0; }
 .skel { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); background-size:200% 100%; animation: sh 1.2s infinite; border-radius: 8px; height: 56px; margin-bottom:10px; }
@@ -351,6 +355,34 @@ body {
     <!-- ===== PAGE: CONFIG ===== -->
     <section class="page" id="page-config">
       <div class="panel" style="margin-bottom:16px">
+        <h3>Minha conta</h3>
+        <div style="display:grid;gap:12px;max-width:420px;margin-top:10px">
+          <div>
+            <label class="cfg-label">Nome</label>
+            <input class="cfg-input" id="acc-nome" type="text" placeholder="Seu nome">
+          </div>
+          <div>
+            <label class="cfg-label">Setor</label>
+            <input class="cfg-input" id="acc-setor" type="text" disabled>
+            <div class="t-sub" style="margin-top:4px">O setor é definido no cadastro. Só o administrador pode alterar.</div>
+          </div>
+          <div>
+            <label class="cfg-label">E-mail</label>
+            <input class="cfg-input" id="acc-email" type="text" disabled>
+          </div>
+          <button class="btn-sm" onclick="salvarPerfil()">Salvar nome</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+        <h3>Trocar senha</h3>
+        <div style="display:grid;gap:12px;max-width:420px;margin-top:10px">
+          <input class="cfg-input" id="pw-atual" type="password" placeholder="Senha atual">
+          <input class="cfg-input" id="pw-nova" type="password" placeholder="Nova senha (mín. 6)">
+          <input class="cfg-input" id="pw-nova2" type="password" placeholder="Confirme a nova senha">
+          <button class="btn-sm" onclick="trocarSenha()">Trocar senha</button>
+          <div id="acc-msg" class="t-sub"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:16px">
         <h3>Como gravar uma reunião</h3>
         <div class="li">1. Clique em <b>+ Nova Reunião</b> no topo.</div>
         <div class="li">2. Cole o link do Teams / Zoom / Google Meet.</div>
@@ -425,7 +457,7 @@ let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'rele
 /* ---------- utils ---------- */
 function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
 async function apiGet(path){ const r=await fetch(BASE+path); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
-async function apiPost(path, body){ const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.erro||('HTTP '+r.status)); return d; }
+async function apiPost(path, body){ const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status)); return d; }
 async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); window.location='/login'; }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
@@ -454,20 +486,48 @@ function goto(page, opts={}){
 function goBack(){ goto(prevPage); }
 
 /* ---------- ACESSOS (admin) ---------- */
+let ACESSO_TOTAL=true, MEU_SETOR='';
 async function checkAdmin(){
   try{
     const s = await apiGet('/api/auth/status');
     const nome = (s && s.nome) || 'Diretoria';
     const primeiro = nome.split(' ')[0];
+    ACESSO_TOTAL = !!(s && s.acesso_total);
+    MEU_SETOR = (s && s.setor) || '';
     document.getElementById('profile-name').textContent = nome;
     document.getElementById('profile-email').textContent = (s && s.email) || '';
     document.getElementById('avatar-inicial').textContent = (primeiro[0]||'·').toUpperCase();
     document.getElementById('welcome-title').textContent = 'Olá, ' + primeiro;
+    // preenche "Minha conta" nas Configurações
+    const an=document.getElementById('acc-nome'); if(an) an.value = nome==='Diretoria'?'':nome;
+    const asx=document.getElementById('acc-setor'); if(asx) asx.value = MEU_SETOR || (ACESSO_TOTAL?'Diretoria (acesso total)':'—');
+    const ae=document.getElementById('acc-email'); if(ae) ae.value = (s && s.email) || '(conta-mestre)';
     if(s && s.admin){
       document.getElementById('nav-acessos').style.display='flex';
       atualizarBadgeAcessos();
     }
   }catch(e){}
+}
+
+async function salvarPerfil(){
+  const nome=document.getElementById('acc-nome').value.trim();
+  if(!nome){ toast('Informe o nome'); return; }
+  try{ await apiPost('/api/auth/perfil',{nome}); toast('Nome salvo ✓'); checkAdmin(); }
+  catch(e){ toast('Erro: '+(e.message||'falhou')); }
+}
+async function trocarSenha(){
+  const atual=document.getElementById('pw-atual').value;
+  const nova=document.getElementById('pw-nova').value;
+  const nova2=document.getElementById('pw-nova2').value;
+  const msg=document.getElementById('acc-msg');
+  msg.style.color='var(--gray)'; msg.textContent='';
+  if(nova.length<6){ msg.style.color='var(--danger)'; msg.textContent='Nova senha precisa de 6+ caracteres.'; return; }
+  if(nova!==nova2){ msg.style.color='var(--danger)'; msg.textContent='As senhas novas não conferem.'; return; }
+  try{
+    await apiPost('/api/auth/senha',{senha_atual:atual,senha_nova:nova});
+    msg.style.color='var(--success)'; msg.textContent='Senha trocada ✓';
+    document.getElementById('pw-atual').value=''; document.getElementById('pw-nova').value=''; document.getElementById('pw-nova2').value='';
+  }catch(e){ msg.style.color='var(--danger)'; msg.textContent=e.message||'Erro ao trocar senha.'; }
 }
 async function atualizarBadgeAcessos(){
   try{
@@ -486,9 +546,10 @@ async function loadAcessos(){
     const lista = await apiGet('/api/acessos');
     const pend = (lista||[]).filter(a=>!a.aprovado);
     const apr  = (lista||[]).filter(a=>a.aprovado);
+    const setorTag = a => `<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">${esc(a.setor||'sem setor')}</span>`;
     pDiv.innerHTML = pend.length ? pend.map(a=>`
       <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)}</span>
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)}</span>
         <span style="display:flex;gap:6px">
           <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
@@ -496,10 +557,22 @@ async function loadAcessos(){
       </div>`).join('') : '<div class="t-sub">Nenhum pedido pendente.</div>';
     aDiv.innerHTML = apr.length ? apr.map(a=>`
       <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)}</span>
-        <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)}</span>
+        <span style="display:flex;gap:6px">
+          <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(a.setor||'')}')">Trocar setor</button>
+          <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
+        </span>
       </div>`).join('') : '<div class="t-sub">Nenhum acesso aprovado.</div>';
   }catch(e){ pDiv.innerHTML='<div class="t-sub">Erro ao carregar.</div>'; }
+}
+async function trocarSetor(email, atual){
+  let setores=[];
+  try{ setores=(await apiGet('/api/setores')||[]).map(s=>s.nome); }catch(e){}
+  const opcoes = setores.length ? '\nSetores: '+setores.join(', ') : '';
+  const novo = prompt('Novo setor para '+email+':'+opcoes, atual||'');
+  if(novo===null) return;
+  try{ await apiPost('/api/acessos/setor',{email,setor:novo.trim()}); toast('Setor atualizado ✓'); loadAcessos(); }
+  catch(e){ toast('Erro ao trocar setor'); }
 }
 async function aprovar(email){
   try{ await apiPost('/api/acessos/aprovar',{email}); toast('Acesso aprovado ✓'); loadAcessos(); atualizarBadgeAcessos(); }
@@ -577,13 +650,19 @@ async function loadTimeline(){
 async function loadReunioes(){
   try {
     allReunioes = await apiGet('/api/reunioes') || [];
-    let setores = [];
-    try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
-    // inclui setores que aparecem em reuniões mas não estão na lista oficial
-    allReunioes.forEach(r=>{ if(r.setor && !setores.includes(r.setor)) setores.push(r.setor); });
-    document.getElementById('setor-tabs').innerHTML =
-      `<button class="tab-btn ${setorFiltro==='todos'?'active':''}" onclick="filterSetor('todos',this)">Todos</button>` +
-      setores.map(s=>`<button class="tab-btn ${setorFiltro===s?'active':''}" onclick="filterSetor('${esc(s)}',this)">${esc(s)}</button>`).join('');
+    const tabs = document.getElementById('setor-tabs');
+    if(!ACESSO_TOTAL){
+      // usuário comum: só o próprio setor — sem abas de outros setores
+      tabs.style.display='none';
+    } else {
+      let setores = [];
+      try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
+      allReunioes.forEach(r=>{ if(r.setor && !setores.includes(r.setor)) setores.push(r.setor); });
+      tabs.style.display='';
+      tabs.innerHTML =
+        `<button class="tab-btn ${setorFiltro==='todos'?'active':''}" onclick="filterSetor('todos',this)">Todos</button>` +
+        setores.map(s=>`<button class="tab-btn ${setorFiltro===s?'active':''}" onclick="filterSetor('${esc(s)}',this)">${esc(s)}</button>`).join('');
+    }
     renderReunioes();
   } catch(e){ document.getElementById('reunioes-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
 }

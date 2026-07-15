@@ -37,6 +37,7 @@ create table if not exists painel_acessos (
     senha_hash text,
     ativo      boolean default true,
     aprovado   boolean default false,
+    is_admin   boolean default false,
     criado_em  timestamptz default now()
 );
 create index if not exists idx_painel_acessos_email on painel_acessos (lower(email));

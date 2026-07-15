@@ -40,7 +40,7 @@ def dominio_permitido(email: str) -> bool:
 
 
 def _admin_emails() -> list[str]:
-    raw = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br,dimaio@ddm.adv.br")
+    raw = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br,dimaio@ddm.adv.br,joao.dimaio@ddm.adv.br")
     return [e.strip().lower() for e in raw.split(",") if e.strip()]
 
 
@@ -64,7 +64,7 @@ def _buscar_acesso(email: str) -> dict | None:
         db = get_supabase()
         resp = (
             db.table("painel_acessos")
-            .select("email,nome,setor,senha_hash,ativo,aprovado")
+            .select("email,nome,setor,senha_hash,ativo,aprovado,is_admin")
             .eq("email", email)
             .limit(1)
             .execute()
@@ -170,7 +170,7 @@ def listar_acessos() -> list[dict]:
         db = get_supabase()
         resp = (
             db.table("painel_acessos")
-            .select("email,nome,setor,ativo,aprovado,criado_em")
+            .select("email,nome,setor,ativo,aprovado,is_admin,criado_em")
             .order("criado_em", desc=True)
             .execute()
         )
@@ -192,6 +192,24 @@ def definir_setor(email: str, setor: str) -> bool:
         return False
     _update(email, {"setor": (setor or "").strip()})
     return True
+
+
+def definir_admin(email: str, virar_admin: bool) -> bool:
+    """Admin promove/rebaixa outro acesso. E-mails em ADMIN_EMAILS são admin fixos."""
+    email = (email or "").strip().lower()
+    if not _buscar_acesso(email):
+        return False
+    _update(email, {"is_admin": bool(virar_admin)})
+    return True
+
+
+def eh_admin(email: str) -> bool:
+    """True se o e-mail é admin: por ADMIN_EMAILS (fixo) ou pela flag is_admin no banco."""
+    email = (email or "").strip().lower()
+    if email in _admin_emails():
+        return True
+    acesso = _buscar_acesso(email)
+    return bool(acesso and acesso.get("is_admin"))
 
 
 def atualizar_nome(email: str, nome: str) -> bool:
@@ -244,6 +262,9 @@ def login_session(email: str = "", admin: bool = False, setor: str = "") -> None
     session["email"] = email
     session["setor"] = (setor or "").strip()
     is_adm = bool(admin) or (email in _admin_emails())
+    if not is_adm and email:
+        acesso = _buscar_acesso(email)
+        is_adm = bool(acesso and acesso.get("is_admin"))
     session["admin"] = is_adm
     # Acesso total = admin OU setor de diretoria OU login-mestre (sem e-mail).
     session["acesso_total"] = is_adm or setor_diretoria(setor) or (not email)

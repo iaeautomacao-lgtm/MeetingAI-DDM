@@ -18,6 +18,7 @@ from app.auth import (
     aprovar_acesso,
     rejeitar_acesso,
     definir_setor,
+    definir_admin,
     atualizar_nome,
     alterar_senha,
     login_session,
@@ -196,6 +197,18 @@ def acessos_setor():
     email = (body.get("email") or "").strip().lower()
     setor = (body.get("setor") or "").strip()
     if definir_setor(email, setor):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
+
+
+@bp.post("/acessos/admin")
+@require_admin
+def acessos_admin():
+    """Admin promove/rebaixa outro acesso a administrador."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    virar = bool(body.get("admin"))
+    if definir_admin(email, virar):
         return jsonify({"ok": True})
     return jsonify({"erro": "não encontrado"}), 404
 

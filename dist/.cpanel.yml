@@ -1,0 +1,14 @@
+# TEMPLATE OPCIONAL de auto-deploy do cPanel.
+#
+# Por padrão NÃO é usado: o app roda direto da pasta clonada `dist/`
+# (Application root = repositories/MeetingAI-DDM/dist). Ver README_DEPLOY.md.
+#
+# Para ATIVAR o auto-deploy (reimplanta a cada "Update from Remote"):
+#   1. Mova este arquivo para a RAIZ da branch `dist` (fora de dist/).
+#   2. Ajuste DEPLOYPATH para o Application root real do seu Python App.
+#   3. O caminho de origem `dist/` abaixo assume que o app está em dist/.
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/USUARIO/meeting_ai
+    - /bin/cp -R dist/. $DEPLOYPATH

@@ -1,12 +1,33 @@
 import os
+import secrets
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_IS_DEV = os.getenv("FLASK_ENV", "production").strip().lower() == "development"
+
+
+def _resolve_secret_key() -> str:
+    """SECRET_KEY do ambiente. Sem default fraco: se não houver, gera uma chave
+    aleatória forte por processo (sessões não persistem entre restarts, mas NÃO
+    são forjáveis). Defina SECRET_KEY fixa no .env/painel p/ persistência."""
+    key = os.getenv("SECRET_KEY", "").strip()
+    if key and key != "dev-inseguro":
+        return key
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY ausente/insegura — gerando chave aleatória por processo. "
+        "Defina SECRET_KEY no ambiente para manter as sessões entre reinícios."
+    )
+    return secrets.token_hex(32)
+
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-inseguro")
+    SECRET_KEY = _resolve_secret_key()
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
+
+    # Limite de upload (áudio avulso). Evita DoS por corpo gigante.
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_UPLOAD_MB", "200")) * 1024 * 1024
 
     # Login de diretores (dashboard). Senha em DIRECTOR_PASSWORD.
     DIRECTOR_PASSWORD = os.getenv("DIRECTOR_PASSWORD", "")
@@ -14,8 +35,11 @@ class Config:
     ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br,dimaio@ddm.adv.br,joao.dimaio@ddm.adv.br")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
-    # Em produção (HTTPS) definir SESSION_COOKIE_SECURE=1 no .env
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
+    # Seguro por padrão em produção (HTTPS). Em dev (HTTP) desliga automático.
+    # Override explícito via env SESSION_COOKIE_SECURE=0/1.
+    SESSION_COOKIE_SECURE = os.getenv(
+        "SESSION_COOKIE_SECURE", "0" if _IS_DEV else "1"
+    ) == "1"
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 8  # 8h
 
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")

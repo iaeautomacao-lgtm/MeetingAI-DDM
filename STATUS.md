@@ -190,7 +190,7 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 - **`app/config.py`**: `DIRECTOR_PASSWORD`, cookies `HttpOnly`+`SameSite=Lax`+`Secure` (via `SESSION_COOKIE_SECURE`), sessão 8h.
 - **`app/api/routes.py`**: `/auth/login|logout|status`. `@require_auth` em live/dashboard/reunioes/emails/usuarios/interacoes/upload/processar/sync. **Públicos:** `/health`, `/setores`, `/gravacoes` (funcionário registra), `/recall/webhook` (Recall chama).
 - **Dashboard**: modal "Nova Reunião" com dropdown de setor (substitui prompts), botão **Sair**, redirect a `/login` em 401.
-- **`.env`**: `DIRECTOR_PASSWORD=***REMOVIDO***` (TROCAR) + `SESSION_COOKIE_SECURE=0`.
+- **`.env`**: `DIRECTOR_PASSWORD` (valor redigido — TROCAR, esteve exposto no histórico) + `SESSION_COOKIE_SECURE=1`.
 
 **Testado (curl, 8 casos):** público 200, /painel sem login → 302 /login, /api/reunioes sem login → 401, senha errada → 401, senha certa → 200 + cookie → /painel 200 + dados. Tudo OK.
 

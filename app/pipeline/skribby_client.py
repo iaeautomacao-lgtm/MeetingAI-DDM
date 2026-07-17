@@ -59,7 +59,13 @@ def _webhook_url() -> str | None:
     base = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
     if not base:
         return None
-    return f"{base}/api/skribby/webhook"
+    url = f"{base}/api/skribby/webhook"
+    # Segredo compartilhado opcional: autentica o webhook (senão qualquer um posta).
+    secret = os.getenv("SKRIBBY_WEBHOOK_SECRET", "").strip()
+    if secret:
+        from urllib.parse import quote
+        url += f"?token={quote(secret, safe='')}"
+    return url
 
 
 def _detect_service(meeting_url: str) -> str:

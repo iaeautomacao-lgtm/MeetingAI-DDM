@@ -39,6 +39,26 @@ def _q_reunioes_do_setor(q):
     return q
 
 
+# Hosts de reunião aceitos no /gravacoes (endpoint público). Bloqueia
+# javascript:/file:/URL interna e evita que o bot entre em URL arbitrária.
+_MEETING_HOSTS = (
+    "teams.microsoft.com", "teams.live.com",
+    "zoom.us", "meet.google.com", "webex.com",
+)
+
+
+def _meeting_url_valida(url: str) -> bool:
+    from urllib.parse import urlparse
+    try:
+        p = urlparse((url or "").strip())
+    except Exception:
+        return False
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    return any(host == h or host.endswith("." + h) for h in _MEETING_HOSTS)
+
+
 # ── Health ────────────────────────────────────────────────────────────────────
 
 @bp.get("/health")
@@ -411,6 +431,9 @@ def criar_gravacao():
     meeting_url = (body.get("meeting_url") or "").strip()
     if not meeting_url:
         return jsonify({"erro": "meeting_url obrigatório"}), 400
+    if not _meeting_url_valida(meeting_url):
+        return jsonify({"erro": "meeting_url inválido",
+                        "msg": "Use um link do Teams, Zoom, Google Meet ou Webex."}), 400
 
     try:
         bot = create_bot(meeting_url)
@@ -448,7 +471,13 @@ def skribby_webhook():
     Payload: {bot_id, type, data:{old_status, new_status, stop_reason}, custom_metadata}
     """
     import threading
+    import hmac as _hmac
     from app.workers.tasks import _processar_recall
+
+    # Autenticação opcional: se SKRIBBY_WEBHOOK_SECRET setado, exige ?token= correto.
+    secret = os.getenv("SKRIBBY_WEBHOOK_SECRET", "").strip()
+    if secret and not _hmac.compare_digest(request.args.get("token", ""), secret):
+        return jsonify({"erro": "não autorizado"}), 403
 
     body = request.get_json(silent=True) or {}
     bot_id = body.get("bot_id")

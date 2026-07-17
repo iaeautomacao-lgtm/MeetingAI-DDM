@@ -82,6 +82,7 @@ async function carregarSetores(){
     (setores||[]).forEach(s=>{ const o=document.createElement('option'); o.value=s.nome; o.textContent=s.nome; sel.appendChild(o); });
   }catch(e){ /* deixa dropdown com opção vazia */ }
 }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
 function showMsg(txt,ok){ const m=document.getElementById('msg'); m.className='msg '+(ok?'ok':'err'); m.innerHTML=txt; }
 async function enviar(ev){
   ev.preventDefault();
@@ -98,7 +99,7 @@ async function enviar(ev){
     if(!r.ok) throw new Error(d.erro||('HTTP '+r.status));
     showMsg('✅ Assistente <b>DDM</b> a caminho da reunião! A ata ficará disponível para a diretoria ao final.',true);
     document.getElementById('form').reset();
-  }catch(e){ showMsg('❌ Não foi possível registrar: '+e.message,false); }
+  }catch(e){ showMsg('❌ Não foi possível registrar: '+esc(e.message),false); }
   finally{ btn.disabled=false; btn.textContent='Enviar assistente DDM →'; }
 }
 carregarSetores();

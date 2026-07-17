@@ -503,7 +503,7 @@ function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textC
 async function apiGet(path){ const r=await fetch(BASE+path); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
 async function apiPost(path, body){ const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status)); return d; }
 async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); window.location='/login'; }
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
 function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function fmtHora(iso){ if(!iso) return '--'; const d=new Date(iso); return isNaN(d)?'--':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function statusLabel(s){ return ({completed:'Concluída',pending:'Aguardando',processing:'Processando',sem_transcricao:'Sem transcrição',error:'Erro'}[s]||s||'—'); }

@@ -30,8 +30,13 @@ def _bot_name() -> str:
 
 
 def _model() -> str:
-    # Whisper large v3 turbo (Groq) — rápido e suporta português.
-    return os.getenv("SKRIBBY_MODEL", "groq/whisper-large-v3-turbo").strip()
+    # deepgram/nova-3-multilingual: fallback com diarização + PT.
+    # openai/gpt-4o-transcribe-diarize pode exigir permissão/credencial na conta Skribby.
+    # Whisper (groq) NÃO diariza → transcrição vinha toda com locutor "?".
+    model = os.getenv("SKRIBBY_MODEL", "").strip()
+    if model in ("", "groq/whisper-large-v3-turbo", "openai/gpt-4o-transcribe-diarize"):
+        return "deepgram/nova-3-multilingual"
+    return model
 
 
 def _lang() -> str:
@@ -40,6 +45,8 @@ def _lang() -> str:
 
 def _headers() -> dict:
     key = os.getenv("SKRIBBY_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("SKRIBBY_API_KEY não configurada")
     return {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
@@ -75,8 +82,9 @@ def _detect_service(meeting_url: str) -> str:
         return "zoom"
     if "teams.microsoft.com" in u or "teams.live.com" in u or "teams." in u:
         return "teams"
-    # default Google Meet
-    return "gmeet"
+    if "meet.google.com" in u:
+        return "gmeet"
+    raise ValueError("serviço de reunião não suportado")
 
 
 # ── Bot ────────────────────────────────────────────────────────────────────────
@@ -110,7 +118,7 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
         payload["webhook_url"] = webhook
 
     resp = requests.post(f"{_base()}/bot", headers=_headers(), json=payload, timeout=30)
-    resp.raise_for_status()
+    _raise_for_status(resp)
     return resp.json()
 
 
@@ -122,8 +130,23 @@ def get_bot(bot_id: str) -> dict:
         params={"with-speaker-events": "true"},
         timeout=30,
     )
-    resp.raise_for_status()
+    _raise_for_status(resp)
     return resp.json()
+
+
+def _raise_for_status(resp: requests.Response) -> None:
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as exc:
+        detail = ""
+        try:
+            data = resp.json()
+            detail = data.get("message") or data.get("error") or str(data)
+        except Exception:
+            detail = (resp.text or "").strip()
+        if detail:
+            raise RuntimeError(f"{resp.status_code} {resp.reason}: {detail}") from exc
+        raise
 
 
 def bot_status(bot: dict) -> str:

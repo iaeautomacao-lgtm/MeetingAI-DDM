@@ -1,0 +1,47 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5004
+Press CTRL+C to quit
+127.0.0.1 - - [24/Jul/2026 17:22:16] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jul/2026 17:22:18] "POST /api/auth/login HTTP/1.1" 401 -
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5004
+Press CTRL+C to quit
+127.0.0.1 - - [24/Jul/2026 17:22:49] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jul/2026 17:22:53] "POST /api/auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:29:30] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:29:37] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:29:37] "GET /assets/logo-mark.png HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:29:37] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [27/Jul/2026 17:29:38] "GET /api/setores HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:03] "GET /assets/logo-mark.png HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:03] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [27/Jul/2026 17:30:04] "GET /api/setores HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:19] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:19] "GET /assets/logo-mark.png HTTP/1.1" 304 -
+127.0.0.1 - - [27/Jul/2026 17:30:42] "POST /api/auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:42] "GET /painel HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:43] "GET /assets/logo-mark.png HTTP/1.1" 304 -
+127.0.0.1 - - [27/Jul/2026 17:30:43] "GET /assets/Acordito.png HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:43] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:44] "GET /api/reunioes HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:44] "GET /api/dashboard/summary?periodo=30d HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:30:44] "GET /api/acessos HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:02] "GET /api/reunioes HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:03] "GET /api/setores HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:05] "GET /api/reunioes/4ba345af-8bb0-45d8-a19c-52e4c26816c0 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:11] "GET /api/reunioes HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:11] "GET /api/dashboard/summary?periodo=30d HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:13] "GET /api/reunioes/668ae488-1331-424e-aba9-1f3b42af1ca6 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:18] "GET /api/dashboard/summary?periodo=30d HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:18] "GET /api/reunioes HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:20] "GET /api/setores HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:41] "GET /api/reunioes HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:42] "GET /api/reunioes?status=completed HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:42] "GET /api/setores HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:42] "GET /api/acessos HTTP/1.1" 200 -
+127.0.0.1 - - [27/Jul/2026 17:31:44] "GET /api/reunioes?status=completed HTTP/1.1" 200 -

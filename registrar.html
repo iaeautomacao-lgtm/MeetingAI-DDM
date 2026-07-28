@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registrar Reunião — Meeting DDM</title>
+<title>Registrar Reunião - Meeting DDM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,12 +11,12 @@
 :root{
   --ddm-orange:#FF5706; --ddm-orange-50:#FFF3EC; --ink:#1F1F1F; --ink-2:#3D3D3D;
   --gray:#939598; --border:#E8E8EC; --bg-alt:#F4F4F6; --cream:#FAF7F4; --white:#FFF;
-  --success:#2BAE66; --danger:#E5484D; --r-md:12px; --r-lg:20px;
+  --success:#2BAE66; --danger:#E5484D; --r-md:12px;
   --font-display:'Poppins',sans-serif; --font-body:'Inter',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font-body);background:#EBE5DB;color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.card{background:var(--white);border-radius:32px;box-shadow:0 20px 40px rgba(0,0,0,.06);width:100%;max-width:480px;padding:44px 40px;}
+.card{background:var(--white);border-radius:32px;box-shadow:0 20px 40px rgba(0,0,0,.06);width:100%;max-width:520px;padding:44px 40px;}
 .logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;margin-bottom:32px;}
 .logo img{height:36px;width:auto;}
 h1{font-family:var(--font-display);font-size:24px;margin-bottom:6px;}
@@ -25,6 +25,7 @@ label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(-
 .field{margin-bottom:18px;}
 input,select{width:100%;background:var(--bg-alt);border:1px solid transparent;border-radius:var(--r-md);padding:13px 14px;font-family:var(--font-body);font-size:14px;outline:none;transition:border .15s;}
 input:focus,select:focus{border-color:var(--ddm-orange);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .btn{width:100%;background:var(--ink);color:#fff;border:none;padding:14px;border-radius:var(--r-md);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
 .btn:hover{background:var(--ddm-orange);}
 .btn:disabled{opacity:.6;cursor:not-allowed;}
@@ -34,6 +35,7 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
 .foot{margin-top:28px;text-align:center;font-size:12px;color:var(--gray);}
 .foot a{color:var(--ddm-orange);text-decoration:none;font-weight:600;}
 .hint{background:var(--cream);border-radius:var(--r-md);padding:14px 16px;font-size:12px;color:var(--ink-2);line-height:1.6;margin-bottom:24px;}
+@media (max-width:560px){.card{padding:32px 24px}.field-row{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -46,7 +48,7 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
   <h1>Registrar Reunião</h1>
   <p class="sub">Cole o link da reunião. O assistente <b>DDM</b> entra, grava e gera a ata automaticamente.</p>
 
-  <div class="hint">📌 A reunião precisa estar <b>em andamento</b> ou prestes a começar. Se houver sala de espera, admita o participante <b>“DDM”</b>.</div>
+  <div class="hint">A reunião precisa estar <b>em andamento</b> ou prestes a começar. Se houver sala de espera, admita o participante <b>DDM</b>.</div>
 
   <form id="form" onsubmit="enviar(event)">
     <div class="field">
@@ -58,14 +60,41 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
       <input type="text" id="titulo" placeholder="Ex.: Alinhamento Comercial">
     </div>
     <div class="field">
+      <label for="data_reuniao">Data e hora da reunião</label>
+      <input type="datetime-local" id="data_reuniao">
+    </div>
+    <div class="field">
       <label for="solicitante">Seu nome (quem está cadastrando) *</label>
       <input type="text" id="solicitante" placeholder="Ex.: Gisele Oliveira" required>
     </div>
     <div class="field">
       <label for="setor">Setor</label>
-      <select id="setor"><option value="">Selecione o setor…</option></select>
+      <select id="setor"><option value="">Selecione o setor...</option></select>
     </div>
-    <button class="btn" id="btn" type="submit">Enviar assistente DDM →</button>
+    <div class="field-row">
+      <div class="field">
+        <label for="modalidade">Formato da reunião</label>
+        <select id="modalidade">
+          <option value="online">Online</option>
+          <option value="presencial">Presencial</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="local_reuniao">Local</label>
+        <select id="local_reuniao">
+          <option value="Online">Online</option>
+          <option value="Sede RJ">Sede RJ</option>
+          <option value="Sede SP">Sede SP</option>
+          <option value="Cliente">Cliente</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="cliente">Cliente envolvido</label>
+      <input type="text" id="cliente" placeholder="Nome do cliente, se houver">
+    </div>
+    <button class="btn" id="btn" type="submit">Enviar assistente DDM</button>
   </form>
 
   <div class="msg" id="msg"></div>
@@ -88,19 +117,25 @@ async function enviar(ev){
   ev.preventDefault();
   const url=document.getElementById('url').value.trim();
   const titulo=document.getElementById('titulo').value.trim();
+  const dataInput=document.getElementById('data_reuniao').value;
+  const data=dataInput ? new Date(dataInput).toISOString() : '';
   const solicitante=document.getElementById('solicitante').value.trim();
   const setor=document.getElementById('setor').value;
+  const modalidade=document.getElementById('modalidade').value;
+  const local_reuniao=document.getElementById('local_reuniao').value;
+  const cliente=document.getElementById('cliente').value.trim();
   if(!url) return;
   if(!solicitante){ showMsg('Informe seu nome.',false); return; }
-  const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Enviando…';
+  const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Enviando...';
   try{
-    const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({meeting_url:url,titulo,solicitante,setor})});
+    const body={meeting_url:url,titulo,data,solicitante,setor,modalidade,local_reuniao,cliente};
+    const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.erro||('HTTP '+r.status));
-    showMsg('✅ Assistente <b>DDM</b> a caminho da reunião! A ata ficará disponível para a diretoria ao final.',true);
+    if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status));
+    showMsg('Assistente <b>DDM</b> a caminho da reunião. A ata ficará disponível para a diretoria ao final.',true);
     document.getElementById('form').reset();
-  }catch(e){ showMsg('❌ Não foi possível registrar: '+esc(e.message),false); }
-  finally{ btn.disabled=false; btn.textContent='Enviar assistente DDM →'; }
+  }catch(e){ showMsg('Não foi possível registrar: '+esc(e.message),false); }
+  finally{ btn.disabled=false; btn.textContent='Enviar assistente DDM'; }
 }
 carregarSetores();
 </script>

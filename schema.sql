@@ -63,6 +63,9 @@ create table if not exists reunioes (
     titulo            text default 'Reunião',
     solicitante       text default '',            -- quem cadastrou a reunião
     setor             text default '',
+    modalidade        text default 'online',      -- online | presencial
+    local_reuniao     text default '',            -- online | sede RJ | sede SP | outro local
+    cliente           text default '',            -- cliente envolvido, se houver
     data              timestamptz,
     plataforma        text default 'teams',      -- teams | recall | avulso
     status            text default 'pending',     -- pending|processing|completed|sem_transcricao|error
@@ -88,6 +91,9 @@ create index if not exists idx_reunioes_recall_bot on reunioes (recall_bot_id);
 --   set search_path to meeting_ai;
 --   alter table reunioes add column if not exists recall_bot_id text;
 --   alter table reunioes add column if not exists solicitante text default '';
+--   alter table reunioes add column if not exists modalidade text default 'online';
+--   alter table reunioes add column if not exists local_reuniao text default '';
+--   alter table reunioes add column if not exists cliente text default '';
 --   create index if not exists idx_reunioes_recall_bot on reunioes (recall_bot_id);
 
 -- ── E-mails ─────────────────────────────────────────────────────────────────

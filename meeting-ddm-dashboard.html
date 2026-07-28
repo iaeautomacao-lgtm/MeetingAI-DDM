@@ -482,8 +482,25 @@ body {
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
     <label>Título da reunião</label>
     <input type="text" id="m-titulo" placeholder="Ex.: Alinhamento Comercial">
+    <label>Data e hora da reunião</label>
+    <input type="datetime-local" id="m-data">
     <label>Setor</label>
     <select id="m-setor"><option value="">Selecione…</option></select>
+    <label>Formato da reunião</label>
+    <select id="m-modalidade">
+      <option value="online">Online</option>
+      <option value="presencial">Presencial</option>
+    </select>
+    <label>Local</label>
+    <select id="m-local">
+      <option value="Online">Online</option>
+      <option value="Sede RJ">Sede RJ</option>
+      <option value="Sede SP">Sede SP</option>
+      <option value="Cliente">Cliente</option>
+      <option value="Outro">Outro</option>
+    </select>
+    <label>Cliente envolvido</label>
+    <input type="text" id="m-cliente" placeholder="Nome do cliente, se houver">
     <div class="modal-actions">
       <button class="btn-ghost" onclick="fecharModal()">Cancelar</button>
       <button class="btn-primary" id="m-btn" onclick="enviarReuniao()">Enviar assistente Acordito</button>
@@ -795,10 +812,21 @@ function _transcricaoTexto(r){
   return (r.utterances||[]).map(u=>`${u.speaker||'?'}: ${u.texto||''}`).join('\n');
 }
 
+function _metaReuniao(r){
+  return [
+    r.setor||'—',
+    fmtData(r.data),
+    r.duracao_minutos!=null?r.duracao_minutos+' min':'—',
+    r.modalidade?('Formato: '+r.modalidade):'',
+    r.local_reuniao?('Local: '+r.local_reuniao):'',
+    r.cliente?('Cliente: '+r.cliente):''
+  ].filter(Boolean).join(' · ');
+}
+
 function _relatorioCompleto(r){
   const L=[];
   L.push(r.titulo||'Reunião');
-  L.push(`${r.setor||'—'} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'}`);
+  L.push(_metaReuniao(r));
   L.push('');
   if(r.resumo_executivo){ L.push('RESUMO EXECUTIVO'); L.push(r.resumo_executivo); L.push(''); }
   const dec=(r.decisoes||[]); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+d)); L.push(''); }
@@ -826,6 +854,38 @@ function exportarReuniao(){
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
+function exportarReuniaoPdf(){
+  if(!_reuniaoAtual) return;
+  const r=_reuniaoAtual;
+  const dec=(r.decisoes||[]), pen=(r.pendencias||[]), top=(r.topicos||[]), part=(r.participantes||[]), utt=(r.utterances||[]);
+  const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(r.titulo||'Reunião')}</title>
+  <style>
+    @page{margin:18mm} *{box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;color:#1F1F1F;margin:0;background:#fff;font-size:12px;line-height:1.55}
+    .top{border-bottom:4px solid #FF5706;padding-bottom:18px;margin-bottom:22px}.brand{font-weight:800;color:#FF5706;letter-spacing:.04em;font-size:12px;text-transform:uppercase}
+    h1{font-family:Poppins,Arial,sans-serif;font-size:24px;margin:8px 0 6px} h2{font-size:15px;margin:22px 0 8px}.meta{color:#636363}
+    .summary{background:#FAF7F4;border:1px solid #E8E8EC;border-radius:8px;padding:14px;margin:14px 0 6px}
+    ul{padding-left:18px;margin:0}.chip{display:inline-block;background:#FFF3EC;color:#E84B00;border-radius:12px;padding:3px 8px;margin:0 5px 5px 0}
+    .transcript{background:#F4F4F6;border-radius:8px;padding:14px}.line{margin-bottom:8px;break-inside:avoid}.speaker{font-weight:700;color:#1F1F1F}
+  </style></head><body>
+    <div class="top"><div class="brand">Meeting DDM</div><h1>${esc(r.titulo||'Reunião')}</h1><div class="meta">${esc(_metaReuniao(r))}</div>${r.solicitante?`<div class="meta">Cadastrado por: ${esc(r.solicitante)}</div>`:''}</div>
+    ${r.resumo_executivo?`<h2>Resumo executivo</h2><div class="summary">${esc(r.resumo_executivo)}</div>`:''}
+    <h2>Decisões</h2>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
+    <h2>Pendências</h2>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' - '+esc(p.responsavel):''}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
+    <h2>Tópicos</h2>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<p class="meta">Nenhum.</p>'}
+    <h2>Participantes</h2>${part.length?'<ul>'+part.map(p=>`<li>${esc(p.nome||p)} ${p.percentual_fala!=null?' - '+p.percentual_fala+'% da fala':''}</li>`).join('')+'</ul>':'<p class="meta">Nenhum.</p>'}
+    <h2>Transcrição</h2><div class="transcript">${utt.length?utt.map(u=>`<div class="line"><span class="speaker">${esc(u.speaker||'?')}:</span> ${esc(u.texto||'')}</div>`).join(''):'<p class="meta">Sem transcrição.</p>'}</div>
+  </body></html>`;
+  const w=window.open('', '_blank');
+  if(!w){
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='relatorio-reuniao.html';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    toast('Pop-up bloqueado. Exportei HTML para abrir e salvar em PDF.',5000);
+    return;
+  }
+  w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),300);
+}
+
 async function loadDetalhe(id){
   goto('detalhe'); document.getElementById('page-detalhe').classList.add('active');
   document.querySelector('.nav-item[data-page="'+prevPage+'"]')?.classList.add('active');
@@ -842,10 +902,12 @@ async function loadDetalhe(id){
       <div class="detail-head">
         <h2>${esc(r.titulo||'Reunião')}</h2>
         <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+        <div class="welcome-date" style="margin-top:4px">${esc(_metaReuniao(r))}</div>
         ${r.solicitante?`<div class="welcome-date" style="margin-top:4px">Cadastrado por: <b>${esc(r.solicitante)}</b></div>`:''}
         ${r.resumo_executivo?`<p style="margin-top:14px;font-size:14px;line-height:1.6">${esc(r.resumo_executivo)}</p>`:''}
         ${r.status==='error'?`<div style="margin-top:14px;padding:12px 14px;background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;color:#a3271e;font-size:13px;line-height:1.5"><b>⚠ O que houve:</b> ${esc(erroAmigavel(r.erro_msg))}${r.erro_msg?`<br><span style="opacity:.7;font-size:12px">Detalhe técnico: ${esc(r.erro_msg)}</span>`:''}</div>`:''}
         ${pendControls}
+        ${utt.length?`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-sm" onclick="exportarReuniao()">Exportar TXT</button><button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button></div>`:''}
       </div>
       <div class="detail-grid">
         <div class="d-card"><h3>Decisões</h3>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
@@ -870,11 +932,16 @@ function fecharModal(){ document.getElementById('modal').style.display='none'; }
 async function enviarReuniao(){
   const url=document.getElementById('m-url').value.trim();
   const titulo=document.getElementById('m-titulo').value.trim();
+  const dataInput=document.getElementById('m-data').value;
+  const data=dataInput ? new Date(dataInput).toISOString() : '';
   const setor=document.getElementById('m-setor').value;
+  const modalidade=document.getElementById('m-modalidade').value;
+  const local_reuniao=document.getElementById('m-local').value;
+  const cliente=document.getElementById('m-cliente').value.trim();
   if(!url){ toast('Cole o link da reunião.'); return; }
   const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
-  try { await apiPost('/api/gravacoes',{meeting_url:url,titulo,setor});
-    fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value='';
+  try { await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,modalidade,local_reuniao,cliente});
+    fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value=''; document.getElementById('m-data').value=''; document.getElementById('m-cliente').value='';
     toast('Acordito a caminho! A reunião aparecerá ao terminar.',4000);
     if(curPage==='reunioes') loadReunioes(); else goto('reunioes');
   } catch(e){ toast('Erro: '+e.message,4000); }

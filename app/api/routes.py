@@ -43,7 +43,7 @@ def _q_reunioes_do_setor(q):
 # javascript:/file:/URL interna e evita que o bot entre em URL arbitrária.
 _MEETING_HOSTS = (
     "teams.microsoft.com", "teams.live.com",
-    "zoom.us", "meet.google.com", "webex.com",
+    "zoom.us", "meet.google.com",
 )
 
 
@@ -425,34 +425,64 @@ def criar_gravacao():
     Funcionário aciona a gravação: cola o link da reunião, o bot Acordito entra,
     grava e transcreve. Cria a reunião com status 'pending'.
     """
-    from app.pipeline.skribby_client import create_bot
-
     body = request.get_json(silent=True) or {}
     meeting_url = (body.get("meeting_url") or "").strip()
     if not meeting_url:
         return jsonify({"erro": "meeting_url obrigatório"}), 400
     if not _meeting_url_valida(meeting_url):
         return jsonify({"erro": "meeting_url inválido",
-                        "msg": "Use um link do Teams, Zoom, Google Meet ou Webex."}), 400
+                        "msg": "Use um link do Teams, Zoom ou Google Meet."}), 400
+
+    # Import lazy: se faltar dependência (ex.: 'requests' não instalado no
+    # servidor) devolve erro claro em JSON em vez de 500 HTML opaco.
+    try:
+        from app.pipeline.skribby_client import create_bot
+    except Exception as e:
+        return jsonify({"erro": "dependencia_ausente",
+                        "msg": f"Falha ao carregar o cliente Skribby: {e}. "
+                               "Rode 'pip install -r requirements.txt' no servidor."}), 500
 
     try:
         bot = create_bot(meeting_url)
     except Exception as e:
-        return jsonify({"erro": f"Skribby: {e}"}), 502
+        return jsonify({"erro": f"Skribby: {e}", "msg": f"Skribby: {e}"}), 502
 
     bot_id = bot.get("id")
-    db = get_supabase()
-    row = db.table("reunioes").insert(
-        {
+    if not bot_id:
+        return jsonify({"erro": "skribby_sem_bot_id",
+                        "msg": "Skribby criou uma resposta sem id do bot."}), 502
+
+    try:
+        db = get_supabase()
+        data_reuniao = (body.get("data") or "").strip() or datetime.now(timezone.utc).isoformat()
+        registro = {
             "titulo": body.get("titulo") or "Reunião (Skribby)",
             "solicitante": (body.get("solicitante") or "").strip(),
             "setor": body.get("setor", ""),
-            "data": datetime.now(timezone.utc).isoformat(),
+            "data": data_reuniao,
             "plataforma": "skribby",
             "status": "pending",
             "recall_bot_id": bot_id,  # coluna reaproveitada p/ guardar o id do bot Skribby
         }
-    ).execute()
+        registro_com_meta = {
+            **registro,
+            "modalidade": (body.get("modalidade") or "online").strip(),
+            "local_reuniao": (body.get("local_reuniao") or "").strip(),
+            "cliente": (body.get("cliente") or "").strip(),
+        }
+        try:
+            row = db.table("reunioes").insert(registro_com_meta).execute()
+        except Exception as e:
+            erro = str(e)
+            if not any(campo in erro for campo in ("modalidade", "local_reuniao", "cliente")):
+                raise
+            row = db.table("reunioes").insert(registro).execute()
+    except Exception as e:
+        return jsonify({"erro": "falha_ao_salvar", "msg": f"Banco: {e}"}), 502
+
+    if not row.data:
+        return jsonify({"erro": "falha_ao_salvar",
+                        "msg": "Banco não retornou a reunião criada."}), 502
 
     return jsonify(
         {

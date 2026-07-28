@@ -30,13 +30,10 @@ def _bot_name() -> str:
 
 
 def _model() -> str:
-    # deepgram/nova-3-multilingual: fallback com diarização + PT.
-    # openai/gpt-4o-transcribe-diarize pode exigir permissão/credencial na conta Skribby.
-    # Whisper (groq) NÃO diariza → transcrição vinha toda com locutor "?".
+    # Plano Free do Skribby libera Groq Whisper Large v3 Turbo.
+    # Modelos com diarização (nomes de locutor) exigem Pay As You Go.
     model = os.getenv("SKRIBBY_MODEL", "").strip()
-    if model in ("", "groq/whisper-large-v3-turbo", "openai/gpt-4o-transcribe-diarize"):
-        return "deepgram/nova-3-multilingual"
-    return model
+    return model or "groq/whisper-large-v3-turbo"
 
 
 def _lang() -> str:

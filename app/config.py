@@ -58,7 +58,7 @@ class Config:
     # Skribby (bot "Acordito" entra na reunião, grava e transcreve)
     SKRIBBY_API_KEY = os.getenv("SKRIBBY_API_KEY", "")
     SKRIBBY_HOST = os.getenv("SKRIBBY_HOST", "platform.skribby.io")
-    SKRIBBY_MODEL = os.getenv("SKRIBBY_MODEL", "deepgram/nova-3-multilingual")
+    SKRIBBY_MODEL = os.getenv("SKRIBBY_MODEL", "groq/whisper-large-v3-turbo")
     SKRIBBY_LANG = os.getenv("SKRIBBY_LANG", "pt")
     SKRIBBY_BOT_NAME = os.getenv("SKRIBBY_BOT_NAME", "Acordito")
     PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")  # URL pública p/ webhook + avatar

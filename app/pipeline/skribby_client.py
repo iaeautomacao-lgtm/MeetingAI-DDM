@@ -5,6 +5,8 @@ para o resto do pipeline não precisar mudar.
 Docs: https://skribby.io/docs
 """
 
+from __future__ import annotations
+
 import os
 import requests
 from dotenv import load_dotenv

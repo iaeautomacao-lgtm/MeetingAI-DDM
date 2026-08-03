@@ -35,7 +35,7 @@ def _model() -> str:
     # Plano Free do Skribby libera Groq Whisper Large v3 Turbo.
     # Modelos com diarização (nomes de locutor) exigem Pay As You Go.
     model = os.getenv("SKRIBBY_MODEL", "").strip()
-    return model or "groq/whisper-large-v3-turbo"
+    return model or "soniox/stt-async-v5"
 
 
 def _lang() -> str:
@@ -203,7 +203,6 @@ def extract_skribby_participants(bot: dict) -> list[dict]:
         seen.add(key)
         participants.append({
             "nome": name,
-            "percentual_fala": 0,
         })
 
     return participants

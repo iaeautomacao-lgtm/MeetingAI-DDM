@@ -1,5 +1,6 @@
 import json
 import os
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,7 +8,7 @@ load_dotenv()
 # ── Provedor de IA (OpenAI / Gemini / Anthropic — detecta pela chave) ─────────
 # Gemini usa o endpoint compatível com OpenAI, então compartilha o mesmo cliente.
 _client = None
-_provider = None  # "openai_like" | "anthropic"
+_provider = None  # "openai_like" | "gemini" | "anthropic"
 _model = None
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -30,9 +31,8 @@ def _init_client():
         _provider = "openai_like"
         _model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     elif gemini_key:
-        from openai import OpenAI
-        _client = OpenAI(api_key=gemini_key, base_url=GEMINI_BASE_URL)
-        _provider = "openai_like"
+        _client = gemini_key
+        _provider = "gemini"
         _model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     elif anthropic_key:
         import anthropic
@@ -61,6 +61,58 @@ def _chat(system: str, user: str, max_tokens: int = 2048, json_mode: bool = Fals
             kwargs["response_format"] = {"type": "json_object"}
         resp = _client.chat.completions.create(**kwargs)
         return (resp.choices[0].message.content or "").strip()
+
+    if _provider == "gemini":
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{_model}:generateContent"
+        )
+        payload = {
+            "systemInstruction": {
+                "parts": [{"text": system}]
+            },
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": user}],
+                }
+            ],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+            },
+        }
+        if json_mode:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+
+        resp = requests.post(
+            url,
+            params={"key": _client},
+            json=payload,
+            timeout=60,
+        )
+        if not resp.ok:
+            try:
+                error = resp.json().get("error", {})
+                detail = (
+                    error.get("message")
+                    or error.get("status")
+                    or resp.reason
+                )
+            except Exception:
+                detail = resp.reason
+            raise RuntimeError(f"Gemini API {resp.status_code}: {detail}")
+
+        data = resp.json()
+        parts = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
+        return "".join(
+            part.get("text", "")
+            for part in parts
+            if isinstance(part, dict)
+        ).strip()
 
     # anthropic
     resp = _client.messages.create(
@@ -145,21 +197,39 @@ def extrair_reuniao(transcricao: str, utterances: list) -> dict:
 
 
 def _participantes_de_utterances(utterances: list) -> list:
-    """Deriva participantes + % de fala (por contagem de falas) das utterances."""
+    """Deriva participantes + % de fala das utterances diarizadas."""
     if not utterances:
         return []
-    contagem: dict = {}
+    fala_por_nome: dict[str, float] = {}
+
     for u in utterances:
         nome = (u.get("speaker") or "?").strip()
         if not nome or nome == "?":
             continue
-        contagem[nome] = contagem.get(nome, 0) + 1
-    total = sum(contagem.values())
+
+        inicio = u.get("start_ms")
+        fim = u.get("end_ms")
+        duracao = 0
+
+        if inicio is not None and fim is not None:
+            try:
+                duracao = max(0, float(fim) - float(inicio))
+            except (TypeError, ValueError):
+                duracao = 0
+
+        fala_por_nome[nome] = fala_por_nome.get(nome, 0) + (duracao or 1)
+
+    total = sum(fala_por_nome.values())
     if total == 0:
         return []
+
     return [
-        {"nome": nome, "percentual_fala": round(n * 100 / total)}
-        for nome, n in sorted(contagem.items(), key=lambda kv: kv[1], reverse=True)
+        {"nome": nome, "percentual_fala": round(valor * 100 / total)}
+        for nome, valor in sorted(
+            fala_por_nome.items(),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
     ]
 
 

@@ -524,8 +524,22 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&am
 function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function fmtHora(iso){ if(!iso) return '--'; const d=new Date(iso); return isNaN(d)?'--':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function statusLabel(s){ return ({completed:'Concluída',pending:'Aguardando',processing:'Processando',sem_transcricao:'Sem transcrição',error:'Erro'}[s]||s||'—'); }
+function asList(v){
+  if(Array.isArray(v)) return v;
+  if(v==null || v==='') return [];
+  if(typeof v==='string'){
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+    } catch {
+      return v.trim() ? [v] : [];
+    }
+  }
+  return [v];
+}
 function erroAmigavel(msg){
   const m=(msg||'').toLowerCase();
+  if(m.includes('api key was reported as leaked') || m.includes('permission_denied')) return 'A chave do Gemini foi bloqueada pelo Google porque foi reportada como vazada. Gere uma nova chave e atualize o .env/local e as variaveis do cPanel.';
   if(m.includes('not_admitted')) return 'O bot Acordito não foi admitido na reunião (ficou na sala de espera). Alguém dentro da reunião precisa aceitar a entrada dele, ou permitir convidados externos.';
   if(m.includes('bot_detected')) return 'A plataforma da reunião bloqueou o bot. Verifique as configurações que barram participantes externos/gravação.';
   if(m.includes('auth_required')||m.includes('invalid_credentials')) return 'A reunião exige login/autenticação que o bot não tem.';
@@ -533,6 +547,14 @@ function erroAmigavel(msg){
   if(m.includes('gemini')||m.includes('analysis')) return 'A reunião foi transcrita, mas a análise por IA falhou. Dá pra reprocessar.';
   if(m.includes('timeout')||m.includes('timed out')) return 'Tempo esgotado ao processar. Tente reprocessar.';
   return msg || 'Erro não especificado.';
+}
+function speakerLabel(v){
+  return (!v || v==='?') ? 'Locutor nao identificado' : v;
+}
+function participanteLabel(p){
+  const nome = p.nome || p;
+  const percentual = Number(p.percentual_fala);
+  return Number.isFinite(percentual) ? `${nome} - ${percentual}% da fala` : nome;
 }
 const setColor = i => ['','t-ink','t-teal'][i%3];
 const tlColor  = i => ['','ink','teal'][i%3];
@@ -809,7 +831,7 @@ function filterEmails(cat, btn){ emailFiltro=cat; document.querySelectorAll('#em
 let _reuniaoAtual = null;
 
 function _transcricaoTexto(r){
-  return (r.utterances||[]).map(u=>`${u.speaker||'?'}: ${u.texto||''}`).join('\n');
+  return asList(r.utterances).map(u=>`${speakerLabel(u.speaker)}: ${u.texto||''}`).join('\n');
 }
 
 function _metaReuniao(r){
@@ -829,10 +851,10 @@ function _relatorioCompleto(r){
   L.push(_metaReuniao(r));
   L.push('');
   if(r.resumo_executivo){ L.push('RESUMO EXECUTIVO'); L.push(r.resumo_executivo); L.push(''); }
-  const dec=(r.decisoes||[]); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+d)); L.push(''); }
-  const pen=(r.pendencias||[]); if(pen.length){ L.push('PENDÊNCIAS'); pen.forEach(p=>L.push('- '+(p.tarefa||p)+(p.responsavel?' ('+p.responsavel+')':''))); L.push(''); }
-  const top=(r.topicos||[]); if(top.length){ L.push('TÓPICOS'); L.push(top.join(', ')); L.push(''); }
-  const part=(r.participantes||[]); if(part.length){ L.push('PARTICIPANTES'); part.forEach(p=>L.push('- '+(p.nome||p)+(p.percentual_fala!=null?' ('+p.percentual_fala+'%)':''))); L.push(''); }
+  const dec=asList(r.decisoes); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+d)); L.push(''); }
+  const pen=asList(r.pendencias); if(pen.length){ L.push('PENDÊNCIAS'); pen.forEach(p=>L.push('- '+(p.tarefa||p)+(p.responsavel?' ('+p.responsavel+')':''))); L.push(''); }
+  const top=asList(r.topicos); if(top.length){ L.push('TÓPICOS'); L.push(top.join(', ')); L.push(''); }
+  const part=asList(r.participantes); if(part.length){ L.push('PARTICIPANTES'); part.forEach(p=>L.push('- '+participanteLabel(p))); L.push(''); }
   L.push('TRANSCRIÇÃO'); L.push(_transcricaoTexto(r));
   return L.join('\n');
 }
@@ -857,7 +879,7 @@ function exportarReuniao(){
 function exportarReuniaoPdf(){
   if(!_reuniaoAtual) return;
   const r=_reuniaoAtual;
-  const dec=(r.decisoes||[]), pen=(r.pendencias||[]), top=(r.topicos||[]), part=(r.participantes||[]), utt=(r.utterances||[]);
+  const dec=asList(r.decisoes), pen=asList(r.pendencias), top=asList(r.topicos), part=asList(r.participantes), utt=asList(r.utterances);
   const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(r.titulo||'Reunião')}</title>
   <style>
     @page{margin:18mm} *{box-sizing:border-box} body{font-family:Inter,Arial,sans-serif;color:#1F1F1F;margin:0;background:#fff;font-size:12px;line-height:1.55}
@@ -872,8 +894,8 @@ function exportarReuniaoPdf(){
     <h2>Decisões</h2>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
     <h2>Pendências</h2>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' - '+esc(p.responsavel):''}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
     <h2>Tópicos</h2>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<p class="meta">Nenhum.</p>'}
-    <h2>Participantes</h2>${part.length?'<ul>'+part.map(p=>`<li>${esc(p.nome||p)} ${p.percentual_fala!=null?' - '+p.percentual_fala+'% da fala':''}</li>`).join('')+'</ul>':'<p class="meta">Nenhum.</p>'}
-    <h2>Transcrição</h2><div class="transcript">${utt.length?utt.map(u=>`<div class="line"><span class="speaker">${esc(u.speaker||'?')}:</span> ${esc(u.texto||'')}</div>`).join(''):'<p class="meta">Sem transcrição.</p>'}</div>
+    <h2>Participantes</h2>${part.length?'<ul>'+part.map(p=>`<li>${esc(participanteLabel(p))}</li>`).join('')+'</ul>':'<p class="meta">Nenhum.</p>'}
+    <h2>Transcrição</h2><div class="transcript">${utt.length?utt.map(u=>`<div class="line"><span class="speaker">${esc(speakerLabel(u.speaker))}:</span> ${esc(u.texto||'')}</div>`).join(''):'<p class="meta">Sem transcrição.</p>'}</div>
   </body></html>`;
   const w=window.open('', '_blank');
   if(!w){
@@ -894,8 +916,8 @@ async function loadDetalhe(id){
   try {
     const r = await apiGet('/api/reunioes/'+id);
     _reuniaoAtual = r;
-    const dec=(r.decisoes||[]), pen=(r.pendencias||[]), top=(r.topicos||[]), part=(r.participantes||[]);
-    const utt=(r.utterances||[]);
+    const dec=asList(r.decisoes), pen=asList(r.pendencias), top=asList(r.topicos), part=asList(r.participantes);
+    const utt=asList(r.utterances);
     const pendControls = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall')
       ? `<button class="btn-sm" style="margin-top:12px" onclick="processar('${r.id}')">Puxar transcrição agora</button>` : '';
     el.innerHTML = `
@@ -914,8 +936,8 @@ async function loadDetalhe(id){
         <div class="d-card"><h3>Pendências</h3>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' — <b>'+esc(p.responsavel)+'</b>':''}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
       </div>
       <div class="d-card" style="margin-bottom:16px"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
-      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map(p=>`<li>${esc(p.nome||p)} ${p.percentual_fala!=null?'— '+p.percentual_fala+'% da fala':''}</li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
-      ${utt.length?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><h2 class="section-title" style="margin:0">Transcrição</h2><button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button><button class="btn-sm" onclick="exportarReuniao()">Exportar</button></div><div class="transcript">${utt.map(u=>`<b>${esc(u.speaker||'?')}:</b> ${esc(u.texto||'')}`).join('<br>')}</div>`:''}
+      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map(p=>`<li>${esc(participanteLabel(p))}</li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
+      ${utt.length?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><h2 class="section-title" style="margin:0">Transcrição</h2><button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button><button class="btn-sm" onclick="exportarReuniao()">Exportar</button></div><div class="transcript">${utt.map(u=>`<b>${esc(speakerLabel(u.speaker))}:</b> ${esc(u.texto||'')}`).join('<br>')}</div>`:''}
     `;
   } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
 }
@@ -957,7 +979,7 @@ async function processar(id){
       toast('Processado! Atualizando...',3000);
     }
     if(curPage==='detalhe') loadDetalhe(id); else loadReunioes();
-  } catch(e){ toast('Erro: '+e.message+' (a reuniao ja encerrou?)',5000); }
+  } catch(e){ toast('Erro: '+erroAmigavel(e.message),7000); }
 }
 function onSearch(v){ if(curPage==='reunioes') renderReunioes(); else if(v.trim()){ goto('reunioes'); } }
 async function loadHealth(){ try{ await apiGet('/api/health'); document.getElementById('cfg-health').innerHTML='API: <b style="color:var(--success)">online</b>'; }catch{ document.getElementById('cfg-health').innerHTML='API: <b style="color:var(--danger)">offline</b>'; } }

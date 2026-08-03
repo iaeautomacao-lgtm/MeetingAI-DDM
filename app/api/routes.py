@@ -701,7 +701,7 @@ def detalhe_reuniao(reuniao_id: str):
         ):
             return jsonify({"erro": "não encontrado"}), 404
 
-        return jsonify(reuniao), 200
+        return jsonify(_normalizar_json_reuniao(reuniao)), 200
 
     except Exception as exc:
         current_app.logger.exception(
@@ -1125,6 +1125,46 @@ def processar_gravacao_manual(reuniao_id: str):
         ):
             connection.close()
 
+    def buscar_erro_processamento(default: str = "") -> str:
+        connection = None
+        cursor = None
+
+        try:
+            connection = get_mysql_connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT erro_msg
+                FROM reunioes
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (reuniao_id,),
+            )
+            reuniao_erro = cursor.fetchone() or {}
+            return (
+                reuniao_erro.get("erro_msg")
+                or default
+                or "Falha ao processar a reunião."
+            )
+
+        except Exception:
+            current_app.logger.exception(
+                "Erro ao buscar falha salva da reunião %s",
+                reuniao_id,
+            )
+            return default or "Falha ao processar a reunião."
+
+        finally:
+            if cursor is not None:
+                cursor.close()
+
+            if (
+                connection is not None
+                and connection.is_connected()
+            ):
+                connection.close()
+
     try:
         status = _processar_recall(
             reuniao_id,
@@ -1139,7 +1179,8 @@ def processar_gravacao_manual(reuniao_id: str):
 
         return jsonify({
             "erro": "falha_processamento",
-            "msg": str(exc),
+            "status": "error",
+            "msg": buscar_erro_processamento(str(exc)),
         }), 502
 
     if status == "pending":
@@ -1163,9 +1204,8 @@ def processar_gravacao_manual(reuniao_id: str):
     if status == "error":
         return jsonify({
             "status": "error",
-            "msg": (
-                "O bot terminou com erro. Abra o detalhe "
-                "da reunião para ver a causa."
+            "msg": buscar_erro_processamento(
+                "O bot terminou com erro."
             ),
         }), 409
 

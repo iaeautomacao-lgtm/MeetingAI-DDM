@@ -45,3 +45,4 @@ Press CTRL+C to quit
 127.0.0.1 - - [27/Jul/2026 17:31:42] "GET /api/setores HTTP/1.1" 200 -
 127.0.0.1 - - [27/Jul/2026 17:31:42] "GET /api/acessos HTTP/1.1" 200 -
 127.0.0.1 - - [27/Jul/2026 17:31:44] "GET /api/reunioes?status=completed HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jul/2026 11:09:48] "GET /api/health HTTP/1.1" 200 -

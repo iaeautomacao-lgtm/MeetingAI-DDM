@@ -95,7 +95,6 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
         "meeting_url": meeting_url,
         "service": _detect_service(meeting_url),
         "bot_name": bot_name or _bot_name(),
-        "transcription_model": _model(),
         "lang": _lang(),
         # Bot sai sozinho → vira 'finished' → gera transcrição (e não gasta crédito à toa).
         "stop_options": {
@@ -105,6 +104,10 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
             "time_limit": int(os.getenv("SKRIBBY_TIME_LIMIT", "180")),
         },
     }
+
+    model = _model()
+    if model:
+        payload["transcription_model"] = model
 
     avatar = _avatar_url()
     if avatar:
@@ -141,9 +144,15 @@ def _raise_for_status(resp: requests.Response) -> None:
             detail = data.get("message") or data.get("error") or str(data)
         except Exception:
             detail = (resp.text or "").strip()
-        if detail:
-            raise RuntimeError(f"{resp.status_code} {resp.reason}: {detail}") from exc
-        raise
+        if not detail and resp.status_code == 403:
+            detail = (
+                "Skribby recusou a criação do bot. Possíveis causas: limite de "
+                "bots simultâneos, limite mensal de horas do plano Free, ou "
+                "permissão insuficiente da conta/chave para criar bots."
+            )
+        if not detail:
+            detail = "Resposta sem detalhes do Skribby."
+        raise RuntimeError(f"{resp.status_code} {resp.reason}: {detail}") from exc
 
 
 def bot_status(bot: dict) -> str:
@@ -160,49 +169,112 @@ def fetch_transcript(bot_id: str) -> list[dict]:
     Retorna lista vazia se ainda não há transcrição (status != finished).
     """
     bot = get_bot(bot_id)
-    segments = bot.get("transcript") or []
-    return parse_skribby_transcript(segments)
+    return parse_skribby_transcript(bot)
 
 
-def _speaker_label(u: dict) -> str:
+def _clean_participant_name(name: str) -> str:
+    name = (name or "").strip()
+    suffixes = (" (Guest)", "(Guest)")
+    for suffix in suffixes:
+        if name.endswith(suffix):
+            name = name[: -len(suffix)].strip()
+    return name
+
+
+def extract_skribby_participants(bot: dict) -> list[dict]:
+    """Extrai os nomes reais que aparecem como participantes da reuniao."""
+    participants = []
+    seen = set()
+
+    for item in (bot or {}).get("participants") or []:
+        if not isinstance(item, dict):
+            continue
+
+        name = _clean_participant_name(item.get("name") or "")
+        if not name or name.lower() == _bot_name().lower():
+            continue
+
+        key = name.lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        participants.append({
+            "nome": name,
+            "percentual_fala": 0,
+        })
+
+    return participants
+
+
+def _speaker_map_from_participants(bot: dict) -> dict:
+    """Mapeia IDs de speaker para nomes quando o Skribby entregar esse vinculo."""
+    speaker_map = {}
+    for item in (bot or {}).get("participants") or []:
+        if not isinstance(item, dict):
+            continue
+
+        name = _clean_participant_name(item.get("name") or "")
+        if not name:
+            continue
+
+        for key in ("speaker", "speaker_id", "speakerId", "id"):
+            value = item.get(key)
+            if value is not None:
+                speaker_map[str(value)] = name
+
+    return speaker_map
+
+
+def _speaker_label(u: dict, speaker_map: dict | None = None) -> str:
     """Nome do locutor de uma fala. Usa speaker_name, senão o palpite, senão Speaker N, senão ?."""
     nome = u.get("speaker_name")
     if nome:
-        return nome
+        return _clean_participant_name(nome)
     palpites = u.get("potential_speaker_names") or []
     if palpites:
         # pode vir como [{"name":..,"confidence":..}] ou ["Nome"]
         p0 = palpites[0]
         if isinstance(p0, dict) and p0.get("name"):
-            return p0["name"]
+            return _clean_participant_name(p0["name"])
         if isinstance(p0, str):
-            return p0
+            return _clean_participant_name(p0)
     if u.get("speaker") is not None:
+        speaker_key = str(u.get("speaker"))
+        if speaker_map and speaker_key in speaker_map:
+            return speaker_map[speaker_key]
         return f"Speaker {u.get('speaker')}"
     return "?"
 
 
-def _fala(u: dict) -> dict | None:
+def _fala(u: dict, speaker_map: dict | None = None) -> dict | None:
     texto = (u.get("transcript") or u.get("text") or "").strip()
     if not texto:
         return None
     start = u.get("start") or 0
     end = u.get("end") or start
     return {
-        "speaker": _speaker_label(u),
+        "speaker": _speaker_label(u, speaker_map),
         "texto": texto,
         "start_ms": int(float(start) * 1000),
         "end_ms": int(float(end) * 1000),
     }
 
 
-def parse_skribby_transcript(segments: list) -> list[dict]:
+def parse_skribby_transcript(source) -> list[dict]:
     """
     Converte o array `transcript` do Skribby em utterances [{speaker, texto, start_ms, end_ms}].
     Cada segmento traz uma sublista `utterances` (fala a fala) — é ela que dá a divisão
     por locutor. Se não houver, cai pro texto do próprio segmento.
     Falas seguidas do MESMO locutor são unidas numa linha só (fica mais limpo).
     """
+    if isinstance(source, dict):
+        segments = source.get("transcript") or []
+        speaker_map = _speaker_map_from_participants(source)
+    else:
+        segments = source or []
+        speaker_map = {}
+
     brutas = []
     for seg in segments or []:
         if not isinstance(seg, dict):
@@ -212,11 +284,11 @@ def parse_skribby_transcript(segments: list) -> list[dict]:
         if isinstance(subs, list) and subs:
             for u in subs:
                 if isinstance(u, dict):
-                    f = _fala(u)
+                    f = _fala(u, speaker_map)
                     if f:
                         brutas.append(f)
         else:
-            f = _fala(data)
+            f = _fala(data, speaker_map)
             if f:
                 brutas.append(f)
 

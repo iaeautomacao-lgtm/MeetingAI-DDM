@@ -37,3 +37,6 @@ email.png
 # Vercel CLI gera esses (conflita com pip/requirements)
 pyproject.toml
 uv.lock
+
+*.pyc
+migration_report.json

@@ -1,11 +1,12 @@
-import os
+﻿import os
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from flask import request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.api import bp
-from app.extensions import get_supabase
+from app.extensions import get_mysql_connection
 from app.auth import (
     require_auth,
     require_admin,
@@ -37,6 +38,35 @@ def _q_reunioes_do_setor(q):
     if not tem_acesso_total():
         q = q.eq("setor", sessao_setor())
     return q
+
+
+def _normalizar_json_reuniao(reuniao: dict) -> dict:
+    campos_json = (
+        "participantes",
+        "decisoes",
+        "pendencias",
+        "topicos",
+        "utterances",
+    )
+
+    for campo in campos_json:
+        valor = reuniao.get(campo)
+
+        if isinstance(valor, str):
+            texto = valor.strip()
+            if not texto:
+                reuniao[campo] = []
+                continue
+
+            try:
+                reuniao[campo] = json.loads(texto)
+            except json.JSONDecodeError:
+                reuniao[campo] = []
+
+        elif valor is None:
+            reuniao[campo] = []
+
+    return reuniao
 
 
 # Hosts de reunião aceitos no /gravacoes (endpoint público). Bloqueia
@@ -238,39 +268,129 @@ def acessos_admin():
 @bp.get("/live/teams")
 @require_auth
 def live_teams():
-    """Reuniões Teams que iniciaram nas últimas 4h e ainda não concluíram."""
-    db = get_supabase()
-    desde = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
-    q = (
-        db.table("reunioes")
-        .select("id,titulo,setor,data,participantes,status")
-        .gte("data", desde)
-        .in_("status", ["pending", "processing"])
-        .eq("plataforma", "teams")
-        .order("data", desc=True)
-    )
-    resultado = _q_reunioes_do_setor(q).execute()
-    return jsonify(resultado.data or [])
+    """Reuniões Teams iniciadas nas últimas 4h e ainda não concluídas."""
+    connection = None
+    cursor = None
+
+    try:
+        desde = datetime.now(timezone.utc) - timedelta(hours=4)
+
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        sql = """
+            SELECT
+                id,
+                titulo,
+                setor,
+                data,
+                participantes,
+                status
+            FROM reunioes
+            WHERE data >= %s
+              AND status IN (%s, %s)
+              AND plataforma = %s
+        """
+
+        params = [
+            desde,
+            "pending",
+            "processing",
+            "teams",
+        ]
+
+        if not tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(sessao_setor())
+
+        sql += " ORDER BY data DESC"
+
+        cursor.execute(sql, params)
+        reunioes = cursor.fetchall()
+
+        reunioes = [
+            _normalizar_json_reuniao(reuniao)
+            for reuniao in reunioes
+        ]
+
+        return jsonify(reunioes), 200
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao carregar reuniões ao vivo no MySQL"
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar as reuniões ao vivo.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 @bp.get("/live/processando")
 @require_auth
 def live_processando():
-    """Reuniões em transcrição/análise agora."""
-    db = get_supabase()
-    q = (
-        db.table("reunioes")
-        .select("id,titulo,setor,status")
-        .eq("status", "processing")
-        .order("data", desc=True)
-        .limit(20)
-    )
-    resultado = _q_reunioes_do_setor(q).execute()
-    items = [
-        {**r, "progresso": 60 if r["status"] == "processing" else 20}
-        for r in (resultado.data or [])
-    ]
-    return jsonify(items)
+    """Reuniões atualmente em transcrição ou análise."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        sql = """
+            SELECT
+                id,
+                titulo,
+                setor,
+                status
+            FROM reunioes
+            WHERE status = %s
+        """
+
+        params = ["processing"]
+
+        if not tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(sessao_setor())
+
+        sql += " ORDER BY data DESC LIMIT 20"
+
+        cursor.execute(sql, params)
+        reunioes = cursor.fetchall()
+
+        items = [
+            {
+                **reuniao,
+                "progresso": 60
+            }
+            for reuniao in reunioes
+        ]
+
+        return jsonify(items), 200
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao carregar reuniões em processamento no MySQL"
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar as reuniões em processamento.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Dashboard summary ─────────────────────────────────────────────────────────
@@ -278,39 +398,104 @@ def live_processando():
 @bp.get("/dashboard/summary")
 @require_auth
 def dashboard_summary():
-    db = get_supabase()
-    periodo = request.args.get("periodo", "7d")
-    dias = {"7d": 7, "15d": 15, "30d": 30}.get(periodo, 7)
-    desde = (datetime.now(timezone.utc) - timedelta(days=dias)).isoformat()
+    connection = None
+    cursor = None
 
-    q = (
-        db.table("reunioes")
-        .select("id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,decisoes,pendencias,status")
-        .gte("data", desde)
-        .eq("status", "completed")
-        .order("data", desc=True)
-    )
-    reunioes = (_q_reunioes_do_setor(q).execute()).data or []
+    try:
+        periodo = request.args.get("periodo", "7d")
+        dias = {"7d": 7, "15d": 15, "30d": 30}.get(periodo, 7)
+        desde = datetime.now(timezone.utc) - timedelta(days=dias)
 
-    todas_decisoes = [d for r in reunioes for d in (r.get("decisoes") or [])]
-    todas_pendencias = [p for r in reunioes for p in (r.get("pendencias") or [])]
-    sem_responsavel = [p for p in todas_pendencias if not p.get("responsavel")]
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
 
-    por_setor: dict = {}
-    for r in reunioes:
-        s = r.get("setor") or "Outros"
-        por_setor[s] = por_setor.get(s, 0) + 1
+        sql = """
+            SELECT
+                id,
+                titulo,
+                setor,
+                data,
+                duracao_minutos,
+                participantes,
+                resumo_executivo,
+                decisoes,
+                pendencias,
+                status
+            FROM reunioes
+            WHERE data >= %s
+              AND status = %s
+        """
 
-    return jsonify({
-        "total_reunioes": len(reunioes),
-        "total_decisoes": len(todas_decisoes),
-        "total_pendencias": len(todas_pendencias),
-        "sem_responsavel": len(sem_responsavel),
-        "ultimas_reunioes": reunioes[:5],
-        "decisoes_recentes": todas_decisoes[:10],
-        "pendencias_sem_responsavel": sem_responsavel[:10],
-        "por_setor": [{"setor": k, "total": v} for k, v in por_setor.items()],
-    })
+        params = [desde, "completed"]
+
+        if not tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(sessao_setor())
+
+        sql += " ORDER BY data DESC"
+
+        cursor.execute(sql, params)
+        reunioes = cursor.fetchall()
+
+        reunioes = [
+            _normalizar_json_reuniao(reuniao)
+            for reuniao in reunioes
+        ]
+
+        todas_decisoes = [
+            decisao
+            for reuniao in reunioes
+            for decisao in (reuniao.get("decisoes") or [])
+        ]
+
+        todas_pendencias = [
+            pendencia
+            for reuniao in reunioes
+            for pendencia in (reuniao.get("pendencias") or [])
+        ]
+
+        sem_responsavel = [
+            pendencia
+            for pendencia in todas_pendencias
+            if not pendencia.get("responsavel")
+        ]
+
+        por_setor = {}
+
+        for reuniao in reunioes:
+            setor = reuniao.get("setor") or "Outros"
+            por_setor[setor] = por_setor.get(setor, 0) + 1
+
+        return jsonify({
+            "total_reunioes": len(reunioes),
+            "total_decisoes": len(todas_decisoes),
+            "total_pendencias": len(todas_pendencias),
+            "sem_responsavel": len(sem_responsavel),
+            "ultimas_reunioes": reunioes[:5],
+            "decisoes_recentes": todas_decisoes[:10],
+            "pendencias_sem_responsavel": sem_responsavel[:10],
+            "por_setor": [
+                {"setor": setor, "total": total}
+                for setor, total in por_setor.items()
+            ],
+        })
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao carregar resumo do dashboard no MySQL"
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar o dashboard.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Dashboard (legado) ────────────────────────────────────────────────────────
@@ -318,25 +503,94 @@ def dashboard_summary():
 @bp.get("/dashboard")
 @require_auth
 def dashboard():
-    db = get_supabase()
-    hoje = request.args.get("data")
+    connection = None
+    cursor = None
 
-    q = db.table("reunioes").select(
-        "id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,status"
-    ).order("data", desc=True).limit(10)
-    reunioes = _q_reunioes_do_setor(q).execute().data
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
 
-    emails_count = db.table("emails").select("id", count="exact").execute().count
+        sql = """
+            SELECT
+                id,
+                titulo,
+                setor,
+                data,
+                duracao_minutos,
+                participantes,
+                resumo_executivo,
+                status
+            FROM reunioes
+            WHERE 1 = 1
+        """
 
-    qp = db.table("reunioes").select("pendencias").eq("status", "completed")
-    pendencias = _q_reunioes_do_setor(qp).execute().data
-    todas = [p for r in pendencias for p in (r.get("pendencias") or []) if not p.get("responsavel")]
+        params = []
 
-    return jsonify({
-        "ultimas_reunioes": reunioes,
-        "total_emails": emails_count,
-        "pendencias_sem_dono": todas[:20],
-    })
+        if not tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(sessao_setor())
+
+        sql += " ORDER BY data DESC LIMIT 10"
+
+        cursor.execute(sql, params)
+        reunioes = cursor.fetchall()
+
+        reunioes = [
+            _normalizar_json_reuniao(reuniao)
+            for reuniao in reunioes
+        ]
+
+        sql_pendencias = """
+            SELECT pendencias
+            FROM reunioes
+            WHERE status = %s
+        """
+
+        params_pendencias = ["completed"]
+
+        if not tem_acesso_total():
+            sql_pendencias += " AND setor = %s"
+            params_pendencias.append(sessao_setor())
+
+        cursor.execute(sql_pendencias, params_pendencias)
+        registros_pendencias = cursor.fetchall()
+
+        todas_pendencias = []
+
+        for registro in registros_pendencias:
+            normalizado = _normalizar_json_reuniao(registro)
+            todas_pendencias.extend(
+                normalizado.get("pendencias") or []
+            )
+
+        pendencias_sem_dono = [
+            pendencia
+            for pendencia in todas_pendencias
+            if not pendencia.get("responsavel")
+        ]
+
+        return jsonify({
+            "ultimas_reunioes": reunioes,
+            "total_emails": 0,
+            "pendencias_sem_dono": pendencias_sem_dono[:20],
+        })
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao carregar dashboard legado no MySQL"
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar o dashboard.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Reuniões ──────────────────────────────────────────────────────────────────
@@ -344,38 +598,128 @@ def dashboard():
 @bp.get("/reunioes")
 @require_auth
 def listar_reunioes():
-    db = get_supabase()
-    q = db.table("reunioes").select(
-        "id,titulo,setor,data,duracao_minutos,participantes,resumo_executivo,status,plataforma"
-    )
-    q = _q_reunioes_do_setor(q)  # usuário comum só vê o próprio setor
+    connection = None
+    cursor = None
 
-    if setor := request.args.get("setor"):
-        # só permite filtrar por setor quem tem acesso total (senão ignora)
-        if tem_acesso_total():
-            q = q.eq("setor", setor)
-    if status := request.args.get("status"):
-        q = q.eq("status", status)
-    if data_inicio := request.args.get("de"):
-        q = q.gte("data", data_inicio)
-    if data_fim := request.args.get("ate"):
-        q = q.lte("data", data_fim)
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
 
-    resultado = q.order("data", desc=True).limit(50).execute()
-    return jsonify(resultado.data)
+        sql = """
+        SELECT
+        id,
+        titulo,
+        setor,
+        data,
+        duracao_minutos,
+        participantes,
+        resumo_executivo,
+        status,
+        plataforma
+        FROM reunioes
+        WHERE 1 = 1
+        """
+
+        params = []
+
+        # Usuário comum só vê reuniões do próprio setor
+        if not tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(sessao_setor())
+
+        setor = request.args.get("setor")
+        if setor and tem_acesso_total():
+            sql += " AND setor = %s"
+            params.append(setor)
+
+        status = request.args.get("status")
+        if status:
+            sql += " AND status = %s"
+            params.append(status)
+
+        data_inicio = request.args.get("de")
+        if data_inicio:
+            sql += " AND data >= %s"
+            params.append(data_inicio)
+
+        data_fim = request.args.get("ate")
+        if data_fim:
+            sql += " AND data <= %s"
+            params.append(data_fim)
+
+        sql += " ORDER BY data DESC LIMIT 50"
+
+        cursor.execute(sql, params)
+        reunioes = cursor.fetchall()
+
+        return jsonify(reunioes), 200
+
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar reuniões no MySQL")
+
+        return jsonify({
+            "erro": "Não foi possível carregar as reuniões.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 @bp.get("/reunioes/<reuniao_id>")
 @require_auth
 def detalhe_reuniao(reuniao_id: str):
-    db = get_supabase()
-    resultado = db.table("reunioes").select("*").eq("id", reuniao_id).single().execute()
-    if not resultado.data:
-        return jsonify({"erro": "não encontrado"}), 404
-    # isolamento por setor: usuário comum não abre reunião de outro setor
-    if not tem_acesso_total() and (resultado.data.get("setor") or "") != sessao_setor():
-        return jsonify({"erro": "não encontrado"}), 404
-    return jsonify(resultado.data)
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM reunioes
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
+
+        reuniao = cursor.fetchone()
+
+        if not reuniao:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        if (
+            not tem_acesso_total()
+            and (reuniao.get("setor") or "") != sessao_setor()
+        ):
+            return jsonify({"erro": "não encontrado"}), 404
+
+        return jsonify(reuniao), 200
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao buscar reunião %s no MySQL",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar a reunião.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 @bp.post("/reunioes/upload")
@@ -401,20 +745,66 @@ def upload_audio():
     caminho = os.path.join(pasta, secure_filename(nome))
     arquivo.save(caminho)
 
-    db = get_supabase()
-    row = db.table("reunioes").insert(
-        {
-            "titulo": request.form.get("titulo", "Reunião — upload manual"),
-            "setor": request.form.get("setor", ""),
-            "plataforma": "avulso",
-            "status": "pending",
-        }
-    ).execute()
+    reuniao_id = str(uuid.uuid4())
 
-    reuniao_id = row.data[0]["id"]
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO reunioes (
+                id,
+                titulo,
+                setor,
+                plataforma,
+                status
+            )
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                reuniao_id,
+                request.form.get(
+                    "titulo",
+                    "Reunião — upload manual",
+                ),
+                request.form.get("setor", ""),
+                "avulso",
+                "pending",
+            ),
+        )
+
+        connection.commit()
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao criar reunião de upload manual"
+        )
+
+        return jsonify({
+            "erro": "falha_ao_salvar",
+            "msg": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
     processar_audio_avulso.delay(reuniao_id, caminho)
 
-    return jsonify({"reuniao_id": reuniao_id, "status": "pending"}), 202
+    return jsonify({
+        "reuniao_id": reuniao_id,
+        "status": "pending",
+    }), 202
 
 
 # ── Gravações Skribby (bot "Acordito" entra na reunião) ──────────────────────
@@ -422,174 +812,407 @@ def upload_audio():
 @bp.post("/gravacoes")
 def criar_gravacao():
     """
-    Funcionário aciona a gravação: cola o link da reunião, o bot Acordito entra,
-    grava e transcreve. Cria a reunião com status 'pending'.
-    """
-    body = request.get_json(silent=True) or {}
-    meeting_url = (body.get("meeting_url") or "").strip()
-    if not meeting_url:
-        return jsonify({"erro": "meeting_url obrigatório"}), 400
-    if not _meeting_url_valida(meeting_url):
-        return jsonify({"erro": "meeting_url inválido",
-                        "msg": "Use um link do Teams, Zoom ou Google Meet."}), 400
+    Funcionário aciona a gravação: cola o link da reunião,
+    o bot Acordito entra, grava e transcreve.
 
-    # Import lazy: se faltar dependência (ex.: 'requests' não instalado no
-    # servidor) devolve erro claro em JSON em vez de 500 HTML opaco.
+    Cria a reunião no MariaDB com status 'pending'.
+    """
+
+    body = request.get_json(silent=True) or {}
+
+    meeting_url = (body.get("meeting_url") or "").strip()
+
+    if not meeting_url:
+        return jsonify({
+            "erro": "meeting_url obrigatório"
+        }), 400
+
+    if not _meeting_url_valida(meeting_url):
+        return jsonify({
+            "erro": "meeting_url inválido",
+            "msg": "Use um link do Teams, Zoom ou Google Meet.",
+        }), 400
+
+    # Carrega o cliente Skribby apenas quando a rota for utilizada.
     try:
         from app.pipeline.skribby_client import create_bot
-    except Exception as e:
-        return jsonify({"erro": "dependencia_ausente",
-                        "msg": f"Falha ao carregar o cliente Skribby: {e}. "
-                               "Rode 'pip install -r requirements.txt' no servidor."}), 500
 
+    except Exception as exc:
+        current_app.logger.exception(
+            "Falha ao carregar o cliente Skribby"
+        )
+
+        return jsonify({
+            "erro": "dependencia_ausente",
+            "msg": (
+                f"Falha ao carregar o cliente Skribby: {exc}. "
+                "Rode 'pip install -r requirements.txt' no servidor."
+            ),
+        }), 500
+
+    # Solicita ao Skribby a criação do bot.
     try:
         bot = create_bot(meeting_url)
-    except Exception as e:
-        return jsonify({"erro": f"Skribby: {e}", "msg": f"Skribby: {e}"}), 502
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Falha ao criar bot no Skribby"
+        )
+
+        return jsonify({
+            "erro": "falha_skribby",
+            "msg": f"Skribby: {exc}",
+        }), 502
 
     bot_id = bot.get("id")
+
     if not bot_id:
-        return jsonify({"erro": "skribby_sem_bot_id",
-                        "msg": "Skribby criou uma resposta sem id do bot."}), 502
+        return jsonify({
+            "erro": "skribby_sem_bot_id",
+            "msg": "Skribby criou uma resposta sem o ID do bot.",
+        }), 502
+
+    reuniao_id = str(uuid.uuid4())
+
+    data_reuniao = (
+        (body.get("data") or "").strip()
+        or datetime.now(timezone.utc).isoformat()
+    )
+
+    titulo = (
+        (body.get("titulo") or "").strip()
+        or "Reunião (Skribby)"
+    )
+
+    solicitante = (body.get("solicitante") or "").strip()
+    setor = (body.get("setor") or "").strip()
+    modalidade = (body.get("modalidade") or "online").strip()
+    local_reuniao = (body.get("local_reuniao") or "").strip()
+    cliente = (body.get("cliente") or "").strip()
+
+    connection = None
+    cursor = None
 
     try:
-        db = get_supabase()
-        data_reuniao = (body.get("data") or "").strip() or datetime.now(timezone.utc).isoformat()
-        registro = {
-            "titulo": body.get("titulo") or "Reunião (Skribby)",
-            "solicitante": (body.get("solicitante") or "").strip(),
-            "setor": body.get("setor", ""),
-            "data": data_reuniao,
-            "plataforma": "skribby",
-            "status": "pending",
-            "recall_bot_id": bot_id,  # coluna reaproveitada p/ guardar o id do bot Skribby
-        }
-        registro_com_meta = {
-            **registro,
-            "modalidade": (body.get("modalidade") or "online").strip(),
-            "local_reuniao": (body.get("local_reuniao") or "").strip(),
-            "cliente": (body.get("cliente") or "").strip(),
-        }
-        try:
-            row = db.table("reunioes").insert(registro_com_meta).execute()
-        except Exception as e:
-            erro = str(e)
-            if not any(campo in erro for campo in ("modalidade", "local_reuniao", "cliente")):
-                raise
-            row = db.table("reunioes").insert(registro).execute()
-    except Exception as e:
-        return jsonify({"erro": "falha_ao_salvar", "msg": f"Banco: {e}"}), 502
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
 
-    if not row.data:
-        return jsonify({"erro": "falha_ao_salvar",
-                        "msg": "Banco não retornou a reunião criada."}), 502
+        cursor.execute(
+            """
+            INSERT INTO reunioes (
+                id,
+                titulo,
+                solicitante,
+                setor,
+                data,
+                plataforma,
+                status,
+                recall_bot_id,
+                modalidade,
+                local_reuniao,
+                cliente
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (
+                reuniao_id,
+                titulo,
+                solicitante,
+                setor,
+                data_reuniao,
+                "skribby",
+                "pending",
+                bot_id,
+                modalidade,
+                local_reuniao,
+                cliente,
+            ),
+        )
 
-    return jsonify(
-        {
-            "reuniao_id": row.data[0]["id"],
-            "bot_id": bot_id,
-            "status": "bot entrando na reunião",
-        }
-    ), 202
+        connection.commit()
 
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Falha ao salvar a reunião no MySQL"
+        )
+
+        return jsonify({
+            "erro": "falha_ao_salvar",
+            "msg": f"Banco MySQL: {exc}",
+        }), 502
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return jsonify({
+        "reuniao_id": reuniao_id,
+        "bot_id": bot_id,
+        "status": "bot entrando na reunião",
+    }), 202
 
 @bp.post("/skribby/webhook")
 def skribby_webhook():
     """
-    Recebe eventos do Skribby (type 'status_update'). Quando new_status == 'finished'
-    a transcrição está pronta → dispara o processamento numa thread e responde 200 rápido.
-    Payload: {bot_id, type, data:{old_status, new_status, stop_reason}, custom_metadata}
+    Recebe eventos do Skribby.
+
+    Quando o status muda para 'finished', localiza a reunião no MySQL
+    pelo recall_bot_id e inicia o processamento em segundo plano.
     """
+
     import threading
     import hmac as _hmac
+
     from app.workers.tasks import _processar_recall
 
-    # Autenticação opcional: se SKRIBBY_WEBHOOK_SECRET setado, exige ?token= correto.
     secret = os.getenv("SKRIBBY_WEBHOOK_SECRET", "").strip()
-    if secret and not _hmac.compare_digest(request.args.get("token", ""), secret):
+
+    if secret and not _hmac.compare_digest(
+        request.args.get("token", ""),
+        secret,
+    ):
         return jsonify({"erro": "não autorizado"}), 403
 
     body = request.get_json(silent=True) or {}
+
     bot_id = body.get("bot_id")
     tipo = body.get("type", "")
-    novo_status = ((body.get("data") or {}).get("new_status")) or ""
+    novo_status = (
+        (body.get("data") or {}).get("new_status")
+        or ""
+    )
 
-    if tipo == "status_update" and novo_status == "finished" and bot_id:
-        db = get_supabase()
-        r = db.table("reunioes").select("id").eq("recall_bot_id", bot_id).execute()
-        if r.data:
-            reuniao_id = r.data[0]["id"]
-            threading.Thread(
-                target=_processar_recall, args=(reuniao_id, bot_id), daemon=True
-            ).start()
+    if (
+        tipo == "status_update"
+        and novo_status == "finished"
+        and bot_id
+    ):
+        connection = None
+        cursor = None
+
+        try:
+            connection = get_mysql_connection()
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM reunioes
+                WHERE recall_bot_id = %s
+                LIMIT 1
+                """,
+                (bot_id,),
+            )
+
+            reuniao = cursor.fetchone()
+
+            if reuniao:
+                reuniao_id = reuniao["id"]
+
+                threading.Thread(
+                    target=_processar_recall,
+                    args=(reuniao_id, bot_id),
+                    daemon=True,
+                ).start()
+
+        except Exception as exc:
+            current_app.logger.exception(
+                "Erro ao processar webhook do Skribby"
+            )
+
+            return jsonify({
+                "erro": "falha_webhook",
+                "msg": str(exc),
+            }), 500
+
+        finally:
+            if cursor is not None:
+                cursor.close()
+
+            if (
+                connection is not None
+                and connection.is_connected()
+            ):
+                connection.close()
 
     return jsonify({"ok": True}), 200
-
 
 @bp.post("/gravacoes/<reuniao_id>/processar")
 @require_auth
 def processar_gravacao_manual(reuniao_id: str):
     """
-    Puxa a transcrição manualmente (para testar sem webhook público).
-    Só funciona depois que o bot terminou (status Skribby 'finished').
+    Puxa a transcrição manualmente, sem depender do webhook público.
+
+    Só funciona depois que o bot terminou e a transcrição
+    está disponível no Skribby.
     """
     from app.workers.tasks import _processar_recall
 
-    db = get_supabase()
-    r = (
-        db.table("reunioes")
-        .select("recall_bot_id,status")
-        .eq("id", reuniao_id)
-        .single()
-        .execute()
-    )
-    if not r.data:
-        return jsonify({"erro": "não encontrado"}), 404
-    bot_id = r.data.get("recall_bot_id")
-    if not bot_id:
-        return jsonify({"erro": "reunião sem bot Skribby"}), 400
+    connection = None
+    cursor = None
 
     try:
-        _processar_recall(reuniao_id, bot_id)
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 502
-    return jsonify({"status": "processado"}), 200
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
 
+        cursor.execute(
+            """
+            SELECT
+                recall_bot_id,
+                status,
+                setor
+            FROM reunioes
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
 
-# ── E-mails ───────────────────────────────────────────────────────────────────
+        reuniao = cursor.fetchone()
 
-@bp.get("/emails")
-@require_auth
-def listar_emails():
-    db = get_supabase()
-    q = db.table("emails").select(
-        "id,de_nome,de_email,assunto,setor_remetente,data,resumo,temas,sentimento,categoria,relevante"
-    )
+        if not reuniao:
+            return jsonify({"erro": "não encontrado"}), 404
 
-    if setor := request.args.get("setor"):
-        q = q.eq("setor_remetente", setor)
-    if sentimento := request.args.get("sentimento"):
-        q = q.eq("sentimento", sentimento)
-    if categoria := request.args.get("categoria"):
-        q = q.eq("categoria", categoria)
-    # por padrão mostra só relevantes; ?relevante=todos traz tudo
-    rel = request.args.get("relevante", "true")
-    if rel != "todos":
-        q = q.eq("relevante", rel == "true")
-    if de := request.args.get("de"):
-        q = q.gte("data", de)
+        # Usuário comum só pode processar reunião do próprio setor.
+        if (
+            not tem_acesso_total()
+            and (reuniao.get("setor") or "") != sessao_setor()
+        ):
+            return jsonify({"erro": "não encontrado"}), 404
 
-    resultado = q.order("data", desc=True).limit(100).execute()
-    return jsonify(resultado.data)
+        bot_id = reuniao.get("recall_bot_id")
+
+        if not bot_id:
+            return jsonify({
+                "erro": "reunião sem bot Skribby"
+            }), 400
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao buscar reunião para processamento manual"
+        )
+
+        return jsonify({
+            "erro": "falha_banco",
+            "msg": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if (
+            connection is not None
+            and connection.is_connected()
+        ):
+            connection.close()
+
+    try:
+        status = _processar_recall(
+            reuniao_id,
+            bot_id,
+        )
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao processar reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "falha_processamento",
+            "msg": str(exc),
+        }), 502
+
+    if status == "pending":
+        return jsonify({
+            "status": "pending",
+            "msg": (
+                "O bot ainda está gravando ou a transcrição "
+                "ainda não ficou pronta."
+            ),
+        }), 202
+
+    if status == "sem_transcricao":
+        return jsonify({
+            "status": "sem_transcricao",
+            "msg": (
+                "O bot terminou, mas o Skribby ainda não "
+                "retornou a transcrição."
+            ),
+        }), 202
+
+    if status == "error":
+        return jsonify({
+            "status": "error",
+            "msg": (
+                "O bot terminou com erro. Abra o detalhe "
+                "da reunião para ver a causa."
+            ),
+        }), 409
+
+    return jsonify({
+        "status": "processado"
+    }), 200
 
 
 # ── Setores ───────────────────────────────────────────────────────────────────
 
 @bp.get("/setores")
 def listar_setores():
-    db = get_supabase()
-    resultado = db.table("setores").select("*").eq("ativo", True).execute()
-    return jsonify(resultado.data)
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM setores
+            WHERE ativo = %s
+            ORDER BY nome
+            """,
+            (1,),
+        )
+
+        setores = cursor.fetchall()
+
+        return jsonify(setores), 200
+
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar setores no MySQL")
+
+        return jsonify({
+            "erro": "Não foi possível carregar os setores.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Usuários ──────────────────────────────────────────────────────────────────
@@ -597,11 +1220,51 @@ def listar_setores():
 @bp.get("/usuarios")
 @require_auth
 def listar_usuarios():
-    db = get_supabase()
-    q = db.table("usuarios").select("id,nome,email,setor,cargo").eq("ativo", True)
-    if setor := request.args.get("setor"):
-        q = q.eq("setor", setor)
-    return jsonify(q.execute().data)
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        sql = """
+        SELECT
+        id,
+        nome,
+        email,
+        setor,
+        cargo
+        FROM usuarios
+        WHERE ativo = 1
+        """
+
+        params = []
+
+        if request.args.get("setor"):
+            sql += " AND setor = %s"
+            params.append(request.args.get("setor"))
+
+        sql += " ORDER BY nome"
+
+        cursor.execute(sql, params)
+
+        usuarios = cursor.fetchall()
+
+        return jsonify(usuarios)
+
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar usuários")
+
+        return jsonify({
+            "erro": str(exc)
+        }), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if connection and connection.is_connected():
+            connection.close()
 
 
 # ── Interações (grafo) ────────────────────────────────────────────────────────
@@ -609,9 +1272,40 @@ def listar_usuarios():
 @bp.get("/interacoes")
 @require_auth
 def listar_interacoes():
-    db = get_supabase()
-    resultado = db.table("interacoes").select("*").order("contagem", desc=True).limit(200).execute()
-    return jsonify(resultado.data)
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM interacoes
+            ORDER BY contagem DESC
+            LIMIT 200
+            """
+        )
+
+        interacoes = cursor.fetchall()
+
+        return jsonify(interacoes), 200
+
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar interações no MySQL")
+
+        return jsonify({
+            "erro": "Não foi possível carregar as interações.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Sync manual ───────────────────────────────────────────────────────────────

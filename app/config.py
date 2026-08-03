@@ -42,9 +42,12 @@ class Config:
     ) == "1"
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 8  # 8h
 
-    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-    SUPABASE_SCHEMA = os.getenv("SUPABASE_SCHEMA", "public")
+    # MariaDB / MySQL do cPanel
+    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "")
+    MYSQL_USER = os.getenv("MYSQL_USER", "")
+    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 
     AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
     AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET", "")

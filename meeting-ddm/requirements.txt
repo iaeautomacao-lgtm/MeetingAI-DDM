@@ -1,0 +1,5 @@
+psycopg[binary]
+mysql-connector-python
+python-dotenv
+SQLAlchemy
+pip freeze > requirements.txt

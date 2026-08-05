@@ -84,6 +84,13 @@ def _chat(system: str, user: str, max_tokens: int = 2048, json_mode: bool = Fals
         if json_mode:
             payload["generationConfig"]["responseMimeType"] = "application/json"
 
+        # Nos modelos 2.5 o "thinking" consome maxOutputTokens e a resposta sai
+        # cortada no meio do JSON. Extração não precisa raciocínio longo.
+        if "2.5" in (_model or ""):
+            payload["generationConfig"]["thinkingConfig"] = {
+                "thinkingBudget": 0
+            }
+
         resp = requests.post(
             url,
             params={"key": _client},
@@ -103,11 +110,17 @@ def _chat(system: str, user: str, max_tokens: int = 2048, json_mode: bool = Fals
             raise RuntimeError(f"Gemini API {resp.status_code}: {detail}")
 
         data = resp.json()
-        parts = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [])
-        )
+        candidato = (data.get("candidates") or [{}])[0]
+
+        # Sem isso a resposta cortada volta como JSON inválido e o erro real
+        # ("estourou o limite de tokens") fica invisível.
+        if candidato.get("finishReason") == "MAX_TOKENS":
+            raise RuntimeError(
+                "Gemini cortou a resposta no limite de tokens "
+                f"(maxOutputTokens={max_tokens})."
+            )
+
+        parts = candidato.get("content", {}).get("parts", [])
         return "".join(
             part.get("text", "")
             for part in parts

@@ -937,9 +937,92 @@ async function loadDetalhe(id){
       </div>
       <div class="d-card" style="margin-bottom:16px"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
       <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map(p=>`<li>${esc(participanteLabel(p))}</li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
+      <div id="locutores-box"></div>
       ${utt.length?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><h2 class="section-title" style="margin:0">Transcrição</h2><button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button><button class="btn-sm" onclick="exportarReuniao()">Exportar</button></div><div class="transcript">${utt.map(u=>`<b>${esc(speakerLabel(u.speaker))}:</b> ${esc(u.texto||'')}`).join('<br>')}</div>`:''}
     `;
+    if(utt.length) carregarLocutores(r.id);
   } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- LOCUTORES (Speaker N -> nome real) ---------- */
+/* O Skribby entrega os nomes dos participantes e a diarizacao separados, sem
+   ligar um ao outro. A IA tenta inferir no processamento; o que sobrar em
+   "Speaker N" e corrigido aqui. Serve tambem para consertar nome errado. */
+let _locutores = null;
+
+async function carregarLocutores(id){
+  const box = document.getElementById('locutores-box');
+  if(!box) return;
+  try {
+    _locutores = await apiGet('/api/reunioes/'+id+'/locutores');
+  } catch(e){ box.innerHTML=''; return; }
+
+  const locs = asList(_locutores.locutores);
+  if(!locs.length){ box.innerHTML=''; return; }
+
+  const pendentes = locs.filter(l=>l.generico).length;
+  const aberto = pendentes > 0;
+
+  box.innerHTML = `
+    <div class="d-card" style="margin-bottom:16px">
+      <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        Quem é quem na transcrição
+        ${pendentes?`<span class="badge pending">${pendentes} sem nome</span>`:''}
+        ${aberto?'':'<button class="btn-sm" onclick="document.getElementById(\'loc-form\').style.display=\'block\';this.style.display=\'none\'">Corrigir nomes</button>'}
+      </h3>
+      <div id="loc-form" style="display:${aberto?'block':'none'}">
+        ${pendentes?'<div class="t-sub" style="margin-bottom:10px">A gravação não diz qual voz é de quem. Escolha o nome de cada locutor — a transcrição inteira é atualizada.</div>':''}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${locs.map((l,i)=>linhaLocutor(l,i)).join('')}
+        </div>
+        <button class="btn-sm" style="margin-top:12px" onclick="salvarLocutores('${id}')">Salvar nomes</button>
+      </div>
+    </div>`;
+}
+
+function linhaLocutor(l, i){
+  const candidatos = asList(_locutores.candidatos);
+  const opcoes = candidatos.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  return `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <b style="min-width:150px">${esc(speakerLabel(l.nome))}</b>
+      <span class="t-sub" style="min-width:70px">${l.falas} falas</span>
+      <input type="hidden" class="loc-de" value="${esc(l.nome)}">
+      ${candidatos.length?`
+        <select class="loc-sel" onchange="trocaLocutorSel(${i})" id="loc-sel-${i}">
+          <option value="">Manter como está</option>
+          ${opcoes}
+          <option value="__outro__">Outro nome…</option>
+        </select>`:''}
+      <input class="loc-txt" id="loc-txt-${i}" placeholder="Nome da pessoa"
+             style="display:${candidatos.length?'none':'inline-block'};min-width:180px" maxlength="80">
+    </div>`;
+}
+
+function trocaLocutorSel(i){
+  const sel=document.getElementById('loc-sel-'+i), txt=document.getElementById('loc-txt-'+i);
+  const outro = sel.value==='__outro__';
+  txt.style.display = outro?'inline-block':'none';
+  if(outro) txt.focus();
+}
+
+async function salvarLocutores(id){
+  const linhas=[...document.querySelectorAll('#loc-form .loc-de')];
+  const mapa={};
+  linhas.forEach((inp,i)=>{
+    const de=inp.value;
+    const sel=document.getElementById('loc-sel-'+i);
+    const txt=document.getElementById('loc-txt-'+i);
+    let para = sel ? sel.value : '';
+    if(!sel || para==='__outro__') para = (txt?.value||'').trim();
+    if(para && para!=='__outro__' && para!==de) mapa[de]=para;
+  });
+  if(!Object.keys(mapa).length){ toast('Escolha ao menos um nome.'); return; }
+  try {
+    const d = await apiPost('/api/reunioes/'+id+'/locutores', {mapa});
+    toast(`Pronto. ${d.falas_atualizadas} falas renomeadas.`);
+    loadDetalhe(id);
+  } catch(e){ toast('Erro: '+e.message, 4000); }
 }
 
 /* ---------- AÇÕES ---------- */

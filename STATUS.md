@@ -216,6 +216,36 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Pendente:** (1) *Update from Remote* + *Restart* no cPanel p/ o CORS valer em produção (até isso, o dropdown de setor da extensão vem vazio e o envio falha contra `meeting.grupoddm.ia.br`); (2) teste e2e real com bot entrando; (3) rate-limit em `/api/gravacoes` — endpoint público sem limite, vale p/ a tela `/` também; (4) decidir distribuição (zip manual / Web Store unlisted / política de grupo do TI).
 
+## 3.7 NOMES REAIS NA TRANSCRIÇÃO (2026-08-05)
+
+**Problema:** transcrições saíam com `Speaker 1` / `Speaker 2` em vez dos nomes. Investigado com o JSON real do bot `019fd2a8` (reunião "Curadoria do Sistema de Processos"):
+
+- `participants[]` traz os nomes reais (`Christiano Di Maio`, `Gabriella Cruz`) com entrada/saída, mute/unmute e screenshare;
+- `transcript[].speaker` traz só `"1"`, `"2"`;
+- **não existe** campo ligando os dois, nem evento de locutor ativo. O código já tentava `speaker_name`, `potential_speaker_names` e mapa por ID — todos vazios. Limitação do Skribby, não bug nosso.
+
+**Heurística de microfone testada e descartada:** cruzar falas com janelas `unmuted` não separa — quem nunca se muta tem janela cobrindo a reunião toda (Speaker 1: 100% dentro da janela do Christiano *e* 96,7% dentro da da Gabriella).
+
+**Solução implementada — `app/pipeline/locutores.py` (novo):**
+- `mapear_com_ia(utterances, nomes)` — manda o diálogo + a lista de participantes reais pro Gemini e pede o mapa `rótulo → nome`, usando vocativo ("Bora, **Gabi**" e outro rótulo responde), auto-apresentação e quem-responde-a-quem. Valida: nome tem de existir na lista (aceita primeiro nome/apelido se único), confiança ≥ 0.6, 1 rótulo por pessoa. Fecha por eliminação quando sobra 1 rótulo e 1 nome.
+- `rotulos_mapeaveis()` — **`?` não é locutor, é ausência de diarização.** Mapear `?` colocaria a fala de todos na boca de um. Só permite quando há exatamente 1 participante real. (Pego na simulação: ia atribuir uma reunião de 3 pessoas inteira ao Marcelo.)
+- `nomes_de_pessoas()` — descarta bots de anotação (read.ai, Fathom, Otter, "notetaker") da lista de candidatos.
+- `aplicar_mapa()` — troca só rótulos genéricos, nunca nome já definido.
+
+**`app/workers/tasks.py`:** `_processar_recall` chama o mapeamento antes de `extrair_reuniao`, então análise e % de fala já saem com nome real.
+
+**Bug de raiz corrigido em `analysis.py`:** `gemini-2.5-flash` gasta `maxOutputTokens` com *thinking* e devolvia o JSON **cortado no meio** — era isso que zerava o mapeamento. Agora `thinkingConfig.thinkingBudget = 0` nos modelos 2.5, e `finishReason == MAX_TOKENS` virou exceção explícita em vez de JSON inválido silencioso. Provável causa também dos "Não foi possível estruturar a análise" antigos.
+
+**Renomear à mão (painel):** `GET /api/reunioes/<id>/locutores` devolve os locutores atuais (com contagem de falas e flag `generico`) + candidatos buscados ao vivo no Skribby; `POST` recebe `{"mapa":{"Speaker 1":"Nome"}}` e reescreve `utterances` + `participantes`. Serve também para corrigir nome que a IA errou. Ambos `@require_auth` + filtro de setor. Card "Quem é quem na transcrição" abre sozinho quando há rótulo genérico; senão fica atrás do botão "Corrigir nomes".
+
+**`scripts/mapear_locutores_existentes.py` (novo):** remapeia reuniões já no banco sem refazer resumo/decisões. Simula por padrão, grava com `--aplicar`.
+
+**Testado:** mapa da IA na reunião real → `{'Speaker 1': 'Gabriella Cruz', 'Speaker 2': 'Christiano Di Maio'}` (bate com o vocativo). Pipeline completo reprocessado → `completed` com nomes. Endpoint: 401 sem login, 400 em nome repetido / locutor inexistente, 126 falas renomeadas no caso válido. `py_compile` nos 5 arquivos e `node --check` no JS do painel.
+
+**Reuniões antigas:** das 12 concluídas, 8 já estão com nome. As 4 restantes vieram **sem diarização** (anteriores ao commit `7034358`, 2026-08-03) — rótulo único `?` com 2 a 8 participantes. Não há o que mapear; só re-transcrever resolveria, e as gravações provavelmente expiraram no Skribby.
+
+**Pendente:** perguntar ao suporte do Skribby se a API expõe evento de locutor ativo (o Teams sabe quem fala; o dado existe do lado deles). Se expuserem, o vínculo passa a ser exato e a inferência por IA fica só de reserva.
+
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.
 - **2026-07-06** — Gih recebeu credencial **Global Admin** da organização. Criados: `schema.sql` (6 tabelas do Supabase inferidas do código) e `scripts/test_graph.py` (valida token MSAL + `get_users` + `get_meetings`). Fornecido passo-a-passo Azure (App Registration, secret, 5 permissões + consentimento admin, transcrição Teams, Application Access Policy via PowerShell). Aguardando `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` p/ montar `.env` e testar.

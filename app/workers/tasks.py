@@ -587,6 +587,23 @@ def _processar_recall(reuniao_id: str, bot_id: str):
 
             return "sem_transcricao"
 
+        # O Skribby manda os nomes reais em participants[] e a diarização em
+        # transcript[].speaker, sem ligar os dois. A IA faz o vínculo pelo
+        # diálogo; o que não resolver fica "Speaker N" para renomear no painel.
+        nomes_reais = [
+            p.get("nome")
+            for p in extract_skribby_participants(bot)
+            if p.get("nome")
+        ]
+
+        if nomes_reais:
+            from app.pipeline.locutores import aplicar_mapa, mapear_com_ia
+
+            mapa = mapear_com_ia(utterances, nomes_reais)
+
+            if mapa:
+                utterances = aplicar_mapa(utterances, mapa)
+
         full_text = " ".join(
             utterance.get("texto", "")
             for utterance in utterances

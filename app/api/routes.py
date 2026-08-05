@@ -722,6 +722,255 @@ def detalhe_reuniao(reuniao_id: str):
             connection.close()
 
 
+def _carregar_reuniao_locutores(reuniao_id: str):
+    """Linha da reunião + checagem de setor. Devolve (reuniao, erro_response)."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id, setor, recall_bot_id, utterances, participantes
+            FROM reunioes
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
+
+        reuniao = cursor.fetchone()
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    if not reuniao:
+        return None, (jsonify({"erro": "não encontrado"}), 404)
+
+    if (
+        not tem_acesso_total()
+        and (reuniao.get("setor") or "") != sessao_setor()
+    ):
+        return None, (jsonify({"erro": "não encontrado"}), 404)
+
+    return reuniao, None
+
+
+def _json_lista(valor):
+    if isinstance(valor, list):
+        return valor
+
+    if isinstance(valor, (bytes, bytearray)):
+        valor = valor.decode("utf-8", "replace")
+
+    if isinstance(valor, str) and valor.strip():
+        try:
+            dados = json.loads(valor)
+        except json.JSONDecodeError:
+            return []
+
+        return dados if isinstance(dados, list) else []
+
+    return []
+
+
+def _nome_locutor_valido(nome: str) -> str | None:
+    """Sanitiza o nome digitado/escolhido no painel."""
+    nome = " ".join((nome or "").split())
+
+    if not nome or len(nome) > 80:
+        return None
+
+    if any(ord(c) < 32 for c in nome):
+        return None
+
+    return nome
+
+
+@bp.get("/reunioes/<reuniao_id>/locutores")
+@require_auth
+def listar_locutores(reuniao_id: str):
+    """
+    Locutores da transcrição + nomes reais dos participantes (candidatos).
+
+    O Skribby não liga a diarização ('Speaker 1') aos nomes; quando a IA não
+    consegue inferir pelo diálogo, o painel usa isto para corrigir à mão.
+    """
+    from app.pipeline.locutores import rotulo_generico
+
+    reuniao, erro = _carregar_reuniao_locutores(reuniao_id)
+
+    if erro:
+        return erro
+
+    utterances = _json_lista(reuniao.get("utterances"))
+
+    locutores = []
+    for u in utterances:
+        nome = (u.get("speaker") or "").strip()
+        if nome and nome not in [item["nome"] for item in locutores]:
+            locutores.append({
+                "nome": nome,
+                "generico": rotulo_generico(nome),
+                "falas": 0,
+            })
+
+    contagem = {}
+    for u in utterances:
+        nome = (u.get("speaker") or "").strip()
+        contagem[nome] = contagem.get(nome, 0) + 1
+
+    for item in locutores:
+        item["falas"] = contagem.get(item["nome"], 0)
+
+    # Nomes reais: vêm do Skribby, que os guarda junto da gravação.
+    candidatos = []
+    bot_id = reuniao.get("recall_bot_id")
+
+    if bot_id:
+        try:
+            from app.pipeline.skribby_client import (
+                get_bot,
+                extract_skribby_participants,
+            )
+
+            candidatos = [
+                p["nome"]
+                for p in extract_skribby_participants(get_bot(bot_id))
+                if p.get("nome")
+            ]
+
+        except Exception:
+            # Gravação expirada ou Skribby fora: painel cai no campo livre.
+            current_app.logger.info(
+                "Sem candidatos do Skribby para a reunião %s",
+                reuniao_id,
+            )
+
+    return jsonify({
+        "locutores": locutores,
+        "candidatos": candidatos,
+    }), 200
+
+
+@bp.post("/reunioes/<reuniao_id>/locutores")
+@require_auth
+def renomear_locutores(reuniao_id: str):
+    """
+    Renomeia locutores na transcrição. Corpo: {"mapa": {"Speaker 1": "Nome"}}.
+
+    Vale para rótulo genérico e para corrigir nome que a IA errou.
+    """
+    reuniao, erro = _carregar_reuniao_locutores(reuniao_id)
+
+    if erro:
+        return erro
+
+    body = request.get_json(silent=True) or {}
+    mapa_bruto = body.get("mapa")
+
+    if not isinstance(mapa_bruto, dict) or not mapa_bruto:
+        return jsonify({"erro": "mapa obrigatório"}), 400
+
+    mapa = {}
+    for de, para in mapa_bruto.items():
+        de = (de or "").strip()
+        nome = _nome_locutor_valido(para)
+
+        if not de or not nome or de == nome:
+            continue
+
+        mapa[de] = nome
+
+    if not mapa:
+        return jsonify({"erro": "nenhum nome válido"}), 400
+
+    if len(set(mapa.values())) != len(mapa.values()):
+        return jsonify({
+            "erro": "nomes_repetidos",
+            "msg": "Cada locutor precisa de um nome diferente.",
+        }), 400
+
+    utterances = _json_lista(reuniao.get("utterances"))
+
+    if not utterances:
+        return jsonify({"erro": "reunião sem transcrição"}), 400
+
+    trocadas = 0
+    for u in utterances:
+        atual = (u.get("speaker") or "").strip()
+        if atual in mapa:
+            u["speaker"] = mapa[atual]
+            trocadas += 1
+
+    if not trocadas:
+        return jsonify({
+            "erro": "locutor_inexistente",
+            "msg": "Nenhum locutor da transcrição corresponde ao pedido.",
+        }), 400
+
+    # Mantém o card Participantes coerente com a transcrição.
+    participantes = _json_lista(reuniao.get("participantes"))
+    for p in participantes:
+        if isinstance(p, dict) and (p.get("nome") or "").strip() in mapa:
+            p["nome"] = mapa[p["nome"].strip()]
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE reunioes
+            SET utterances = %s, participantes = %s
+            WHERE id = %s
+            """,
+            (
+                json.dumps(utterances, ensure_ascii=False),
+                json.dumps(participantes, ensure_ascii=False),
+                reuniao_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao renomear locutores da reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível salvar os nomes.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return jsonify({
+        "ok": True,
+        "falas_atualizadas": trocadas,
+        "mapa": mapa,
+    }), 200
+
+
 @bp.post("/reunioes/upload")
 @require_auth
 def upload_audio():

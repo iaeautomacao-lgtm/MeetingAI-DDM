@@ -196,6 +196,22 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Nota segurança:** senha simples compartilhada (1 senha p/ toda diretoria). Suficiente p/ MVP interno. Evoluções possíveis: contas individuais, SSO Microsoft, rate-limit no login. Em produção: `SESSION_COOKIE_SECURE=1` (HTTPS) + trocar `SECRET_KEY` e `DIRECTOR_PASSWORD`.
 
+## 3.6 EXTENSÃO CHROME (2026-08-05)
+
+**Objetivo:** registrar reunião sem copiar/colar link. Funcionário está na aba da reunião → clica no ícone → popup já vem com link + título da aba → *Enviar Acordito*. Mesma chamada da tela `/` (`POST /api/gravacoes`).
+
+**Criado `chrome-extension/`** (MV3, escopo só-popup, sem content script):
+- `manifest.json` — permissões `activeTab` + `storage` + `clipboardRead`; `host_permissions` p/ `meeting.grupoddm.ia.br` + localhost; `optional_host_permissions` p/ outro host via runtime.
+- `popup.html/.css/.js` — form com os mesmos campos de `registrar.html`; pré-preenche URL/título da aba, valida host contra a mesma lista do backend (`_MEETING_HOSTS`), botões *Usar aba atual* / *Colar link* (cobre reunião no app desktop do Teams, sem aba). Nome/setor/formato/local salvos em `chrome.storage.local`.
+- `options.html/.js` — URL da API (default produção), nome padrão, *Testar conexão* (`/api/health`); pede permissão em runtime se o host não for um dos fixos.
+- `shared.js`, `icons/icon.png` (cópia de `assets/logo-mark.png`), `README.md` (instalar, usar, limitações, opções de distribuição).
+
+**Servidor — 1 mudança:** origem `chrome-extension://` é cross-origin, preflight batia sem handler. Adicionado CORS em `app/__init__.py` (`_cors_extensao`) **só** em `/api/health`, `/api/setores`, `/api/gravacoes` (já públicos), **sem** `Allow-Credentials` → cookie de diretor não trafega. Allowlist opcional `EXTENSION_ORIGINS` no `app/config.py` (vazio = qualquer extensão).
+
+**Testado (curl, servidor local 5000):** preflight OPTIONS `/api/gravacoes` → 200 + headers CORS; `/api/health` e `/api/setores` com origem extensão → 200 + CORS; origem `https://evil.example` → 0 headers CORS; `/api/reunioes` com origem extensão → 401 **sem** CORS; POST com URL fora dos hosts → 400 `meeting_url inválido`. `node --check` OK nos 3 JS, manifest JSON válido.
+
+**Pendente:** (1) carregar sem compactação no Chrome e fazer 1 teste e2e real (bot entrando); (2) rate-limit em `/api/gravacoes` — endpoint público sem limite, vale p/ a tela `/` também; (3) decidir distribuição (zip manual / Web Store unlisted / política de grupo do TI); (4) replicar a mudança de `app/__init__.py` na branch `dist` no deploy.
+
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.
 - **2026-07-06** — Gih recebeu credencial **Global Admin** da organização. Criados: `schema.sql` (6 tabelas do Supabase inferidas do código) e `scripts/test_graph.py` (valida token MSAL + `get_users` + `get_meetings`). Fornecido passo-a-passo Azure (App Registration, secret, 5 permissões + consentimento admin, transcrição Teams, Application Access Policy via PowerShell). Aguardando `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` p/ montar `.env` e testar.

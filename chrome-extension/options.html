@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Acordito — Configurações</title>
+<link rel="stylesheet" href="popup.css">
+<style>
+  body { width: 460px; padding: 22px; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 5px; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+</style>
+</head>
+<body>
+
+<h1>Acordito — Configurações</h1>
+<div class="hint" style="margin-bottom:16px">Endereço do servidor Meeting DDM que recebe as reuniões.</div>
+
+<div class="field">
+  <label for="apiBase">URL da API</label>
+  <input type="url" id="apiBase" placeholder="https://meeting.grupoddm.ia.br" autocomplete="off">
+  <div class="hint">Produção: <code>https://meeting.grupoddm.ia.br</code> · Teste local: <code>http://127.0.0.1:5000</code></div>
+</div>
+
+<div class="field">
+  <label for="solicitante">Seu nome (padrão)</label>
+  <input type="text" id="solicitante" placeholder="Ex.: Gisele Oliveira" autocomplete="off">
+</div>
+
+<button class="btn" id="salvar" type="button">Salvar</button>
+<button class="mini" id="testar" type="button" style="margin-top:8px">Testar conexão</button>
+
+<div class="msg hidden" id="msg"></div>
+
+<script type="module" src="options.js"></script>
+</body>
+</html>

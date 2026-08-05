@@ -35,6 +35,15 @@ class Config:
     ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "gisele.oliveira@ddm.adv.br,dimaio@ddm.adv.br,joao.dimaio@ddm.adv.br")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    # Extensão Chrome (Acordito): origens autorizadas a chamar os endpoints
+    # públicos (/api/health, /api/setores, /api/gravacoes). Vazio = qualquer
+    # chrome-extension://. Preencha com o ID da extensão para restringir:
+    # EXTENSION_ORIGINS=chrome-extension://abcdef...
+    EXTENSION_ORIGINS = [
+        o.strip()
+        for o in os.getenv("EXTENSION_ORIGINS", "").split(",")
+        if o.strip()
+    ]
     # Seguro por padrão em produção (HTTPS). Em dev (HTTP) desliga automático.
     # Override explícito via env SESSION_COOKIE_SECURE=0/1.
     SESSION_COOKIE_SECURE = os.getenv(

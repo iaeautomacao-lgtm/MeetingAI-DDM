@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_file, send_from_directory, redirect
+from flask import Flask, send_file, send_from_directory, redirect, request
 from app.config import Config
 from app.extensions import init_celery
 from app.auth import is_authed
@@ -53,6 +53,28 @@ def create_app(config_class=Config):
         "base-uri 'self'; "
         "form-action 'self'"
     )
+
+    # A extensão Chrome roda em origem chrome-extension:// — precisa de CORS.
+    # Liberado SÓ nos endpoints já públicos e SEM Allow-Credentials, ou seja,
+    # o cookie de sessão do diretor nunca é enviado nem aceito por essa via.
+    _EXT_PATHS = ("/api/health", "/api/setores", "/api/gravacoes")
+
+    def _origem_extensao(origin):
+        if not origin.startswith("chrome-extension://"):
+            return False
+        permitidas = app.config.get("EXTENSION_ORIGINS") or []
+        return not permitidas or origin in permitidas
+
+    @app.after_request
+    def _cors_extensao(resp):
+        origin = request.headers.get("Origin", "")
+        if request.path in _EXT_PATHS and _origem_extensao(origin):
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            resp.headers["Access-Control-Max-Age"] = "600"
+            resp.headers.add("Vary", "Origin")
+        return resp
 
     @app.after_request
     def _security_headers(resp):

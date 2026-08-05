@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Acordito - Meeting DDM",
+  "version": "1.0.0",
+  "description": "Coloca o bot Acordito na reuniao aberta na aba atual: grava, transcreve e gera a ata para a diretoria.",
+  "permissions": ["activeTab", "storage", "clipboardRead"],
+  "host_permissions": [
+    "https://meeting.grupoddm.ia.br/*",
+    "http://127.0.0.1:5000/*",
+    "http://localhost:5000/*"
+  ],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_title": "Registrar reuniao no Acordito",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon.png",
+      "48": "icons/icon.png",
+      "128": "icons/icon.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon.png",
+    "48": "icons/icon.png",
+    "128": "icons/icon.png"
+  }
+}

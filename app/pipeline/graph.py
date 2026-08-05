@@ -4,6 +4,11 @@ Usa client credentials flow (app-only) — sem login de usuário.
 Requer permissões: OnlineMeetings.Read.All, OnlineMeetingTranscript.Read.All,
                    CallRecords.Read.All, Mail.Read, User.Read.All
 """
+# Anotacoes adiadas: "X | None" (PEP 604) so avalia em runtime a partir
+# do Python 3.10, e o interpretador do cPanel e mais antigo. Sem isso o
+# app quebra no import em producao.
+from __future__ import annotations
+
 
 import os
 import re

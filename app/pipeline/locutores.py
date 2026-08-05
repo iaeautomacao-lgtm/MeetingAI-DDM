@@ -14,6 +14,11 @@ Então o vínculo é inferido pela IA a partir do próprio diálogo (vocativos,
 auto-apresentação, quem responde a quem) e, quando isso falha, corrigido à mão
 no painel. Este módulo concentra as duas vias.
 """
+# Anotacoes adiadas: "X | None" (PEP 604) so avalia em runtime a partir
+# do Python 3.10, e o interpretador do cPanel e mais antigo. Sem isso o
+# app quebra no import em producao.
+from __future__ import annotations
+
 
 import json
 import re

@@ -4,6 +4,11 @@ Autenticacao por sessao para o painel, com auto-cadastro e aprovacao do admin.
 Login exige ativo=1 e aprovado=1.
 Senha-mestre (DIRECTOR_PASSWORD) = acesso de emergencia do diretor/admin.
 """
+# Anotacoes adiadas: "X | None" (PEP 604) so avalia em runtime a partir
+# do Python 3.10, e o interpretador do cPanel e mais antigo. Sem isso o
+# app quebra no import em producao.
+from __future__ import annotations
+
 
 import hmac
 import os

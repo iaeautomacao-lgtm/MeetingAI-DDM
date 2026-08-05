@@ -1,4 +1,9 @@
-﻿import os
+﻿# Anotacoes adiadas: "X | None" (PEP 604) so avalia em runtime a partir
+# do Python 3.10, e o interpretador do cPanel e mais antigo. Sem isso o
+# app quebra no import em producao.
+from __future__ import annotations
+
+import os
 
 import mysql.connector
 from mysql.connector import pooling

@@ -262,6 +262,28 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Teste pendente na Gih (localhost):** `SKRIBBY_REALTIME_AUDIO=1` no `.env`, reunião de teste, depois `python scripts/inspecionar_bot_skribby.py --ultima`. Se aparecer `started-speaking` ou `speaker_name`, o vínculo passa a ser exato e a IA fica só de reserva. Avaliar o custo do add-on antes de ligar em produção.
 
+## 3.8 LIXEIRA DE REUNIÕES (2026-08-05)
+
+**Excluir não apaga.** Marca `excluida_em` e a reunião sai na hora do painel, dos KPIs, da busca, do resumo diário e do detalhe — mas fica recuperável por 30 dias (`LIXEIRA_DIAS` no ambiente muda o prazo).
+
+**Banco (migração aplicada em produção):** `migrations/2026-08-05_add_lixeira_reunioes.sql` — `excluida_em DATETIME NULL`, `excluida_por VARCHAR(190) NULL`, índice em `excluida_em`. Só `ADD COLUMN IF NOT EXISTS` (MariaDB 10.11). Conferido antes e depois: 15 reuniões intactas.
+
+**Filtro `excluida_em IS NULL` aplicado em 10 consultas** — live Teams, em processamento, summary do dashboard, recentes, pendências, listagem, detalhe, locutores, processar manual (`routes.py`) e resumo diário (`tasks.py`). **Deixados de fora de propósito:** busca por `recall_bot_id` no webhook e dedup por `ms_meeting_id` — precisam ver o que está na lixeira para não reprocessar nem duplicar.
+
+**Endpoints (todos `@require_admin`):**
+- `POST /api/reunioes/<id>/excluir` → manda pra lixeira, grava quem excluiu
+- `POST /api/reunioes/<id>/restaurar` → tira da lixeira
+- `GET /api/lixeira` → lista com `dias_restantes` + `retencao_dias`
+- `POST /api/lixeira/limpar` → esvazia **definitivamente**; com `{"somente_expiradas": true}` apaga só o que venceu
+
+**Purga automática por duas vias:** task Celery `limpar_lixeira_expirada` (beat 03:30) **e** `purgar_lixeira_expirada()` chamada ao abrir a lixeira e ao excluir. A segunda existe porque o cPanel não mantém worker Celery vivo — sem ela o prazo de 30 dias nunca seria cumprido em produção.
+
+**Painel:** item **Lixeira** na navegação (só admin, com contador), botão **Excluir** no detalhe da reunião, **Restaurar** por item e **Esvaziar agora** com dupla confirmação. Excluir também confirma antes.
+
+**Decisão de permissão:** excluir/restaurar/esvaziar são **admin-only** (`require_admin`), não por setor. Apagar é destrutivo e usuário de setor escondendo reunião da diretoria seria pior que o incômodo de pedir a um admin. Para liberar por setor, trocar `@require_admin` por `@require_auth` + checagem de setor nos três endpoints.
+
+**Testado (12 casos, servidor local contra o banco de produção):** excluir → sai da listagem (17→16), detalhe 404, locutores 404, KPIs recalculados, aparece na lixeira com `dias_restantes: 30` e autor; restaurar → volta (16→17); sem login → 401 em excluir e em lixeira. Esvaziar e purga por vencimento testados com **2 reuniões sintéticas** (`zz-teste-a` recente, `zz-teste-b` com `excluida_em` de 31 dias atrás), nunca com dado real: o `GET /api/lixeira` purgou sozinho a vencida, o esvaziar levou a outra, total voltou a 17 e nada real foi tocado.
+
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.
 - **2026-07-06** — Gih recebeu credencial **Global Admin** da organização. Criados: `schema.sql` (6 tabelas do Supabase inferidas do código) e `scripts/test_graph.py` (valida token MSAL + `get_users` + `get_meetings`). Fornecido passo-a-passo Azure (App Registration, secret, 5 permissões + consentimento admin, transcrição Teams, Application Access Policy via PowerShell). Aguardando `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` p/ montar `.env` e testar.

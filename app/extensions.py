@@ -89,6 +89,12 @@ def init_celery(app):
                 "task": "app.workers.tasks.gerar_resumo_diario",
                 "schedule": crontab(hour=18, minute=0),
             },
+            # Rede de segurança: sem Celery no ar, a purga acontece quando
+            # alguém abre a lixeira (ver purgar_lixeira_expirada em routes.py).
+            "limpar-lixeira": {
+                "task": "app.workers.tasks.limpar_lixeira_expirada",
+                "schedule": crontab(hour=3, minute=30),
+            },
         },
     )
 

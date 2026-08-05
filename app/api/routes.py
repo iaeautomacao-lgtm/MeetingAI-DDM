@@ -287,7 +287,8 @@ def live_teams():
                 participantes,
                 status
             FROM reunioes
-            WHERE data >= %s
+            WHERE excluida_em IS NULL
+              AND data >= %s
               AND status IN (%s, %s)
               AND plataforma = %s
         """
@@ -351,7 +352,8 @@ def live_processando():
                 setor,
                 status
             FROM reunioes
-            WHERE status = %s
+            WHERE excluida_em IS NULL
+              AND status = %s
         """
 
         params = ["processing"]
@@ -422,7 +424,8 @@ def dashboard_summary():
                 pendencias,
                 status
             FROM reunioes
-            WHERE data >= %s
+            WHERE excluida_em IS NULL
+              AND data >= %s
               AND status = %s
         """
 
@@ -521,7 +524,7 @@ def dashboard():
                 resumo_executivo,
                 status
             FROM reunioes
-            WHERE 1 = 1
+            WHERE excluida_em IS NULL
         """
 
         params = []
@@ -543,7 +546,8 @@ def dashboard():
         sql_pendencias = """
             SELECT pendencias
             FROM reunioes
-            WHERE status = %s
+            WHERE excluida_em IS NULL
+              AND status = %s
         """
 
         params_pendencias = ["completed"]
@@ -617,7 +621,7 @@ def listar_reunioes():
         status,
         plataforma
         FROM reunioes
-        WHERE 1 = 1
+        WHERE excluida_em IS NULL
         """
 
         params = []
@@ -685,6 +689,7 @@ def detalhe_reuniao(reuniao_id: str):
             SELECT *
             FROM reunioes
             WHERE id = %s
+              AND excluida_em IS NULL
             LIMIT 1
             """,
             (reuniao_id,),
@@ -736,6 +741,7 @@ def _carregar_reuniao_locutores(reuniao_id: str):
             SELECT id, setor, recall_bot_id, utterances, participantes
             FROM reunioes
             WHERE id = %s
+              AND excluida_em IS NULL
             LIMIT 1
             """,
             (reuniao_id,),
@@ -969,6 +975,297 @@ def renomear_locutores(reuniao_id: str):
         "falas_atualizadas": trocadas,
         "mapa": mapa,
     }), 200
+
+
+# ── Lixeira de reuniões ───────────────────────────────────────────────────────
+#
+# Excluir não apaga: marca `excluida_em`. A reunião sai do painel, dos KPIs e da
+# busca, mas fica recuperável pelo prazo de retenção. Depois disso é apagada de
+# vez — pela task do Celery, ou na primeira vez que alguém abrir a lixeira
+# (produção no cPanel não mantém worker vivo, então não dá para depender só do
+# agendador).
+
+def dias_retencao_lixeira() -> int:
+    try:
+        return max(1, int(os.getenv("LIXEIRA_DIAS", "30")))
+    except (TypeError, ValueError):
+        return 30
+
+
+def purgar_lixeira_expirada() -> int:
+    """Apaga definitivamente o que passou da retenção. Devolve quantas saíram."""
+    dias = dias_retencao_lixeira()
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            f"""
+            DELETE FROM reunioes
+            WHERE excluida_em IS NOT NULL
+              AND excluida_em < NOW() - INTERVAL {dias} DAY
+            """
+        )
+
+        apagadas = cursor.rowcount or 0
+        connection.commit()
+
+        if apagadas:
+            current_app.logger.info(
+                "Lixeira: %d reuniões apagadas por vencimento (%d dias)",
+                apagadas,
+                dias,
+            )
+
+        return apagadas
+
+    except Exception:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception("Falha ao purgar a lixeira")
+        return 0
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/reunioes/<reuniao_id>/excluir")
+@require_admin
+def excluir_reuniao(reuniao_id: str):
+    """Manda a reunião para a lixeira (recuperável durante a retenção)."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE reunioes
+            SET excluida_em = NOW(), excluida_por = %s
+            WHERE id = %s
+              AND excluida_em IS NULL
+            """,
+            (sessao_email() or "diretoria", reuniao_id),
+        )
+
+        afetadas = cursor.rowcount or 0
+        connection.commit()
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao excluir a reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível excluir a reunião.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    if not afetadas:
+        return jsonify({"erro": "não encontrado"}), 404
+
+    purgar_lixeira_expirada()
+
+    return jsonify({
+        "ok": True,
+        "retencao_dias": dias_retencao_lixeira(),
+    }), 200
+
+
+@bp.post("/reunioes/<reuniao_id>/restaurar")
+@require_admin
+def restaurar_reuniao(reuniao_id: str):
+    """Tira a reunião da lixeira."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE reunioes
+            SET excluida_em = NULL, excluida_por = NULL
+            WHERE id = %s
+              AND excluida_em IS NOT NULL
+            """,
+            (reuniao_id,),
+        )
+
+        afetadas = cursor.rowcount or 0
+        connection.commit()
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao restaurar a reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível restaurar a reunião.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    if not afetadas:
+        return jsonify({"erro": "não encontrado"}), 404
+
+    return jsonify({"ok": True}), 200
+
+
+@bp.get("/lixeira")
+@require_admin
+def listar_lixeira():
+    """Reuniões na lixeira, com quantos dias faltam para o apagamento."""
+    purgar_lixeira_expirada()
+
+    dias = dias_retencao_lixeira()
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            f"""
+            SELECT
+                id,
+                titulo,
+                setor,
+                data,
+                duracao_minutos,
+                status,
+                solicitante,
+                excluida_em,
+                excluida_por,
+                DATEDIFF(
+                    excluida_em + INTERVAL {dias} DAY,
+                    NOW()
+                ) AS dias_restantes
+            FROM reunioes
+            WHERE excluida_em IS NOT NULL
+            ORDER BY excluida_em DESC
+            LIMIT 200
+            """
+        )
+
+        reunioes = cursor.fetchall()
+
+        return jsonify({
+            "reunioes": reunioes,
+            "retencao_dias": dias,
+        }), 200
+
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar a lixeira")
+
+        return jsonify({
+            "erro": "Não foi possível carregar a lixeira.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/lixeira/limpar")
+@require_admin
+def limpar_lixeira():
+    """
+    Esvazia a lixeira agora — apagamento DEFINITIVO, sem volta.
+
+    Por padrão apaga tudo o que está na lixeira. Com {"somente_expiradas": true}
+    apaga só o que já passou da retenção.
+    """
+    body = request.get_json(silent=True) or {}
+
+    if body.get("somente_expiradas"):
+        return jsonify({
+            "ok": True,
+            "apagadas": purgar_lixeira_expirada(),
+            "somente_expiradas": True,
+        }), 200
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            DELETE FROM reunioes
+            WHERE excluida_em IS NOT NULL
+            """
+        )
+
+        apagadas = cursor.rowcount or 0
+        connection.commit()
+
+        current_app.logger.warning(
+            "Lixeira esvaziada por %s: %d reuniões apagadas definitivamente",
+            sessao_email() or "diretoria",
+            apagadas,
+        )
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception("Erro ao esvaziar a lixeira")
+
+        return jsonify({
+            "erro": "Não foi possível esvaziar a lixeira.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return jsonify({"ok": True, "apagadas": apagadas}), 200
 
 
 @bp.post("/reunioes/upload")
@@ -1330,6 +1627,7 @@ def processar_gravacao_manual(reuniao_id: str):
                 setor
             FROM reunioes
             WHERE id = %s
+              AND excluida_em IS NULL
             LIMIT 1
             """,
             (reuniao_id,),

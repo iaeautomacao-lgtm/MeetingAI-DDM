@@ -669,6 +669,14 @@ def _processar_recall(reuniao_id: str, bot_id: str):
 
         raise
 
+@celery.task
+def limpar_lixeira_expirada():
+    """Apaga de vez as reuniões que passaram do prazo de retenção da lixeira."""
+    from app.api.routes import purgar_lixeira_expirada
+
+    return purgar_lixeira_expirada()
+
+
 @celery.task(bind=True, max_retries=3)
 def processar_gravacao_recall(self, reuniao_id: str, bot_id: str):
     """Wrapper Celery de _processar_recall (retry em falha)."""
@@ -1133,7 +1141,8 @@ def gerar_resumo_diario():
                 resumo_executivo,
                 setor
             FROM reunioes
-            WHERE data >= %s
+            WHERE excluida_em IS NULL
+              AND data >= %s
               AND data < %s
               AND status = %s
             """,

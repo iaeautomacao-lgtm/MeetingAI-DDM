@@ -119,6 +119,15 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
     if webhook:
         payload["webhook_url"] = webhook
 
+    # Add-on de realtime. Pela documentação é o que faz o Skribby cruzar o áudio
+    # com a lista de participantes da plataforma e trocar "Speaker 1" pelo nome
+    # real, além de emitir os eventos started-speaking/stopped-speaking. Com o
+    # modelo async (soniox/stt-async-v5) nada disso vem. Desligado por padrão:
+    # é cobrado à parte e ainda não confirmamos se o nome persiste no
+    # transcript guardado após a reunião. Ligar com SKRIBBY_REALTIME_AUDIO=1.
+    if os.getenv("SKRIBBY_REALTIME_AUDIO", "").strip() in ("1", "true", "True"):
+        payload["realtime_audio"] = True
+
     resp = requests.post(f"{_base()}/bot", headers=_headers(), json=payload, timeout=30)
     _raise_for_status(resp)
     return resp.json()

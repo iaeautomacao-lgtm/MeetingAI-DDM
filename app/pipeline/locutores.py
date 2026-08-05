@@ -166,6 +166,155 @@ def _amostra_dialogo(utterances: list, limite: int = 9000) -> str:
     return "\n".join(inicio)
 
 
+# ── Via determinística: eventos de fala do Skribby ────────────────────────────
+#
+# Quando o bot roda com modelo realtime (ou `realtime_audio: true`), cada
+# participante recebe eventos `started-speaking` / `stopped-speaking` com
+# timestamp. Cruzando isso com o tempo de cada fala dá o vínculo exato, sem
+# palpite. Com o modelo async esses eventos não vêm e cai-se na inferência.
+
+# Fração mínima da fala do rótulo que precisa cair na janela do vencedor.
+COBERTURA_MINIMA = 0.55
+# Quanto o vencedor precisa superar o segundo colocado.
+VANTAGEM_MINIMA = 1.5
+
+
+def _inicio_gravacao(bot: dict) -> int | None:
+    """Instante (epoch ms) a que os tempos da transcrição são relativos."""
+    inicios = []
+
+    for p in (bot or {}).get("participants") or []:
+        for intervalo in p.get("presence_intervals") or []:
+            valor = intervalo.get("joined_at")
+            if isinstance(valor, (int, float)):
+                inicios.append(int(valor))
+
+    return min(inicios) if inicios else None
+
+
+def _janelas_de_fala(participante: dict, fim_padrao: int) -> list:
+    """Pares (início, fim) em que o participante estava falando."""
+    eventos = sorted(
+        (
+            e for e in (participante.get("events") or [])
+            if isinstance(e, dict)
+            and isinstance(e.get("timestamp"), (int, float))
+        ),
+        key=lambda e: e["timestamp"],
+    )
+
+    janelas, aberta = [], None
+    for e in eventos:
+        tipo = (e.get("type") or "").lower()
+
+        if tipo == "started-speaking":
+            aberta = int(e["timestamp"])
+        elif tipo == "stopped-speaking" and aberta is not None:
+            janelas.append((aberta, int(e["timestamp"])))
+            aberta = None
+
+    if aberta is not None:
+        janelas.append((
+            aberta,
+            int(participante.get("left_at") or fim_padrao),
+        ))
+
+    return janelas
+
+
+def _sobreposicao(intervalos: list, janelas: list) -> float:
+    total = 0.0
+    for ini, fim in intervalos:
+        for j0, j1 in janelas:
+            total += max(0.0, min(fim, j1) - max(ini, j0))
+    return total
+
+
+def mapear_por_eventos_de_fala(bot: dict, utterances: list) -> dict:
+    """
+    Vincula rótulo -> nome cruzando o tempo das falas com os eventos
+    started-speaking de cada participante. {} quando o Skribby não mandou
+    esses eventos ou quando a sobreposição não é conclusiva.
+    """
+    t0 = _inicio_gravacao(bot)
+
+    if t0 is None:
+        return {}
+
+    fim_padrao = t0
+    for u in utterances or []:
+        if isinstance(u.get("end_ms"), (int, float)):
+            fim_padrao = max(fim_padrao, t0 + int(u["end_ms"]))
+
+    janelas_por_nome = {}
+    for p in (bot or {}).get("participants") or []:
+        nome = _clean_nome(p.get("name") or "")
+        if not nome or _ROBOS_RE.search(nome):
+            continue
+
+        janelas = _janelas_de_fala(p, fim_padrao)
+        if janelas:
+            janelas_por_nome[nome] = janelas
+
+    if not janelas_por_nome:
+        return {}  # sem eventos de fala: nada a cruzar
+
+    intervalos_por_rotulo = {}
+    for u in utterances or []:
+        rotulo = (u.get("speaker") or "").strip()
+        if not rotulo or not rotulo_generico(rotulo):
+            continue
+
+        ini, fim = u.get("start_ms"), u.get("end_ms")
+        if not isinstance(ini, (int, float)) or not isinstance(fim, (int, float)):
+            continue
+
+        intervalos_por_rotulo.setdefault(rotulo, []).append(
+            (t0 + int(ini), t0 + int(fim))
+        )
+
+    candidatos = []
+    for rotulo, intervalos in intervalos_por_rotulo.items():
+        duracao = sum(fim - ini for ini, fim in intervalos)
+        if duracao <= 0:
+            continue
+
+        placar = sorted(
+            (
+                (_sobreposicao(intervalos, janelas), nome)
+                for nome, janelas in janelas_por_nome.items()
+            ),
+            reverse=True,
+        )
+
+        melhor, nome = placar[0]
+        segundo = placar[1][0] if len(placar) > 1 else 0.0
+
+        if melhor / duracao < COBERTURA_MINIMA:
+            continue
+        if segundo > 0 and melhor < segundo * VANTAGEM_MINIMA:
+            continue
+
+        candidatos.append((melhor / duracao, rotulo, nome))
+
+    candidatos.sort(reverse=True)
+
+    mapa, usados = {}, set()
+    for _, rotulo, nome in candidatos:
+        if rotulo in mapa or nome in usados:
+            continue
+        mapa[rotulo] = nome
+        usados.add(nome)
+
+    return mapa
+
+
+def _clean_nome(nome: str) -> str:
+    from app.pipeline.skribby_client import _clean_participant_name
+
+    return _clean_participant_name(nome)
+
+
 PROMPT_LOCUTORES = """Você recebe a transcrição de uma reunião com os locutores \
 rotulados por número (diarização automática) e a lista de quem realmente esteve \
 na reunião. Descubra qual rótulo corresponde a qual pessoa.
@@ -192,6 +341,35 @@ Responda SOMENTE este JSON, sem markdown:
 
 TRANSCRIÇÃO:
 {dialogo}"""
+
+
+def identificar_locutores(bot: dict, utterances: list) -> tuple[list, dict, str]:
+    """
+    Põe nome real nos rótulos de diarização.
+
+    Tenta primeiro os eventos de fala do Skribby (exato); se não vierem, infere
+    pelo diálogo. Devolve (utterances, mapa, origem) — origem é "eventos", "ia"
+    ou "" quando não deu para identificar.
+    """
+    from app.pipeline.skribby_client import extract_skribby_participants
+
+    nomes = nomes_de_pessoas([
+        p.get("nome")
+        for p in extract_skribby_participants(bot)
+        if p.get("nome")
+    ])
+
+    if not nomes:
+        return utterances, {}, ""
+
+    mapa = mapear_por_eventos_de_fala(bot, utterances)
+    origem = "eventos" if mapa else ""
+
+    if not mapa:
+        mapa = mapear_com_ia(utterances, nomes)
+        origem = "ia" if mapa else ""
+
+    return aplicar_mapa(utterances, mapa), mapa, origem
 
 
 def mapear_com_ia(utterances: list, nomes: list) -> dict:

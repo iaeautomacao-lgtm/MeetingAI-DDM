@@ -1,4 +1,5 @@
 ﻿import json
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -588,21 +589,22 @@ def _processar_recall(reuniao_id: str, bot_id: str):
             return "sem_transcricao"
 
         # O Skribby manda os nomes reais em participants[] e a diarização em
-        # transcript[].speaker, sem ligar os dois. A IA faz o vínculo pelo
-        # diálogo; o que não resolver fica "Speaker N" para renomear no painel.
-        nomes_reais = [
-            p.get("nome")
-            for p in extract_skribby_participants(bot)
-            if p.get("nome")
-        ]
+        # transcript[].speaker, sem ligar os dois. Cruza pelos eventos de fala
+        # quando existem; senão infere pelo diálogo. O que não resolver fica
+        # "Speaker N" para renomear no painel.
+        from app.pipeline.locutores import identificar_locutores
 
-        if nomes_reais:
-            from app.pipeline.locutores import aplicar_mapa, mapear_com_ia
+        utterances, mapa_locutores, origem_locutores = identificar_locutores(
+            bot,
+            utterances,
+        )
 
-            mapa = mapear_com_ia(utterances, nomes_reais)
-
-            if mapa:
-                utterances = aplicar_mapa(utterances, mapa)
+        if mapa_locutores:
+            logging.getLogger(__name__).info(
+                "Locutores identificados por %s: %s",
+                origem_locutores,
+                mapa_locutores,
+            )
 
         full_text = " ".join(
             utterance.get("texto", "")

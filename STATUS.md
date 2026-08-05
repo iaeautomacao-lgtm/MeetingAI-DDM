@@ -244,7 +244,23 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Reuniões antigas:** das 12 concluídas, 8 já estão com nome. As 4 restantes vieram **sem diarização** (anteriores ao commit `7034358`, 2026-08-03) — rótulo único `?` com 2 a 8 participantes. Não há o que mapear; só re-transcrever resolveria, e as gravações provavelmente expiraram no Skribby.
 
-**Pendente:** perguntar ao suporte do Skribby se a API expõe evento de locutor ativo (o Teams sabe quem fala; o dado existe do lado deles). Se expuserem, o vínculo passa a ser exato e a inferência por IA fica só de reserva.
+### Documentação do Skribby lida (2026-08-05) — a causa é o modelo
+
+`skribby.io/docs/guides/speaker-timelines` + `/realtime-transcription` + `/rest-api/bot-operations/createbot`:
+
+- O Skribby **cruza o áudio com a lista de participantes da plataforma e troca "Speaker 1" pelo nome real** — mas isso é do fluxo **realtime**: modelo realtime (ex. `soniox/stt-rt-v5`) ou add-on `realtime_audio: true`.
+- Participantes podem ter eventos **`started-speaking` / `stopped-speaking`** com timestamp.
+- **Não existe** campo de "identificar locutor" no corpo de criação do bot. A alavanca é `transcription_model` ou `realtime_audio`.
+- Nosso `soniox/stt-async-v5` é async → sem correlação, sem eventos de fala, `speaker_name` e `potential_speaker_names` vazios. Confirmado no payload real.
+
+**Implementado para o teste:**
+- `SKRIBBY_REALTIME_AUDIO=1` → manda `realtime_audio: true` na criação do bot. **Desligado por padrão** (é add-on cobrado à parte e a doc não garante que o nome persista no transcript guardado depois da reunião).
+- `mapear_por_eventos_de_fala(bot, utterances)` — **via determinística**: cruza o tempo de cada fala com as janelas `started-speaking` de cada participante. Exige cobertura ≥ 55% e vantagem ≥ 1,5× sobre o segundo colocado; recusa em vez de chutar. `identificar_locutores()` tenta essa via primeiro e só cai na IA se ela não resolver.
+- `scripts/inspecionar_bot_skribby.py <bot_id>` — radiografia: modelo, `realtime_audio`, tipos de evento por participante, quantos `speaker_name`/`potential_speaker_names` vieram, e o mapa que cada via produz.
+
+**Testado:** bot async atual → "eventos started-speaking: NÃO", 0 `speaker_name`, mapa por IA correto. Via determinística validada em 4 casos sintéticos: mapeia certo com eventos; devolve `{}` para fala fora de janela, para payload sem eventos e para duas pessoas com janelas idênticas (ambíguo); bot de anotação (Otter) descartado.
+
+**Teste pendente na Gih (localhost):** `SKRIBBY_REALTIME_AUDIO=1` no `.env`, reunião de teste, depois `python scripts/inspecionar_bot_skribby.py --ultima`. Se aparecer `started-speaking` ou `speaker_name`, o vínculo passa a ser exato e a IA fica só de reserva. Avaliar o custo do add-on antes de ligar em produção.
 
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.

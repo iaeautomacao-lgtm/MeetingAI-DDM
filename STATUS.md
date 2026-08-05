@@ -210,7 +210,11 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Testado (curl, servidor local 5000):** preflight OPTIONS `/api/gravacoes` → 200 + headers CORS; `/api/health` e `/api/setores` com origem extensão → 200 + CORS; origem `https://evil.example` → 0 headers CORS; `/api/reunioes` com origem extensão → 401 **sem** CORS; POST com URL fora dos hosts → 400 `meeting_url inválido`. `node --check` OK nos 3 JS, manifest JSON válido.
 
-**Pendente:** (1) carregar sem compactação no Chrome e fazer 1 teste e2e real (bot entrando); (2) rate-limit em `/api/gravacoes` — endpoint público sem limite, vale p/ a tela `/` também; (3) decidir distribuição (zip manual / Web Store unlisted / política de grupo do TI); (4) replicar a mudança de `app/__init__.py` na branch `dist` no deploy.
+**Instalada e funcionando** no Chrome da Gih (ID `lhamfoaglhifldglijnkcldohbnceomm` — instável, muda por máquina/pasta em extensão descompactada). Commit `eec5679` na `main`.
+
+**Descoberta de deploy (2026-08-05):** produção **não** sai da branch `dist`. `GET /api/health` devolve `cwd=/home/grpia/repositories/MeetingAI-DDM1` e o HTML servido é o da `main` (a `dist` ainda está em Supabase; prod já em MySQL). Branch `dist` parada desde 17/07/2026 — **abandonada**. Deploy = `main` → cPanel *Update from Remote* no repo `MeetingAI-DDM1` → *Restart* do Python App.
+
+**Pendente:** (1) *Update from Remote* + *Restart* no cPanel p/ o CORS valer em produção (até isso, o dropdown de setor da extensão vem vazio e o envio falha contra `meeting.grupoddm.ia.br`); (2) teste e2e real com bot entrando; (3) rate-limit em `/api/gravacoes` — endpoint público sem limite, vale p/ a tela `/` também; (4) decidir distribuição (zip manual / Web Store unlisted / política de grupo do TI).
 
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.

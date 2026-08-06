@@ -866,14 +866,24 @@ function _metaReuniao(r){
   ].filter(Boolean).join(' · ');
 }
 
+function decisaoTexto(d){
+  if(typeof d==='string') return d;
+  const tipo={aprovada:'[aprovada]',recusada:'[recusada]',alterada:'[alterada]'}[d.tipo]||'';
+  return (tipo?tipo+' ':'')+(d.decisao||'')+(d.responsavel?' ('+d.responsavel+')':'');
+}
+
 function _relatorioCompleto(r){
   const L=[];
   L.push(r.titulo||'Reunião');
   L.push(_metaReuniao(r));
   L.push('');
   if(r.resumo_executivo){ L.push('RESUMO EXECUTIVO'); L.push(r.resumo_executivo); L.push(''); }
-  const dec=asList(r.decisoes); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+d)); L.push(''); }
-  const pen=asList(r.pendencias); if(pen.length){ L.push('PENDÊNCIAS'); pen.forEach(p=>L.push('- '+(p.tarefa||p)+(p.responsavel?' ('+p.responsavel+')':''))); L.push(''); }
+  const tk=asList(r.key_takeaways); if(tk.length){ L.push('PRINCIPAIS RECADOS'); tk.forEach(x=>L.push('- '+x)); L.push(''); }
+  const dec=asList(r.decisoes); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+decisaoTexto(d))); L.push(''); }
+  const pen=asList(r.pendencias); if(pen.length){ L.push('PLANO DE AÇÃO'); pen.forEach(p=>L.push('- ['+(p.status==='concluida'?'x':' ')+'] '+(p.tarefa||p)+(p.responsavel?' — '+p.responsavel:' — sem responsável')+(p.prazo?' | prazo: '+p.prazo:'')+(p.urgencia?' | urgência: '+p.urgencia:''))); L.push(''); }
+  const ris=asList(r.riscos); if(ris.length){ L.push('RISCOS E PONTOS DE ATENÇÃO'); ris.forEach(x=>L.push('- ['+(x.gravidade||'media')+'] '+(x.titulo||'')+(x.detalhe?' — '+x.detalhe:''))); L.push(''); }
+  const perg=asList(r.perguntas_abertas); if(perg.length){ L.push('DÚVIDAS NÃO RESPONDIDAS'); perg.forEach(q=>L.push('- '+(q.pergunta||'')+(q.quem_perguntou?' ('+q.quem_perguntou+')':''))); L.push(''); }
+  if(r.clima && r.clima.tipo){ L.push('CLIMA DA REUNIÃO'); L.push(r.clima.tipo+(r.clima.justificativa?' — '+r.clima.justificativa:'')); L.push(''); }
   const top=asList(r.topicos); if(top.length){ L.push('TÓPICOS'); L.push(top.join(', ')); L.push(''); }
   const part=asList(r.participantes); if(part.length){ L.push('PARTICIPANTES'); part.forEach(p=>L.push('- '+participanteLabel(p))); L.push(''); }
   L.push('TRANSCRIÇÃO'); L.push(_transcricaoTexto(r));
@@ -912,8 +922,11 @@ function exportarReuniaoPdf(){
   </style></head><body>
     <div class="top"><div class="brand">Meeting DDM</div><h1>${esc(r.titulo||'Reunião')}</h1><div class="meta">${esc(_metaReuniao(r))}</div>${r.solicitante?`<div class="meta">Cadastrado por: ${esc(r.solicitante)}</div>`:''}</div>
     ${r.resumo_executivo?`<h2>Resumo executivo</h2><div class="summary">${esc(r.resumo_executivo)}</div>`:''}
-    <h2>Decisões</h2>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
-    <h2>Pendências</h2>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' - '+esc(p.responsavel):''}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
+    ${asList(r.key_takeaways).length?`<h2>Principais recados</h2><ul>${asList(r.key_takeaways).map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}
+    <h2>Decisões</h2>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(decisaoTexto(d))}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
+    <h2>Plano de ação</h2>${pen.length?'<ul>'+pen.map(p=>`<li>${p.status==='concluida'?'<s>':''}${esc(p.tarefa||p)}${p.status==='concluida'?'</s>':''} - ${p.responsavel?esc(p.responsavel):'sem responsável'}${p.prazo?' | prazo: '+esc(p.prazo):''}${p.urgencia?' | urgência: '+esc(p.urgencia):''}</li>`).join('')+'</ul>':'<p class="meta">Nenhuma.</p>'}
+    ${asList(r.riscos).length?`<h2>Riscos e pontos de atenção</h2><ul>${asList(r.riscos).map(x=>`<li><b>${esc(x.titulo||'')}</b>${x.detalhe?' - '+esc(x.detalhe):''}</li>`).join('')}</ul>`:''}
+    ${asList(r.perguntas_abertas).length?`<h2>Dúvidas não respondidas</h2><ul>${asList(r.perguntas_abertas).map(q=>`<li>${esc(q.pergunta||'')}${q.quem_perguntou?' ('+esc(q.quem_perguntou)+')':''}</li>`).join('')}</ul>`:''}
     <h2>Tópicos</h2>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<p class="meta">Nenhum.</p>'}
     <h2>Participantes</h2>${part.length?'<ul>'+part.map(p=>`<li>${esc(participanteLabel(p))}</li>`).join('')+'</ul>':'<p class="meta">Nenhum.</p>'}
     <h2>Transcrição</h2><div class="transcript">${utt.length?utt.map(u=>`<div class="line"><span class="speaker">${esc(speakerLabel(u.speaker))}:</span> ${esc(u.texto||'')}</div>`).join(''):'<p class="meta">Sem transcrição.</p>'}</div>
@@ -955,17 +968,212 @@ async function loadDetalhe(id){
           ${IS_ADMIN?`<button class="btn-sm" style="background:#a12626" onclick="excluirReuniao('${r.id}')">Excluir</button>`:''}
         </div>
       </div>
-      <div class="detail-grid">
-        <div class="d-card"><h3>Decisões</h3>${dec.length?'<ul>'+dec.map(d=>`<li>${esc(d)}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
-        <div class="d-card"><h3>Pendências</h3>${pen.length?'<ul>'+pen.map(p=>`<li>${esc(p.tarefa||p)}${p.responsavel?' — <b>'+esc(p.responsavel)+'</b>':''}</li>`).join('')+'</ul>':'<div class="t-sub">Nenhuma.</div>'}</div>
-      </div>
+      ${blocoInsights(r)}
+      ${blocoAcoes(r)}
+      ${utt.length?blocoPerguntar(r):''}
       <div class="d-card" style="margin-bottom:16px"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
-      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map(p=>`<li>${esc(participanteLabel(p))}</li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
+      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map((p,i)=>`<li><a href="#" onclick="filtrarLocutor(${i});return false" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted,#8a8580)">${esc(participanteLabel(p))}</a></li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
       <div id="locutores-box"></div>
-      ${utt.length?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><h2 class="section-title" style="margin:0">Transcrição</h2><button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button><button class="btn-sm" onclick="exportarReuniao()">Exportar</button></div><div class="transcript">${utt.map(u=>`<b>${esc(speakerLabel(u.speaker))}:</b> ${esc(u.texto||'')}`).join('<br>')}</div>`:''}
+      ${utt.length?blocoTranscricao(utt):''}
     `;
-    if(utt.length) carregarLocutores(r.id);
+    if(utt.length){ carregarLocutores(r.id); _uttAtual = utt; renderTranscricao(); }
   } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- INSIGHTS DA IA ---------- */
+/* Quatro blocos fixos no topo: o que a pessoa precisa saber sem abrir a
+   transcricao. Reunioes analisadas antes desta versao vem sem esses campos —
+   por isso cada bloco tem estado vazio proprio em vez de sumir. */
+
+const CLIMA_LABEL = {
+  consensual:  {txt:'Consensual',  cor:'#1d6b39', bg:'#eefaf1'},
+  conflituosa: {txt:'Conflituosa', cor:'#a12626', bg:'#fdeeee'},
+  informativa: {txt:'Informativa', cor:'#1f5a8a', bg:'#eef5fb'},
+  negociacao:  {txt:'Negociação',  cor:'#8a5a12', bg:'#fdf5e8'},
+};
+const TIPO_DECISAO = {aprovada:'✓ Aprovada', recusada:'✕ Recusada', alterada:'↻ Alterada'};
+const COR_GRAVIDADE = {alta:'#a12626', media:'#8a5a12', baixa:'#8a8580'};
+
+function climaBadge(clima){
+  const c = CLIMA_LABEL[(clima||{}).tipo];
+  if(!c) return '';
+  return `<span style="background:${c.bg};color:${c.cor};font-size:11px;font-weight:700;border-radius:20px;padding:3px 10px">${c.txt}</span>`;
+}
+
+function blocoInsights(r){
+  const tk   = asList(r.key_takeaways);
+  const dec  = asList(r.decisoes);
+  const ris  = asList(r.riscos);
+  const perg = asList(r.perguntas_abertas);
+  const clima = r.clima || {};
+
+  if(!tk.length && !dec.length && !ris.length && !perg.length){
+    return `<div class="d-card" style="margin-bottom:16px"><h3>⚡ Insights da IA</h3>
+      <div class="t-sub">Esta reunião foi analisada antes dos blocos de insight existirem.
+      Reprocesse para gerar recados, riscos e dúvidas em aberto.</div></div>`;
+  }
+
+  const vazio = t => `<div class="t-sub">${t}</div>`;
+
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
+      <h2 class="section-title" style="margin:0">⚡ Insights da IA</h2>
+      ${climaBadge(clima)}
+      ${clima.justificativa?`<span class="t-sub">${esc(clima.justificativa)}</span>`:''}
+    </div>
+    <div class="detail-grid">
+      <div class="d-card">
+        <h3>📌 Principais recados</h3>
+        ${tk.length?'<ul>'+tk.map(t=>`<li>${esc(t)}</li>`).join('')+'</ul>':vazio('—')}
+      </div>
+      <div class="d-card">
+        <h3>🎯 Decisões tomadas</h3>
+        ${dec.length?'<ul>'+dec.map(d=>{
+          const texto = typeof d==='string' ? d : (d.decisao||'');
+          const tipo  = typeof d==='string' ? '' : (TIPO_DECISAO[d.tipo]||'');
+          const quem  = (d && d.responsavel) ? ' — <b>'+esc(d.responsavel)+'</b>' : '';
+          return `<li>${tipo?`<b style="font-size:11px;opacity:.75">${tipo}</b> `:''}${esc(texto)}${quem}</li>`;
+        }).join('')+'</ul>':vazio('Nenhuma decisão registrada.')}
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="d-card">
+        <h3>⚠️ Riscos &amp; pontos de atenção</h3>
+        ${ris.length?'<ul>'+ris.map(x=>`<li><b style="color:${COR_GRAVIDADE[x.gravidade]||'#8a8580'}">${esc(x.titulo||'')}</b>${x.detalhe?' — '+esc(x.detalhe):''}</li>`).join('')+'</ul>':vazio('Nada sinalizado.')}
+      </div>
+      <div class="d-card">
+        <h3>❓ Dúvidas não respondidas</h3>
+        ${perg.length?'<ul>'+perg.map(q=>`<li>${esc(q.pergunta||'')}${q.quem_perguntou?' <span class="t-sub">— '+esc(q.quem_perguntou)+'</span>':''}</li>`).join('')+'</ul>':vazio('Todas as perguntas foram respondidas.')}
+      </div>
+    </div>`;
+}
+
+function blocoAcoes(r){
+  const pen = asList(r.pendencias);
+  if(!pen.length) return `<div class="d-card" style="margin-bottom:16px"><h3>📋 Plano de ação</h3><div class="t-sub">Nenhuma ação identificada.</div></div>`;
+
+  const urg = {alta:'#a12626', media:'#8a5a12', baixa:'#8a8580'};
+  return `
+    <div class="d-card" style="margin-bottom:16px">
+      <h3>📋 Plano de ação</h3>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">
+        <thead><tr style="text-align:left;color:var(--muted,#8a8580);font-size:11px">
+          <th style="padding:6px 8px 6px 0">Ação</th><th style="padding:6px 8px">Responsável</th>
+          <th style="padding:6px 8px">Prazo</th><th style="padding:6px 8px">Urgência</th><th style="padding:6px 8px">Feito</th>
+        </tr></thead>
+        <tbody>
+        ${pen.map((p,i)=>{
+          const feito = p.status==='concluida';
+          return `<tr style="border-top:1px solid var(--line,#e9e4de)${feito?';opacity:.55':''}">
+            <td style="padding:8px 8px 8px 0${feito?';text-decoration:line-through':''}">${esc(p.tarefa||p)}</td>
+            <td style="padding:8px">${p.responsavel?esc(p.responsavel):'<span class="t-sub">não atribuído</span>'}</td>
+            <td style="padding:8px">${p.prazo?esc(p.prazo):'<span class="t-sub">sem prazo</span>'}</td>
+            <td style="padding:8px;color:${urg[p.urgencia]||'#8a8580'};font-weight:600">${esc(p.urgencia||'média')}</td>
+            <td style="padding:8px"><input type="checkbox" ${feito?'checked':''} onchange="marcarAcao('${r.id}',${i},this.checked)"
+              title="${feito&&p.concluida_por?'Concluída por '+esc(p.concluida_por):'Marcar como concluída'}"></td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+async function marcarAcao(id, indice, feito){
+  try {
+    await apiPost(`/api/reunioes/${id}/acoes/${indice}`, {status: feito?'concluida':'pendente'});
+    toast(feito?'Ação concluída.':'Ação reaberta.');
+    loadDetalhe(id);
+  } catch(e){ toast('Erro: '+e.message, 4000); loadDetalhe(id); }
+}
+
+function blocoPerguntar(r){
+  return `
+    <div class="d-card" style="margin-bottom:16px">
+      <h3>💬 Pergunte à IA sobre esta reunião</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="pergunta-ia" placeholder="Ex.: quais prazos foram definidos?" maxlength="500"
+               style="flex:1;min-width:220px;border:1px solid transparent;background:var(--bg-alt,#f5f3f0);border-radius:8px;padding:9px 11px;font:inherit"
+               onkeydown="if(event.key==='Enter')perguntarIA('${r.id}')">
+        <button class="btn-sm" id="pergunta-btn" onclick="perguntarIA('${r.id}')">Perguntar</button>
+      </div>
+      <div id="pergunta-resposta"></div>
+    </div>`;
+}
+
+async function perguntarIA(id){
+  const campo = document.getElementById('pergunta-ia');
+  const pergunta = (campo.value||'').trim();
+  if(!pergunta){ toast('Escreva a pergunta.'); return; }
+
+  const btn = document.getElementById('pergunta-btn');
+  const alvo = document.getElementById('pergunta-resposta');
+  btn.disabled = true; btn.textContent = 'Consultando…';
+  alvo.innerHTML = '<div class="skel" style="height:60px;margin-top:12px"></div>';
+
+  try {
+    const d = await apiPost(`/api/reunioes/${id}/perguntar`, {pergunta});
+    const falas = asList(d.falas);
+    alvo.innerHTML = `
+      <div style="margin-top:12px;padding:12px 14px;background:var(--bg-alt,#f5f3f0);border-radius:10px;font-size:13px;line-height:1.6">
+        ${esc(d.resposta||'')}
+        ${falas.length?`<div style="margin-top:10px;border-top:1px solid var(--line,#e9e4de);padding-top:8px">
+          <div class="t-sub" style="margin-bottom:6px">Baseado nestes trechos:</div>
+          ${falas.map(f=>`<div style="margin-bottom:6px"><b>${esc(speakerLabel(f.speaker))}:</b> ${esc(f.texto)}</div>`).join('')}
+        </div>`:''}
+      </div>`;
+  } catch(e){
+    alvo.innerHTML = `<div style="margin-top:12px" class="msg err">Erro: ${esc(e.message)}</div>`;
+  } finally { btn.disabled=false; btn.textContent='Perguntar'; }
+}
+
+/* Transcricao: escondida por padrao (o valor esta nos insights), com filtro
+   por participante para o gestor ver so o que fulano falou. */
+let _uttAtual = [], _filtroLocutor = '';
+
+function blocoTranscricao(utt){
+  const nomes = [...new Set(utt.map(u=>(u.speaker||'?')))];
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <h2 class="section-title" style="margin:0">Transcrição completa</h2>
+      <button class="btn-sm" id="btn-transcricao" onclick="toggleTranscricao()">Mostrar</button>
+      <button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button>
+      <button class="btn-sm" onclick="exportarReuniao()">Exportar</button>
+    </div>
+    <div id="transcricao-box" style="display:none">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">
+        <button class="btn-sm" onclick="filtrarLocutor(-1)">Todos</button>
+        ${nomes.map((n,i)=>`<button class="btn-sm" onclick="filtrarLocutor(${i})">${esc(speakerLabel(n))}</button>`).join('')}
+      </div>
+      <div class="transcript" id="transcricao-texto"></div>
+    </div>`;
+}
+
+function toggleTranscricao(forcarAbrir){
+  const box = document.getElementById('transcricao-box');
+  const btn = document.getElementById('btn-transcricao');
+  if(!box) return;
+  const abrir = forcarAbrir === true ? true : box.style.display === 'none';
+  box.style.display = abrir ? 'block' : 'none';
+  if(btn) btn.textContent = abrir ? 'Ocultar' : 'Mostrar';
+}
+
+function filtrarLocutor(i){
+  const nomes = [...new Set(_uttAtual.map(u=>(u.speaker||'?')))];
+  _filtroLocutor = (i<0 || !nomes[i]) ? '' : nomes[i];
+  toggleTranscricao(true);
+  renderTranscricao();
+  const box = document.getElementById('transcricao-box');
+  if(box) box.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderTranscricao(){
+  const alvo = document.getElementById('transcricao-texto');
+  if(!alvo) return;
+  const linhas = _filtroLocutor ? _uttAtual.filter(u=>(u.speaker||'?')===_filtroLocutor) : _uttAtual;
+  alvo.innerHTML = linhas.length
+    ? linhas.map(u=>`<b>${esc(speakerLabel(u.speaker))}:</b> ${esc(u.texto||'')}`).join('<br>')
+    : '<div class="t-sub">Sem falas deste participante.</div>';
 }
 
 /* ---------- LIXEIRA (admin) ---------- */

@@ -52,6 +52,9 @@ def _normalizar_json_reuniao(reuniao: dict) -> dict:
         "pendencias",
         "topicos",
         "utterances",
+        "key_takeaways",
+        "riscos",
+        "perguntas_abertas",
     )
 
     for campo in campos_json:
@@ -70,6 +73,18 @@ def _normalizar_json_reuniao(reuniao: dict) -> dict:
 
         elif valor is None:
             reuniao[campo] = []
+
+    # `clima` é objeto, não lista — normalizado à parte para o painel não
+    # precisar adivinhar o tipo.
+    clima = reuniao.get("clima")
+
+    if isinstance(clima, str) and clima.strip():
+        try:
+            clima = json.loads(clima)
+        except json.JSONDecodeError:
+            clima = {}
+
+    reuniao["clima"] = clima if isinstance(clima, dict) else {}
 
     return reuniao
 
@@ -980,6 +995,160 @@ def renomear_locutores(reuniao_id: str):
         "falas_atualizadas": trocadas,
         "mapa": mapa,
     }), 200
+
+
+@bp.post("/reunioes/<reuniao_id>/perguntar")
+@require_auth
+def perguntar_reuniao(reuniao_id: str):
+    """
+    Busca semântica: pergunta em linguagem natural sobre a reunião.
+
+    Devolve a resposta e os índices das falas que a sustentam, para o painel
+    destacar o trecho em vez de obrigar a ler a transcrição inteira.
+    """
+    from app.pipeline.analysis import perguntar_sobre_reuniao
+
+    reuniao, erro = _carregar_reuniao_locutores(reuniao_id)
+
+    if erro:
+        return erro
+
+    pergunta = ((request.get_json(silent=True) or {}).get("pergunta") or "").strip()
+
+    if not pergunta:
+        return jsonify({"erro": "pergunta obrigatória"}), 400
+
+    if len(pergunta) > 500:
+        return jsonify({"erro": "pergunta muito longa"}), 400
+
+    utterances = _json_lista(reuniao.get("utterances"))
+
+    try:
+        resultado = perguntar_sobre_reuniao(pergunta, utterances)
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao perguntar sobre a reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível consultar a IA.",
+            "detalhe": str(exc),
+        }), 502
+
+    # Devolve o texto das falas citadas junto, para o painel não recarregar.
+    resultado["falas"] = [
+        {
+            "indice": i,
+            "speaker": (utterances[i].get("speaker") or "?"),
+            "texto": (utterances[i].get("texto") or ""),
+        }
+        for i in resultado.get("trechos", [])
+    ]
+
+    return jsonify(resultado), 200
+
+
+@bp.post("/reunioes/<reuniao_id>/acoes/<int:indice>")
+@require_auth
+def atualizar_acao(reuniao_id: str, indice: int):
+    """
+    Muda o status de uma ação do plano. Corpo: {"status": "concluida"}.
+
+    Quem enxerga a reunião pode marcar — é o que faz a tabela virar
+    acompanhamento de verdade, e fica registrado quem marcou e quando.
+    """
+    # Só interessa a checagem de acesso/setor; as pendências vêm na query abaixo.
+    _, erro = _carregar_reuniao_locutores(reuniao_id)
+
+    if erro:
+        return erro
+
+    status = ((request.get_json(silent=True) or {}).get("status") or "").strip().lower()
+
+    if status not in ("pendente", "em_andamento", "concluida"):
+        return jsonify({"erro": "status inválido"}), 400
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT pendencias
+            FROM reunioes
+            WHERE id = %s
+              AND excluida_em IS NULL
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
+
+        linha = cursor.fetchone()
+        cursor.close()
+        cursor = None
+
+        if not linha:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        pendencias = _json_lista(linha.get("pendencias"))
+
+        if indice < 0 or indice >= len(pendencias):
+            return jsonify({"erro": "ação não encontrada"}), 404
+
+        bruta = pendencias[indice]
+        acao: dict = dict(bruta) if isinstance(bruta, dict) else {"tarefa": str(bruta)}
+
+        acao["status"] = status
+
+        if status == "concluida":
+            acao["concluida_por"] = sessao_email() or "diretoria"
+            acao["concluida_em"] = datetime.now(timezone.utc).isoformat()
+        else:
+            acao["concluida_por"] = None
+            acao["concluida_em"] = None
+
+        pendencias[indice] = acao
+
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            UPDATE reunioes
+            SET pendencias = %s
+            WHERE id = %s
+            """,
+            (json.dumps(pendencias, ensure_ascii=False), reuniao_id),
+        )
+
+        connection.commit()
+
+        return jsonify({"ok": True, "acao": acao}), 200
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao atualizar ação %d da reunião %s",
+            indice,
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "Não foi possível atualizar a ação.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Lixeira de reuniões ───────────────────────────────────────────────────────

@@ -284,6 +284,39 @@ Teste real: Gih abriu reunião Teams, clicou "+ Nova gravação", colou link →
 
 **Testado (12 casos, servidor local contra o banco de produção):** excluir → sai da listagem (17→16), detalhe 404, locutores 404, KPIs recalculados, aparece na lixeira com `dias_restantes: 30` e autor; restaurar → volta (16→17); sem login → 401 em excluir e em lixeira. Esvaziar e purga por vencimento testados com **2 reuniões sintéticas** (`zz-teste-a` recente, `zz-teste-b` com `excluida_em` de 31 dias atrás), nunca com dado real: o `GET /api/lixeira` purgou sozinho a vencida, o esvaziar levou a outra, total voltou a 17 e nada real foi tocado.
 
+## 3.9 INSIGHTS DA IA NA REUNIÃO (2026-08-05)
+
+Antes o detalhe da reunião entregava resumo + decisões + pendências em lista solta. Agora entrega o que dá para absorver em 30 segundos, mais navegação para checar o resto sem ler a transcrição inteira.
+
+**Análise (prompt reescrito em `analysis.py`):** além de `resumo_executivo`/`topicos`/`sentimento_geral`, passa a extrair
+- `key_takeaways` — 3 a 5 bullets TL;DR, com desfecho e não com assunto;
+- `decisoes` — agora objetos `{decisao, tipo: aprovada|recusada|alterada, responsavel}`;
+- `pendencias` — `{tarefa, responsavel, prazo, urgencia, status}`, formato [Quem] faz [O quê] até [Quando], proibido inventar nome ou data;
+- `riscos` — `{titulo, detalhe, gravidade}`: gargalo, prazo apertado, dependência, divergência;
+- `perguntas_abertas` — dúvidas que ninguém respondeu até o fim;
+- `clima` — consensual | conflituosa | informativa | negociacao + justificativa.
+
+**`normalizar_analise()`** blinda o painel: o modelo às vezes devolve string onde se pediu objeto, e as reuniões antigas têm `decisoes` como lista de texto. Tudo é convertido para um formato só, com valores fora do enum caindo no padrão.
+
+**Banco:** `migrations/2026-08-05_add_insights_reuniao.sql` — `key_takeaways`, `riscos`, `perguntas_abertas`, `clima`. Aplicado em produção (18 reuniões antes e depois, nada perdido).
+
+**Endpoints novos:**
+- `POST /api/reunioes/<id>/perguntar` (`@require_auth` + setor) — busca semântica: pergunta em linguagem natural, resposta em até 4 frases **com os índices das falas que a sustentam**, devolvidos junto com o texto para o painel destacar. Instruído a dizer que não sabe em vez de deduzir.
+- `POST /api/reunioes/<id>/acoes/<indice>` (`@require_auth` + setor) — muda o status de uma ação, gravando `concluida_por` e `concluida_em`. Liberado a quem enxerga a reunião: é o que faz a tabela virar acompanhamento de verdade.
+
+**Painel — detalhe reconstruído:**
+- ⚡ Insights da IA: 4 cartões (📌 recados · 🎯 decisões com selo aprovada/recusada/alterada · ⚠️ riscos coloridos por gravidade · ❓ dúvidas em aberto) + selo de clima ao lado do título.
+- 📋 Plano de ação: tabela Ação | Responsável | Prazo | Urgência | Feito, com checkbox que persiste.
+- 💬 Pergunte à IA: campo de pergunta, resposta e os trechos citados.
+- Transcrição **oculta por padrão** (o valor está nos insights), com filtro por participante — clicar no nome no card Participantes abre a transcrição já filtrada. É o caso do gestor comercial: ver só o que o vendedor X prometeu.
+- Exportações TXT e PDF atualizadas com os blocos novos.
+
+**Reprocessamento:** `scripts/reanalisar_reunioes.py` reanalisa reuniões já gravadas usando a transcrição do banco (não depende do Skribby, funciona com gravação expirada) e **não toca em `utterances`** — os nomes de locutor já corrigidos ficam como estão. Rodado nas 14 reuniões elegíveis: **14 gravadas, 0 falhas**.
+
+**Testado:** detalhe devolve os 4 blocos com tipos corretos; pergunta real ("quais prazos foram definidos?") respondeu certo citando 7 falas e admitiu o que não estava definido; ação marcada grava autor e horário, 404 em índice inexistente, 400 em status inválido, 401 sem login, e reversão para pendente limpa os campos. `node --check` no JS do painel e `py_compile` nos módulos.
+
+**Pendente (fase 2 do pedido):** linha do tempo por tópicos com mini-resumo no hover — exige que a IA devolva o índice da fala onde cada tópico começa. E a visão entre reuniões (ex.: gestor comercial vendo o que cada vendedor prometeu em todas as reuniões, clientes mais quentes) — isso é agregação cross-reunião, não cabe na tela de detalhe.
+
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.
 - **2026-07-06** — Gih recebeu credencial **Global Admin** da organização. Criados: `schema.sql` (6 tabelas do Supabase inferidas do código) e `scripts/test_graph.py` (valida token MSAL + `get_users` + `get_meetings`). Fornecido passo-a-passo Azure (App Registration, secret, 5 permissões + consentimento admin, transcrição Teams, Application Access Policy via PowerShell). Aguardando `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` p/ montar `.env` e testar.

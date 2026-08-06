@@ -643,6 +643,10 @@ def _processar_recall(reuniao_id: str, bot_id: str):
             "topicos": analise.get("topicos", []),
             "decisoes": analise.get("decisoes", []),
             "pendencias": analise.get("pendencias", []),
+            "key_takeaways": analise.get("key_takeaways", []),
+            "riscos": analise.get("riscos", []),
+            "perguntas_abertas": analise.get("perguntas_abertas", []),
+            "clima": analise.get("clima", {}),
             "resumo_executivo": analise.get(
                 "resumo_executivo",
                 "",

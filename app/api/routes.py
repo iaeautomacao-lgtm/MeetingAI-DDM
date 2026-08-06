@@ -1033,7 +1033,7 @@ def perguntar_reuniao(reuniao_id: str):
         )
 
         return jsonify({
-            "erro": "Não foi possível consultar a IA.",
+            "erro": "Não foi possível consultar o Acordito.",
             "detalhe": str(exc),
         }), 502
 

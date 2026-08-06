@@ -298,11 +298,11 @@ def perguntar_sobre_reuniao(pergunta: str, utterances: list) -> dict:
             json_mode=True,
         )
     except Exception as e:
-        return {"resposta": f"Erro ao consultar a IA: {e}", "trechos": []}
+        return {"resposta": f"Erro ao consultar o Acordito: {e}", "trechos": []}
 
     if not raw:
         return {
-            "resposta": "Nenhum provedor de IA configurado.",
+            "resposta": "Acordito indisponível: nenhum provedor de IA configurado.",
             "trechos": [],
         }
 

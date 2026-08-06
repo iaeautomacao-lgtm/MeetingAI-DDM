@@ -317,6 +317,22 @@ Antes o detalhe da reunião entregava resumo + decisões + pendências em lista 
 
 **Pendente (fase 2 do pedido):** linha do tempo por tópicos com mini-resumo no hover — exige que a IA devolva o índice da fala onde cada tópico começa. E a visão entre reuniões (ex.: gestor comercial vendo o que cada vendedor prometeu em todas as reuniões, clientes mais quentes) — isso é agregação cross-reunião, não cabe na tela de detalhe.
 
+## 3.10 DETALHE EM ABAS + IDENTIDADE DO ACORDITO (2026-08-06)
+
+**Problema:** com os blocos de insight a tela de detalhe virou uma rolagem sem fim, e havia 3 colunas disputando largura (menu 220px + conteúdo + Agenda 300px).
+
+- **Abas no detalhe:** Visão geral · Plano de ação (com contador) · Pergunte ao Acordito · Transcrição (com contador de falas). Cabeçalho fixo no topo com título, status, clima e ações.
+- **Agenda escondida no detalhe** (`body.detalhe-aberto`) — útil no dashboard, inútil ali, devolvia 300px.
+- **Cartões param de esticar a página:** `.d-card.limitado` com teto de 268px e rolagem interna. Antes um bloco de 5 recados longos empurrava tudo para baixo enquanto o de decisões ficava vazio ao lado.
+- **Largura do app de 1360px → 1760px** e margem externa 14px → 10px (havia bege sobrando nas laterais em telas grandes).
+- **Bug corrigido:** o cabeçalho fixo usava `background: var(--bg)`, variável **inexistente** neste painel → fundo transparente e as abas apareciam por cima do resumo. Passou a `var(--white)`. Encontradas mais 7 ocorrências de variáveis inventadas (`--line`, `--muted`) nos blocos novos, funcionando por acidente pelo valor de reserva — trocadas por `--border` e `--gray`.
+- **Exportar TXT removido** (cabeçalho e aba de transcrição), junto com `exportarReuniao()` e `_relatorioCompleto()`, que viraram código morto. PDF mantido.
+- **Filtro por participante** destaca o botão ativo; clicar no nome na Visão geral pula para a aba Transcrição já filtrada.
+
+**Mascote:** o retângulo branco atrás do Acordito não era CSS — `Acordito.png` estava em **RGB sem canal alfa** e `acordito_bot.jpg` é JPEG (nunca tem transparência); o `mix-blend-mode: multiply` era paliativo. Gerado `assets/acordito-transparente.png` com preenchimento a partir dos 4 cantos (não corte por limiar de branco, que comeria olhos, camisa, dentes e o crachá DDM), recorte de bordas e limpeza da franja. Vira um **card de rodapé** na sidebar (fundo `--ddm-orange-50`, mascote saindo do topo, nome, uma linha de descrição e botão "+ Nova reunião"), com 44px de folga reservada acima para não encostar no "Sair" e `overflow-y` na sidebar, que antes cortava o card em telas baixas.
+
+> `acordito_bot.jpg` continua sendo o avatar do bot na câmera durante a reunião — vídeo não tem canal alfa, então não é substituível pelo PNG.
+
 ## 4. Log de alterações
 - **2026-07-06** — Leitura completa do código. Criação deste STATUS.md. Nenhuma alteração de código feita ainda.
 - **2026-07-06** — Gih recebeu credencial **Global Admin** da organização. Criados: `schema.sql` (6 tabelas do Supabase inferidas do código) e `scripts/test_graph.py` (valida token MSAL + `get_users` + `get_meetings`). Fornecido passo-a-passo Azure (App Registration, secret, 5 permissões + consentimento admin, transcrição Teams, Application Access Policy via PowerShell). Aguardando `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` p/ montar `.env` e testar.

@@ -26,7 +26,7 @@ body {
   background: #EBE5DB;
   color: var(--ink);
   display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; padding: 14px;
+  min-height: 100vh; padding: 10px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -35,7 +35,7 @@ body {
 
 .app-container {
   display: flex;
-  width: 100%; max-width: 1360px; height: calc(100vh - 28px); min-height: 0;
+  width: 100%; max-width: 1760px; height: calc(100vh - 28px); min-height: 0;
   background: var(--white);
   border-radius: 28px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.06);
@@ -43,7 +43,7 @@ body {
 }
 
 /* ================== SIDEBAR ================== */
-.sidebar { width: 220px; padding: 24px 20px; display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar { width: 220px; padding: 24px 20px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
 .sidebar-logo {
   display: flex; align-items: center; gap: 8px; margin-bottom: 22px;
   font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--ink);
@@ -70,7 +70,26 @@ body {
 .nav-item.active { color: #fff; font-weight: 600; background: var(--ink); }
 .nav-item.active svg { color: #fff; }
 
-.sidebar-deco { margin-top: auto; align-self: center; width: 110px; height: auto; display: block; mix-blend-mode: multiply; }
+/* Rodapé da sidebar: o mascote vinha como imagem solta com mix-blend-mode
+   para disfarçar o fundo branco do arquivo. Agora o PNG é transparente de
+   verdade e mora num card, que dá base visual e ainda serve de atalho. */
+.sidebar-foot-wrap { margin-top: auto; padding-top: 44px; }
+.sidebar-foot {
+  background: var(--ddm-orange-50);
+  border: 1px solid #FFE0CE;
+  border-radius: 18px;
+  padding: 8px 12px 14px;
+  text-align: center;
+}
+.sidebar-foot img { width: 84px; height: auto; display: block; margin: -34px auto 2px; }
+.sidebar-foot .sf-nome { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--ink); }
+.sidebar-foot .sf-sub { font-size: 11px; color: var(--gray); line-height: 1.35; margin-top: 2px; }
+.sidebar-foot button {
+  margin-top: 10px; width: 100%; border: 0; cursor: pointer;
+  background: var(--ddm-orange); color: #fff;
+  font: 600 12px var(--font-body); padding: 8px 10px; border-radius: 10px;
+}
+.sidebar-foot button:hover { background: var(--ddm-orange-600); }
 
 /* ================== MAIN CONTENT ================== */
 .main-area {
@@ -186,8 +205,36 @@ body {
 .back-btn { background: none; border: none; color: var(--gray); font-size: 13px; cursor: pointer; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; font-family: var(--font-body); }
 .detail-head { margin-bottom: 24px; }
 .detail-head h2 { font-family: var(--font-display); font-size: 22px; margin-bottom: 6px; }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
 .d-card { background: var(--cream); border-radius: var(--r-md); padding: 18px; }
+/* Cartão não cresce sem limite: rola por dentro. Sem isso um bloco com 5 itens
+   longos empurra o resto da página para baixo e vira rolagem infinita. */
+.d-card.limitado { max-height: 268px; overflow-y: auto; }
+
+/* Detalhe da reunião em abas — a Agenda some aqui, não serve de nada nesta
+   tela e comia 300px de largura. */
+body.detalhe-aberto .right-sidebar { display: none; }
+
+/* Cabeçalho fixo precisa de fundo opaco e cobrir a largura toda, senão o
+   conteúdo rolando aparece por baixo das abas. */
+.det-head {
+  position: sticky; top: -24px; z-index: 5;
+  background: var(--white);
+  margin: 0 -28px; padding: 4px 28px 0;
+  box-shadow: 0 6px 10px -8px rgba(0,0,0,.18);
+}
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 14px 0 18px; flex-wrap: wrap; }
+.tab {
+  border: 0; background: none; cursor: pointer; font: 600 13px var(--font-body);
+  color: var(--ink-2); padding: 9px 14px; border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); background: var(--cream); }
+.tab.active { color: var(--ddm-orange); border-bottom-color: var(--ddm-orange); }
+.tab .cnt { font-size: 11px; opacity: .65; margin-left: 4px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+@media (max-width: 720px) { .detail-grid { grid-template-columns: 1fr; } }
 .d-card h3 { font-family: var(--font-display); font-size: 13px; margin-bottom: 12px; }
 .d-card ul { list-style: none; }
 .d-card li { font-size: 12px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--border); }
@@ -317,7 +364,7 @@ body {
       <div class="nav-item" data-page="lixeira" onclick="goto('lixeira')" id="nav-lixeira" style="display:none">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
         Lixeira
-        <span id="lixeira-badge" style="display:none;margin-left:auto;background:var(--muted, #8a8580);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px"></span>
+        <span id="lixeira-badge" style="display:none;margin-left:auto;background:var(--gray);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px"></span>
       </div>
       <div class="nav-item" data-page="config" onclick="goto('config')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -329,7 +376,14 @@ body {
       </div>
     </nav>
 
-    <img class="sidebar-deco" src="/assets/Acordito.png" alt="Acordito" />
+    <div class="sidebar-foot-wrap">
+    <div class="sidebar-foot">
+      <img src="/assets/acordito-transparente.png" alt="Acordito" />
+      <div class="sf-nome">Acordito</div>
+      <div class="sf-sub">Entra na reunião, grava e escreve a ata</div>
+      <button onclick="novaReuniao()">+ Nova reunião</button>
+    </div>
+    </div>
   </aside>
 
   <!-- MAIN AREA -->
@@ -587,7 +641,7 @@ function fecharSidebar(){
 }
 function goto(page, opts={}){
   fecharSidebar();  // fecha a gaveta ao navegar (mobile)
-  if(page!=='detalhe') prevPage = page;
+  if(page!=='detalhe'){ prevPage = page; document.body.classList.remove('detalhe-aberto'); }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   curPage = page;
@@ -872,39 +926,12 @@ function decisaoTexto(d){
   return (tipo?tipo+' ':'')+(d.decisao||'')+(d.responsavel?' ('+d.responsavel+')':'');
 }
 
-function _relatorioCompleto(r){
-  const L=[];
-  L.push(r.titulo||'Reunião');
-  L.push(_metaReuniao(r));
-  L.push('');
-  if(r.resumo_executivo){ L.push('RESUMO EXECUTIVO'); L.push(r.resumo_executivo); L.push(''); }
-  const tk=asList(r.key_takeaways); if(tk.length){ L.push('PRINCIPAIS RECADOS'); tk.forEach(x=>L.push('- '+x)); L.push(''); }
-  const dec=asList(r.decisoes); if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push('- '+decisaoTexto(d))); L.push(''); }
-  const pen=asList(r.pendencias); if(pen.length){ L.push('PLANO DE AÇÃO'); pen.forEach(p=>L.push('- ['+(p.status==='concluida'?'x':' ')+'] '+(p.tarefa||p)+(p.responsavel?' — '+p.responsavel:' — sem responsável')+(p.prazo?' | prazo: '+p.prazo:'')+(p.urgencia?' | urgência: '+p.urgencia:''))); L.push(''); }
-  const ris=asList(r.riscos); if(ris.length){ L.push('RISCOS E PONTOS DE ATENÇÃO'); ris.forEach(x=>L.push('- ['+(x.gravidade||'media')+'] '+(x.titulo||'')+(x.detalhe?' — '+x.detalhe:''))); L.push(''); }
-  const perg=asList(r.perguntas_abertas); if(perg.length){ L.push('DÚVIDAS NÃO RESPONDIDAS'); perg.forEach(q=>L.push('- '+(q.pergunta||'')+(q.quem_perguntou?' ('+q.quem_perguntou+')':''))); L.push(''); }
-  if(r.clima && r.clima.tipo){ L.push('CLIMA DA REUNIÃO'); L.push(r.clima.tipo+(r.clima.justificativa?' — '+r.clima.justificativa:'')); L.push(''); }
-  const top=asList(r.topicos); if(top.length){ L.push('TÓPICOS'); L.push(top.join(', ')); L.push(''); }
-  const part=asList(r.participantes); if(part.length){ L.push('PARTICIPANTES'); part.forEach(p=>L.push('- '+participanteLabel(p))); L.push(''); }
-  L.push('TRANSCRIÇÃO'); L.push(_transcricaoTexto(r));
-  return L.join('\n');
-}
-
 async function copiarTranscricao(btn){
   if(!_reuniaoAtual) return;
   const txt=_transcricaoTexto(_reuniaoAtual);
   try { await navigator.clipboard.writeText(txt); }
   catch(e){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
   const orig=btn.textContent; btn.textContent='Copiado ✓'; setTimeout(()=>{btn.textContent=orig;},1500);
-}
-
-function exportarReuniao(){
-  if(!_reuniaoAtual) return;
-  const r=_reuniaoAtual;
-  const nome=((r.titulo||'reuniao').replace(/[^\wÀ-ſ -]/g,'').trim().replace(/\s+/g,'_'))+'.txt';
-  const blob=new Blob([_relatorioCompleto(r)],{type:'text/plain;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
 function exportarReuniaoPdf(){
@@ -955,27 +982,41 @@ async function loadDetalhe(id){
     const pendControls = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall')
       ? `<button class="btn-sm" style="margin-top:12px" onclick="processar('${r.id}')">Puxar transcrição agora</button>` : '';
     el.innerHTML = `
-      <div class="detail-head">
+      <div class="detail-head det-head">
         <h2>${esc(r.titulo||'Reunião')}</h2>
-        <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
-        <div class="welcome-date" style="margin-top:4px">${esc(_metaReuniao(r))}</div>
-        ${r.solicitante?`<div class="welcome-date" style="margin-top:4px">Cadastrado por: <b>${esc(r.solicitante)}</b></div>`:''}
-        ${r.resumo_executivo?`<p style="margin-top:14px;font-size:14px;line-height:1.6">${esc(r.resumo_executivo)}</p>`:''}
+        <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span> ${climaBadge(r.clima)}</div>
+        <div class="welcome-date" style="margin-top:4px">${esc(_metaReuniao(r))}${r.solicitante?' · cadastrado por <b>'+esc(r.solicitante)+'</b>':''}</div>
         ${r.status==='error'?`<div style="margin-top:14px;padding:12px 14px;background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;color:#a3271e;font-size:13px;line-height:1.5"><b>⚠ O que houve:</b> ${esc(erroAmigavel(r.erro_msg))}${r.erro_msg?`<br><span style="opacity:.7;font-size:12px">Detalhe técnico: ${esc(r.erro_msg)}</span>`:''}</div>`:''}
         ${pendControls}
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          ${utt.length?`<button class="btn-sm" onclick="exportarReuniao()">Exportar TXT</button><button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button>`:''}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          ${utt.length?`<button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button>`:''}
           ${IS_ADMIN?`<button class="btn-sm" style="background:#a12626" onclick="excluirReuniao('${r.id}')">Excluir</button>`:''}
         </div>
+        <div class="tabs">
+          <button class="tab active" data-aba="visao" onclick="abaDetalhe('visao')">Visão geral</button>
+          <button class="tab" data-aba="acoes" onclick="abaDetalhe('acoes')">Plano de ação<span class="cnt">${pen.length}</span></button>
+          ${utt.length?`<button class="tab" data-aba="perguntar" onclick="abaDetalhe('perguntar')">Pergunte ao Acordito</button>`:''}
+          ${utt.length?`<button class="tab" data-aba="transcricao" onclick="abaDetalhe('transcricao')">Transcrição<span class="cnt">${utt.length}</span></button>`:''}
+        </div>
       </div>
-      ${blocoInsights(r)}
-      ${blocoAcoes(r)}
-      ${utt.length?blocoPerguntar(r):''}
-      <div class="d-card" style="margin-bottom:16px"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
-      <div class="d-card" style="margin-bottom:16px"><h3>Participantes</h3>${part.length?'<ul>'+part.map((p,i)=>`<li><a href="#" onclick="filtrarLocutor(${i});return false" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted,#8a8580)">${esc(participanteLabel(p))}</a></li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
-      <div id="locutores-box"></div>
-      ${utt.length?blocoTranscricao(utt):''}
+
+      <div class="tab-pane active" id="aba-visao">
+        ${r.resumo_executivo?`<p style="margin:0 0 16px;font-size:14px;line-height:1.6">${esc(r.resumo_executivo)}</p>`:''}
+        ${blocoInsights(r)}
+        <div class="detail-grid">
+          <div class="d-card limitado"><h3>Tópicos</h3>${top.length?top.map(t=>`<span class="chip">${esc(t)}</span>`).join(''):'<div class="t-sub">—</div>'}</div>
+          <div class="d-card limitado"><h3>Participantes</h3>${part.length?'<ul>'+part.map((p,i)=>`<li><a href="#" onclick="abaDetalhe('transcricao');filtrarLocutor(${i});return false" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink-2)">${esc(participanteLabel(p))}</a></li>`).join('')+'</ul>':'<div class="t-sub">—</div>'}</div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="aba-acoes">${blocoAcoes(r)}</div>
+      ${utt.length?`<div class="tab-pane" id="aba-perguntar">${blocoPerguntar(r)}</div>`:''}
+      ${utt.length?`<div class="tab-pane" id="aba-transcricao">
+        <div id="locutores-box"></div>
+        ${blocoTranscricao(utt)}
+      </div>`:''}
     `;
+    document.body.classList.add('detalhe-aberto');
     if(utt.length){ carregarLocutores(r.id); _uttAtual = utt; renderTranscricao(); }
   } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
 }
@@ -1016,17 +1057,13 @@ function blocoInsights(r){
   const vazio = t => `<div class="t-sub">${t}</div>`;
 
   return `
-    <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;flex-wrap:wrap">
-      <h2 class="section-title" style="margin:0">⚡ Insights da IA</h2>
-      ${climaBadge(clima)}
-      ${clima.justificativa?`<span class="t-sub">${esc(clima.justificativa)}</span>`:''}
-    </div>
+    ${clima.justificativa?`<div class="t-sub" style="margin:-6px 0 12px">${esc(clima.justificativa)}</div>`:''}
     <div class="detail-grid">
-      <div class="d-card">
+      <div class="d-card limitado">
         <h3>📌 Principais recados</h3>
         ${tk.length?'<ul>'+tk.map(t=>`<li>${esc(t)}</li>`).join('')+'</ul>':vazio('—')}
       </div>
-      <div class="d-card">
+      <div class="d-card limitado">
         <h3>🎯 Decisões tomadas</h3>
         ${dec.length?'<ul>'+dec.map(d=>{
           const texto = typeof d==='string' ? d : (d.decisao||'');
@@ -1037,11 +1074,11 @@ function blocoInsights(r){
       </div>
     </div>
     <div class="detail-grid">
-      <div class="d-card">
+      <div class="d-card limitado">
         <h3>⚠️ Riscos &amp; pontos de atenção</h3>
         ${ris.length?'<ul>'+ris.map(x=>`<li><b style="color:${COR_GRAVIDADE[x.gravidade]||'#8a8580'}">${esc(x.titulo||'')}</b>${x.detalhe?' — '+esc(x.detalhe):''}</li>`).join('')+'</ul>':vazio('Nada sinalizado.')}
       </div>
-      <div class="d-card">
+      <div class="d-card limitado">
         <h3>❓ Dúvidas não respondidas</h3>
         ${perg.length?'<ul>'+perg.map(q=>`<li>${esc(q.pergunta||'')}${q.quem_perguntou?' <span class="t-sub">— '+esc(q.quem_perguntou)+'</span>':''}</li>`).join('')+'</ul>':vazio('Todas as perguntas foram respondidas.')}
       </div>
@@ -1058,14 +1095,14 @@ function blocoAcoes(r){
       <h3>📋 Plano de ação</h3>
       <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">
-        <thead><tr style="text-align:left;color:var(--muted,#8a8580);font-size:11px">
+        <thead><tr style="text-align:left;color:var(--gray);font-size:11px">
           <th style="padding:6px 8px 6px 0">Ação</th><th style="padding:6px 8px">Responsável</th>
           <th style="padding:6px 8px">Prazo</th><th style="padding:6px 8px">Urgência</th><th style="padding:6px 8px">Feito</th>
         </tr></thead>
         <tbody>
         ${pen.map((p,i)=>{
           const feito = p.status==='concluida';
-          return `<tr style="border-top:1px solid var(--line,#e9e4de)${feito?';opacity:.55':''}">
+          return `<tr style="border-top:1px solid var(--border)${feito?';opacity:.55':''}">
             <td style="padding:8px 8px 8px 0${feito?';text-decoration:line-through':''}">${esc(p.tarefa||p)}</td>
             <td style="padding:8px">${p.responsavel?esc(p.responsavel):'<span class="t-sub">não atribuído</span>'}</td>
             <td style="padding:8px">${p.prazo?esc(p.prazo):'<span class="t-sub">sem prazo</span>'}</td>
@@ -1093,7 +1130,7 @@ function blocoPerguntar(r){
       <h3>💬 Pergunte ao Acordito sobre esta reunião</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input id="pergunta-ia" placeholder="Ex.: quais prazos foram definidos?" maxlength="500"
-               style="flex:1;min-width:220px;border:1px solid transparent;background:var(--bg-alt,#f5f3f0);border-radius:8px;padding:9px 11px;font:inherit"
+               style="flex:1;min-width:220px;border:1px solid transparent;background:var(--bg-alt);border-radius:8px;padding:9px 11px;font:inherit"
                onkeydown="if(event.key==='Enter')perguntarIA('${r.id}')">
         <button class="btn-sm" id="pergunta-btn" onclick="perguntarIA('${r.id}')">Perguntar</button>
       </div>
@@ -1115,9 +1152,9 @@ async function perguntarIA(id){
     const d = await apiPost(`/api/reunioes/${id}/perguntar`, {pergunta});
     const falas = asList(d.falas);
     alvo.innerHTML = `
-      <div style="margin-top:12px;padding:12px 14px;background:var(--bg-alt,#f5f3f0);border-radius:10px;font-size:13px;line-height:1.6">
+      <div style="margin-top:12px;padding:12px 14px;background:var(--bg-alt);border-radius:10px;font-size:13px;line-height:1.6">
         ${esc(d.resposta||'')}
-        ${falas.length?`<div style="margin-top:10px;border-top:1px solid var(--line,#e9e4de);padding-top:8px">
+        ${falas.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
           <div class="t-sub" style="margin-bottom:6px">Baseado nestes trechos:</div>
           ${falas.map(f=>`<div style="margin-bottom:6px"><b>${esc(speakerLabel(f.speaker))}:</b> ${esc(f.texto)}</div>`).join('')}
         </div>`:''}
@@ -1134,37 +1171,32 @@ let _uttAtual = [], _filtroLocutor = '';
 function blocoTranscricao(utt){
   const nomes = [...new Set(utt.map(u=>(u.speaker||'?')))];
   return `
-    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
-      <h2 class="section-title" style="margin:0">Transcrição completa</h2>
-      <button class="btn-sm" id="btn-transcricao" onclick="toggleTranscricao()">Mostrar</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn-sm" onclick="copiarTranscricao(this)">Copiar tudo</button>
-      <button class="btn-sm" onclick="exportarReuniao()">Exportar</button>
+      <span class="t-sub" style="margin-left:auto">Filtrar por quem falou:</span>
     </div>
-    <div id="transcricao-box" style="display:none">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">
-        <button class="btn-sm" onclick="filtrarLocutor(-1)">Todos</button>
-        ${nomes.map((n,i)=>`<button class="btn-sm" onclick="filtrarLocutor(${i})">${esc(speakerLabel(n))}</button>`).join('')}
-      </div>
-      <div class="transcript" id="transcricao-texto"></div>
-    </div>`;
-}
-
-function toggleTranscricao(forcarAbrir){
-  const box = document.getElementById('transcricao-box');
-  const btn = document.getElementById('btn-transcricao');
-  if(!box) return;
-  const abrir = forcarAbrir === true ? true : box.style.display === 'none';
-  box.style.display = abrir ? 'block' : 'none';
-  if(btn) btn.textContent = abrir ? 'Ocultar' : 'Mostrar';
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-sm loc-filtro" data-loc="" onclick="filtrarLocutor(-1)">Todos</button>
+      ${nomes.map((n,i)=>`<button class="btn-sm loc-filtro" data-loc="${esc(n)}" onclick="filtrarLocutor(${i})">${esc(speakerLabel(n))}</button>`).join('')}
+    </div>
+    <div class="transcript" id="transcricao-texto" style="max-height:none"></div>`;
 }
 
 function filtrarLocutor(i){
   const nomes = [...new Set(_uttAtual.map(u=>(u.speaker||'?')))];
   _filtroLocutor = (i<0 || !nomes[i]) ? '' : nomes[i];
-  toggleTranscricao(true);
+  document.querySelectorAll('.loc-filtro').forEach(b=>{
+    b.style.background = (b.dataset.loc||'') === _filtroLocutor ? 'var(--ink)' : '';
+  });
   renderTranscricao();
-  const box = document.getElementById('transcricao-box');
-  if(box) box.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+/* Abas do detalhe: trocar de secao em vez de rolar a pagina inteira. */
+function abaDetalhe(nome){
+  document.querySelectorAll('#page-detalhe .tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#page-detalhe .tab').forEach(b=>b.classList.toggle('active', b.dataset.aba===nome));
+  const pane = document.getElementById('aba-'+nome);
+  if(pane) pane.classList.add('active');
 }
 
 function renderTranscricao(){
@@ -1210,7 +1242,7 @@ async function loadLixeira(){
         ? (dias<=0 ? 'será apagada na próxima limpeza' : `apaga em ${dias} dia${dias>1?'s':''}`)
         : '';
       return `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line, #e9e4de);flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
           <div style="flex:1;min-width:200px">
             <b>${esc(r.titulo||'Reunião')}</b>
             <div class="t-sub">${esc(r.setor||'—')} · ${fmtData(r.data)} · excluída por ${esc(r.excluida_por||'—')} · ${esc(prazo)}</div>

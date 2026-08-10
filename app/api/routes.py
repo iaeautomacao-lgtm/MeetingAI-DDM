@@ -747,6 +747,122 @@ def detalhe_reuniao(reuniao_id: str):
             connection.close()
 
 
+@bp.post("/reunioes/<reuniao_id>/metadados")
+@require_auth
+def atualizar_metadados_reuniao(reuniao_id: str):
+    """Atualiza dados cadastrais da reunião sem reprocessar transcrição/IA."""
+    body = request.get_json(silent=True) or {}
+
+    campos_permitidos = {
+        "titulo",
+        "solicitante",
+        "setor",
+        "data",
+        "modalidade",
+        "local_reuniao",
+        "cliente",
+    }
+
+    valores = {}
+    for campo in campos_permitidos:
+        if campo in body:
+            valor = body.get(campo)
+            valores[campo] = "" if valor is None else str(valor).strip()
+
+    if "titulo" in valores and not valores["titulo"]:
+        return jsonify({
+            "erro": "titulo_obrigatorio",
+            "msg": "Informe um título para a reunião.",
+        }), 400
+
+    if "setor" in valores and not valores["setor"]:
+        return jsonify({
+            "erro": "setor_obrigatorio",
+            "msg": "Informe o setor da reunião.",
+        }), 400
+
+    if "modalidade" in valores:
+        modalidade = valores["modalidade"] or "online"
+        if modalidade not in {"online", "presencial"}:
+            return jsonify({
+                "erro": "modalidade_invalida",
+                "msg": "Formato deve ser online ou presencial.",
+            }), 400
+        valores["modalidade"] = modalidade
+
+    if not valores:
+        return jsonify({"ok": True, "atualizados": []}), 200
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id, setor
+            FROM reunioes
+            WHERE id = %s
+              AND excluida_em IS NULL
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
+
+        reuniao = cursor.fetchone()
+
+        if not reuniao:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        if (
+            not tem_acesso_total()
+            and (reuniao.get("setor") or "") != sessao_setor()
+        ):
+            return jsonify({"erro": "não encontrado"}), 404
+
+        atribuicoes = [f"`{campo}` = %s" for campo in valores]
+        params = list(valores.values())
+        params.append(reuniao_id)
+
+        cursor.execute(
+            f"""
+            UPDATE reunioes
+            SET {", ".join(atribuicoes)}
+            WHERE id = %s
+            """,
+            tuple(params),
+        )
+        connection.commit()
+
+        return jsonify({
+            "ok": True,
+            "atualizados": list(valores.keys()),
+        }), 200
+
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+
+        current_app.logger.exception(
+            "Erro ao atualizar metadados da reunião %s",
+            reuniao_id,
+        )
+
+        return jsonify({
+            "erro": "falha_ao_atualizar",
+            "msg": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
 def _carregar_reuniao_locutores(reuniao_id: str):
     """Linha da reunião + checagem de setor. Devolve (reuniao, erro_response)."""
     connection = None

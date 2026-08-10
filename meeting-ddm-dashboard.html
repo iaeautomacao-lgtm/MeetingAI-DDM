@@ -579,6 +579,41 @@ body.detalhe-aberto .right-sidebar { display: none; }
   </div>
 </div>
 
+<!-- MODAL EDITAR REUNIÃO -->
+<div id="modal-edit" class="modal-overlay">
+  <div class="modal">
+    <h3>Editar Reunião</h3>
+    <p class="modal-sub">Corrija dados cadastrais sem alterar a transcrição.</p>
+    <label>Título da reunião *</label>
+    <input type="text" id="e-titulo" placeholder="Ex.: Alinhamento Comercial">
+    <label>Data e hora da reunião</label>
+    <input type="datetime-local" id="e-data">
+    <label>Setor</label>
+    <select id="e-setor"><option value="">Selecione...</option></select>
+    <label>Solicitante / cadastrado por</label>
+    <input type="text" id="e-solicitante" placeholder="Nome de quem cadastrou">
+    <label>Formato da reunião</label>
+    <select id="e-modalidade">
+      <option value="online">Online</option>
+      <option value="presencial">Presencial</option>
+    </select>
+    <label>Local</label>
+    <select id="e-local">
+      <option value="Online">Online</option>
+      <option value="Sede RJ">Sede RJ</option>
+      <option value="Sede SP">Sede SP</option>
+      <option value="Cliente">Cliente</option>
+      <option value="Outro">Outro</option>
+    </select>
+    <label>Cliente envolvido</label>
+    <input type="text" id="e-cliente" placeholder="Nome do cliente, se houver">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharEditarReuniao()">Cancelar</button>
+      <button class="btn-primary" id="e-btn" onclick="salvarEdicaoReuniao()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -989,6 +1024,7 @@ async function loadDetalhe(id){
         ${r.status==='error'?`<div style="margin-top:14px;padding:12px 14px;background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;color:#a3271e;font-size:13px;line-height:1.5"><b>⚠ O que houve:</b> ${esc(erroAmigavel(r.erro_msg))}${r.erro_msg?`<br><span style="opacity:.7;font-size:12px">Detalhe técnico: ${esc(r.erro_msg)}</span>`:''}</div>`:''}
         ${pendControls}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn-sm" onclick="abrirEditarReuniao()">Editar dados</button>
           ${utt.length?`<button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button>`:''}
           ${IS_ADMIN?`<button class="btn-sm" style="background:#a12626" onclick="excluirReuniao('${r.id}')">Excluir</button>`:''}
         </div>
@@ -1370,6 +1406,87 @@ async function salvarLocutores(id){
 }
 
 /* ---------- AÇÕES ---------- */
+let _editandoReuniaoId = null;
+
+function valorDatetimeLocal(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function preencherSetoresSelect(sel, atual){
+  if(!sel) return;
+  if(sel.options.length<=1){
+    try{
+      const setores=await apiGet('/api/setores');
+      (setores||[]).forEach(s=>{
+        const nome=s.nome||s;
+        if(![...sel.options].some(o=>o.value===nome)){
+          const o=document.createElement('option');
+          o.value=nome; o.textContent=nome; sel.appendChild(o);
+        }
+      });
+    }catch(e){}
+  }
+  if(atual && ![...sel.options].some(o=>o.value===atual)){
+    const o=document.createElement('option');
+    o.value=atual; o.textContent=atual; sel.appendChild(o);
+  }
+  sel.value=atual||'';
+}
+
+async function abrirEditarReuniao(){
+  const r=_reuniaoAtual;
+  if(!r){ toast('Abra uma reuniao primeiro.'); return; }
+  _editandoReuniaoId = r.id;
+  document.getElementById('e-titulo').value = r.titulo || '';
+  document.getElementById('e-data').value = valorDatetimeLocal(r.data);
+  document.getElementById('e-solicitante').value = r.solicitante || '';
+  document.getElementById('e-modalidade').value = r.modalidade || 'online';
+  document.getElementById('e-local').value = r.local_reuniao || 'Online';
+  document.getElementById('e-cliente').value = r.cliente || '';
+  await preencherSetoresSelect(document.getElementById('e-setor'), r.setor || '');
+  document.getElementById('modal-edit').style.display='flex';
+}
+
+function fecharEditarReuniao(){
+  document.getElementById('modal-edit').style.display='none';
+  _editandoReuniaoId = null;
+}
+
+async function salvarEdicaoReuniao(){
+  const id=_editandoReuniaoId;
+  if(!id) return;
+  const titulo=document.getElementById('e-titulo').value.trim();
+  const dataInput=document.getElementById('e-data').value;
+  const body={
+    titulo,
+    data: dataInput ? new Date(dataInput).toISOString() : '',
+    setor: document.getElementById('e-setor').value,
+    solicitante: document.getElementById('e-solicitante').value.trim(),
+    modalidade: document.getElementById('e-modalidade').value,
+    local_reuniao: document.getElementById('e-local').value,
+    cliente: document.getElementById('e-cliente').value.trim()
+  };
+  if(!titulo){ toast('Informe o titulo da reuniao.'); return; }
+  if(!body.setor){ toast('Informe o setor.'); return; }
+  const btn=document.getElementById('e-btn');
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    await apiPost('/api/reunioes/'+id+'/metadados', body);
+    fecharEditarReuniao();
+    toast('Dados da reuniao atualizados.');
+    loadDetalhe(id);
+    loadReunioes();
+  }catch(e){
+    toast('Erro: '+e.message, 5000);
+  }finally{
+    btn.disabled=false; btn.textContent='Salvar alteracoes';
+  }
+}
+
 async function novaReuniao(){
   const m=document.getElementById('modal'); m.style.display='flex';
   const sel=document.getElementById('m-setor');

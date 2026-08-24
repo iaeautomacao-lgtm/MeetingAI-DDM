@@ -208,7 +208,15 @@ def auth_registrar():
         return jsonify({"erro": "dominio_nao_permitido",
                         "msg": "Use um e-mail da empresa (@ddm.adv.br ou @grupoddm.com.br)."}), 403
 
-    ok, motivo = registrar_acesso(email, senha, nome, setor, perfil_solicitado)
+    try:
+        ok, motivo = registrar_acesso(email, senha, nome, setor, perfil_solicitado)
+    except Exception as exc:
+        current_app.logger.exception("Erro ao registrar acesso no MySQL")
+        return jsonify({
+            "erro": "falha_ao_registrar",
+            "msg": f"Banco MySQL: {exc}",
+        }), 500
+
     if ok:
         return jsonify({"ok": True, "pendente": True,
                         "msg": "Cadastro enviado. Aguarde a aprovação do administrador."})

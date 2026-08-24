@@ -152,7 +152,7 @@ async function registrar(ev){
       document.getElementById('form-registro').reset();
       return;
     }
-    showErr(d.msg || 'Não foi possível concluir o cadastro.');
+    showErr(d.msg || d.erro || 'Não foi possível concluir o cadastro.');
   }catch(e){ showErr('Erro de conexão.'); }
 }
 </script>

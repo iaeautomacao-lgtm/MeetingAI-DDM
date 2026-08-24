@@ -695,14 +695,16 @@ function goto(page, opts={}){
 function goBack(){ goto(prevPage); }
 
 /* ---------- ACESSOS (admin) ---------- */
-let ACESSO_TOTAL=true, MEU_SETOR='', IS_ADMIN=false;
+let ACESSO_TOTAL=true, MEU_SETOR='', MEU_EMAIL='', IS_ADMIN=false, GESTOR_SETOR=false;
 async function checkAdmin(){
   try{
     const s = await apiGet('/api/auth/status');
     const nome = (s && s.nome) || 'Diretoria';
     const primeiro = nome.split(' ')[0];
     ACESSO_TOTAL = !!(s && s.acesso_total);
+    GESTOR_SETOR = !!(s && s.gestor_setor);
     MEU_SETOR = (s && s.setor) || '';
+    MEU_EMAIL = (s && s.email) || '';
     document.getElementById('profile-name').textContent = nome;
     document.getElementById('profile-email').textContent = (s && s.email) || '';
     document.getElementById('avatar-inicial').textContent = (primeiro[0]||'·').toUpperCase();
@@ -767,23 +769,31 @@ async function loadAcessos(){
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
         </span>
       </div>`).join('') : '<div class="t-sub">Nenhum pedido pendente.</div>';
-    const adminTag = a => a.is_admin ? '<span class="t-sub" style="background:#fff3e0;color:#b45309;padding:2px 8px;border-radius:10px">admin</span>' : '';
+    const adminTag = a => a.is_admin ? '<span class="t-sub" style="background:#fff3e0;color:#b45309;padding:2px 8px;border-radius:10px">diretor</span>' : '';
+    const gestorTag = a => a.is_gestor ? '<span class="t-sub" style="background:#e8f3ff;color:#1d4ed8;padding:2px 8px;border-radius:10px">gestor</span>' : '';
     aDiv.innerHTML = apr.length ? apr.map(a=>`
       <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${adminTag(a)}</span>
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${gestorTag(a)} ${adminTag(a)}</span>
         <span style="display:flex;gap:6px">
           <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(a.setor||'')}')">Trocar setor</button>
-          <button class="btn-sm" style="background:${a.is_admin?'var(--gray)':'#b45309'}" onclick="tornarAdmin('${esc(a.email)}',${a.is_admin?'false':'true'})">${a.is_admin?'Remover admin':'Tornar admin'}</button>
+          <button class="btn-sm" style="background:${a.is_gestor?'var(--gray)':'#1d4ed8'}" onclick="tornarGestor('${esc(a.email)}',${a.is_gestor?'false':'true'})">${a.is_gestor?'Remover gestor':'Tornar gestor'}</button>
+          <button class="btn-sm" style="background:${a.is_admin?'var(--gray)':'#b45309'}" onclick="tornarAdmin('${esc(a.email)}',${a.is_admin?'false':'true'})">${a.is_admin?'Remover diretor':'Tornar diretor'}</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
         </span>
       </div>`).join('') : '<div class="t-sub">Nenhum acesso aprovado.</div>';
   }catch(e){ pDiv.innerHTML='<div class="t-sub">Erro ao carregar.</div>'; }
 }
 async function tornarAdmin(email, virar){
-  const acao = virar ? 'tornar ADMIN' : 'remover o admin de';
+  const acao = virar ? 'tornar DIRETOR' : 'remover o diretor de';
   if(!confirm('Deseja '+acao+' '+email+'?')) return;
   try{ await apiPost('/api/acessos/admin',{email,admin:virar}); toast('Feito ✓'); loadAcessos(); }
-  catch(e){ toast('Erro ao alterar admin'); }
+  catch(e){ toast('Erro ao alterar diretor'); }
+}
+async function tornarGestor(email, virar){
+  const acao = virar ? 'tornar GESTOR DO SETOR' : 'remover o gestor de';
+  if(!confirm('Deseja '+acao+' '+email+'?')) return;
+  try{ await apiPost('/api/acessos/gestor',{email,gestor:virar}); toast('Feito ✓'); loadAcessos(); }
+  catch(e){ toast('Erro ao alterar gestor'); }
 }
 async function trocarSetor(email, atual){
   let setores=[];

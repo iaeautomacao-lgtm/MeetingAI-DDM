@@ -38,6 +38,7 @@ create table if not exists painel_acessos (
     ativo      boolean default true,
     aprovado   boolean default false,
     is_admin   boolean default false,
+    is_gestor  boolean default false,
     criado_em  timestamptz default now()
 );
 create index if not exists idx_painel_acessos_email on painel_acessos (lower(email));
@@ -45,6 +46,7 @@ create index if not exists idx_painel_acessos_email on painel_acessos (lower(ema
 -- Se a tabela JÁ existe, adicione a coluna e aprove os que já usam:
 --   set search_path to meeting_ai;
 --   alter table painel_acessos add column if not exists aprovado boolean default false;
+--   alter table painel_acessos add column if not exists is_gestor boolean default false;
 --   update painel_acessos set aprovado = true where email = 'gisele.oliveira@ddm.adv.br';
 
 -- ── Setores ─────────────────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ create table if not exists reunioes (
 create index if not exists idx_reunioes_status     on reunioes (status);
 create index if not exists idx_reunioes_data       on reunioes (data desc);
 create index if not exists idx_reunioes_setor      on reunioes (setor);
+create index if not exists idx_reunioes_solicitante on reunioes (solicitante);
 create index if not exists idx_reunioes_plataforma on reunioes (plataforma);
 create index if not exists idx_reunioes_recall_bot on reunioes (recall_bot_id);
 

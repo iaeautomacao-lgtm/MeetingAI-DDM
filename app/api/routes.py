@@ -25,6 +25,7 @@ from app.auth import (
     rejeitar_acesso,
     definir_setor,
     definir_admin,
+    definir_gestor,
     atualizar_nome,
     alterar_senha,
     login_session,
@@ -34,15 +35,60 @@ from app.auth import (
     sessao_email,
     sessao_setor,
     tem_acesso_total,
+    is_gestor_setor,
     _buscar_acesso,
 )
 
 
-def _q_reunioes_do_setor(q):
-    """Aplica o filtro de setor: usuário comum só vê o próprio setor; diretoria vê tudo."""
-    if not tem_acesso_total():
-        q = q.eq("setor", sessao_setor())
-    return q
+def _normalizar_texto_acesso(valor: str) -> str:
+    return " ".join((valor or "").strip().lower().split())
+
+
+def _solicitantes_sessao() -> list[str]:
+    email = sessao_email()
+    valores = []
+
+    if email:
+        valores.append(email)
+        acesso = _buscar_acesso(email) or {}
+        nome = acesso.get("nome")
+        if nome:
+            valores.append(nome)
+
+    return list(dict.fromkeys(
+        valor
+        for valor in (_normalizar_texto_acesso(v) for v in valores)
+        if valor
+    ))
+
+
+def _escopo_reunioes_sql() -> tuple[str, list]:
+    if tem_acesso_total():
+        return "", []
+
+    if is_gestor_setor():
+        return " AND setor = %s", [sessao_setor()]
+
+    solicitantes = _solicitantes_sessao()
+    if not solicitantes:
+        return " AND 1 = 0", []
+
+    placeholders = ", ".join(["%s"] * len(solicitantes))
+    return (
+        f" AND LOWER(TRIM(COALESCE(solicitante, ''))) IN ({placeholders})",
+        solicitantes,
+    )
+
+
+def _pode_acessar_reuniao(reuniao: dict) -> bool:
+    if tem_acesso_total():
+        return True
+
+    if is_gestor_setor():
+        return (reuniao.get("setor") or "") == sessao_setor()
+
+    solicitante = _normalizar_texto_acesso(reuniao.get("solicitante") or "")
+    return bool(solicitante and solicitante in _solicitantes_sessao())
 
 
 def _normalizar_json_reuniao(reuniao: dict) -> dict:
@@ -193,6 +239,7 @@ def auth_status():
         "autenticado": is_authed(),
         "email": email,
         "admin": is_admin(),
+        "gestor_setor": is_gestor_setor(),
         "nome": nome,
         "setor": setor,
         "acesso_total": tem_acesso_total(),
@@ -283,6 +330,18 @@ def acessos_admin():
     return jsonify({"erro": "não encontrado"}), 404
 
 
+@bp.post("/acessos/gestor")
+@require_admin
+def acessos_gestor():
+    """Admin promove/rebaixa outro acesso a gestor do próprio setor."""
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    virar = bool(body.get("gestor"))
+    if definir_gestor(email, virar):
+        return jsonify({"ok": True})
+    return jsonify({"erro": "não encontrado"}), 404
+
+
 # ── Live ──────────────────────────────────────────────────────────────────────
 
 @bp.get("/live/teams")
@@ -320,9 +379,9 @@ def live_teams():
             "teams",
         ]
 
-        if not tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(sessao_setor())
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
 
         sql += " ORDER BY data DESC"
 
@@ -378,9 +437,9 @@ def live_processando():
 
         params = ["processing"]
 
-        if not tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(sessao_setor())
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
 
         sql += " ORDER BY data DESC LIMIT 20"
 
@@ -451,9 +510,9 @@ def dashboard_summary():
 
         params = [desde, "completed"]
 
-        if not tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(sessao_setor())
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
 
         sql += " ORDER BY data DESC"
 
@@ -549,9 +608,9 @@ def dashboard():
 
         params = []
 
-        if not tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(sessao_setor())
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
 
         sql += " ORDER BY data DESC LIMIT 10"
 
@@ -572,9 +631,9 @@ def dashboard():
 
         params_pendencias = ["completed"]
 
-        if not tem_acesso_total():
-            sql_pendencias += " AND setor = %s"
-            params_pendencias.append(sessao_setor())
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql_pendencias += escopo_sql
+        params_pendencias.extend(escopo_params)
 
         cursor.execute(sql_pendencias, params_pendencias)
         registros_pendencias = cursor.fetchall()
@@ -646,10 +705,10 @@ def listar_reunioes():
 
         params = []
 
-        # Usuário comum só vê reuniões do próprio setor
-        if not tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(sessao_setor())
+        # Diretor vê tudo, gestor vê setor, usuário normal vê só o que cadastrou.
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
 
         setor = request.args.get("setor")
         if setor and tem_acesso_total():
@@ -720,10 +779,7 @@ def detalhe_reuniao(reuniao_id: str):
         if not reuniao:
             return jsonify({"erro": "não encontrado"}), 404
 
-        if (
-            not tem_acesso_total()
-            and (reuniao.get("setor") or "") != sessao_setor()
-        ):
+        if not _pode_acessar_reuniao(reuniao):
             return jsonify({"erro": "não encontrado"}), 404
 
         return jsonify(_normalizar_json_reuniao(reuniao)), 200
@@ -802,7 +858,7 @@ def atualizar_metadados_reuniao(reuniao_id: str):
 
         cursor.execute(
             """
-            SELECT id, setor
+            SELECT id, setor, solicitante
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -816,10 +872,7 @@ def atualizar_metadados_reuniao(reuniao_id: str):
         if not reuniao:
             return jsonify({"erro": "não encontrado"}), 404
 
-        if (
-            not tem_acesso_total()
-            and (reuniao.get("setor") or "") != sessao_setor()
-        ):
+        if not _pode_acessar_reuniao(reuniao):
             return jsonify({"erro": "não encontrado"}), 404
 
         atribuicoes = [f"`{campo}` = %s" for campo in valores]
@@ -874,7 +927,7 @@ def _carregar_reuniao_locutores(reuniao_id: str):
 
         cursor.execute(
             """
-            SELECT id, setor, recall_bot_id, utterances, participantes
+            SELECT id, setor, solicitante, recall_bot_id, utterances, participantes
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -895,10 +948,7 @@ def _carregar_reuniao_locutores(reuniao_id: str):
     if not reuniao:
         return None, (jsonify({"erro": "não encontrado"}), 404)
 
-    if (
-        not tem_acesso_total()
-        and (reuniao.get("setor") or "") != sessao_setor()
-    ):
+    if not _pode_acessar_reuniao(reuniao):
         return None, (jsonify({"erro": "não encontrado"}), 404)
 
     return reuniao, None
@@ -1595,11 +1645,12 @@ def upload_audio():
             INSERT INTO reunioes (
                 id,
                 titulo,
+                solicitante,
                 setor,
                 plataforma,
                 status
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 reuniao_id,
@@ -1607,7 +1658,8 @@ def upload_audio():
                     "titulo",
                     "Reunião — upload manual",
                 ),
-                request.form.get("setor", ""),
+                sessao_email() or request.form.get("solicitante", ""),
+                sessao_setor() if not tem_acesso_total() else request.form.get("setor", ""),
                 "avulso",
                 "pending",
             ),
@@ -1721,7 +1773,12 @@ def criar_gravacao():
     )
 
     solicitante = (body.get("solicitante") or "").strip()
+    if is_authed() and sessao_email():
+        solicitante = sessao_email()
+
     setor = (body.get("setor") or "").strip()
+    if is_authed() and not tem_acesso_total() and sessao_setor():
+        setor = sessao_setor()
     modalidade = (body.get("modalidade") or "online").strip()
     local_reuniao = (body.get("local_reuniao") or "").strip()
     cliente = (body.get("cliente") or "").strip()
@@ -1914,7 +1971,8 @@ def processar_gravacao_manual(reuniao_id: str):
             SELECT
                 recall_bot_id,
                 status,
-                setor
+                setor,
+                solicitante
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -1928,11 +1986,7 @@ def processar_gravacao_manual(reuniao_id: str):
         if not reuniao:
             return jsonify({"erro": "não encontrado"}), 404
 
-        # Usuário comum só pode processar reunião do próprio setor.
-        if (
-            not tem_acesso_total()
-            and (reuniao.get("setor") or "") != sessao_setor()
-        ):
+        if not _pode_acessar_reuniao(reuniao):
             return jsonify({"erro": "não encontrado"}), 404
 
         bot_id = reuniao.get("recall_bot_id")

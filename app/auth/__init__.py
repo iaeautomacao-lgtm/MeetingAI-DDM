@@ -20,6 +20,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.extensions import get_mysql_connection
 
 
+_TEM_COLUNA_IS_GESTOR = None
+
+
 def _hash(senha: str) -> str:
     return generate_password_hash(str(senha), method="pbkdf2:sha256")
 
@@ -51,6 +54,32 @@ def setor_diretoria(setor: str) -> bool:
     return (setor or "").strip().lower() in _setores_diretoria()
 
 
+def _tem_coluna_is_gestor() -> bool:
+    global _TEM_COLUNA_IS_GESTOR
+
+    if _TEM_COLUNA_IS_GESTOR is not None:
+        return _TEM_COLUNA_IS_GESTOR
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+        cursor.execute("SHOW COLUMNS FROM painel_acessos LIKE 'is_gestor'")
+        _TEM_COLUNA_IS_GESTOR = cursor.fetchone() is not None
+    except Exception:
+        _TEM_COLUNA_IS_GESTOR = False
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return _TEM_COLUNA_IS_GESTOR
+
+
 def _buscar_acesso(email: str) -> dict | None:
     email = (email or "").strip().lower()
 
@@ -63,9 +92,10 @@ def _buscar_acesso(email: str) -> dict | None:
     try:
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
+        gestor_sql = "is_gestor" if _tem_coluna_is_gestor() else "0 AS is_gestor"
 
         cursor.execute(
-            """
+            f"""
             SELECT
                 email,
                 nome,
@@ -73,7 +103,8 @@ def _buscar_acesso(email: str) -> dict | None:
                 senha_hash,
                 ativo,
                 aprovado,
-                is_admin
+                is_admin,
+                {gestor_sql}
             FROM painel_acessos
             WHERE email = %s
             LIMIT 1
@@ -108,6 +139,8 @@ def _update(email: str, campos: dict) -> None:
         "aprovado",
         "is_admin",
     }
+    if _tem_coluna_is_gestor():
+        campos_permitidos.add("is_gestor")
 
     campos_validos = {
         chave: valor
@@ -208,9 +241,23 @@ def registrar_acesso(
     try:
         connection = get_mysql_connection()
         cursor = connection.cursor()
+        tem_is_gestor = _tem_coluna_is_gestor()
+        is_gestor_sql = ", is_gestor" if tem_is_gestor else ""
+        is_gestor_placeholder = ", %s" if tem_is_gestor else ""
+        valores = [
+            email,
+            nome or "",
+            setor,
+            _hash(senha),
+            1,
+            0,
+            0,
+        ]
+        if tem_is_gestor:
+            valores.append(0)
 
         cursor.execute(
-            """
+            f"""
             INSERT INTO painel_acessos (
                 email,
                 nome,
@@ -219,18 +266,11 @@ def registrar_acesso(
                 ativo,
                 aprovado,
                 is_admin
+                {is_gestor_sql}
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s{is_gestor_placeholder})
             """,
-            (
-                email,
-                nome or "",
-                setor,
-                _hash(senha),
-                1,
-                0,
-                0,
-            ),
+            valores,
         )
 
         connection.commit()
@@ -285,9 +325,10 @@ def listar_acessos() -> list[dict]:
     try:
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
+        gestor_sql = "is_gestor" if _tem_coluna_is_gestor() else "0 AS is_gestor"
 
         cursor.execute(
-            """
+            f"""
             SELECT
                 email,
                 nome,
@@ -295,6 +336,7 @@ def listar_acessos() -> list[dict]:
                 ativo,
                 aprovado,
                 is_admin,
+                {gestor_sql},
                 criado_em
             FROM painel_acessos
             ORDER BY criado_em DESC
@@ -333,6 +375,16 @@ def definir_admin(email: str, virar_admin: bool) -> bool:
     if not _buscar_acesso(email):
         return False
     _update(email, {"is_admin": 1 if virar_admin else 0})
+    return True
+
+
+def definir_gestor(email: str, virar_gestor: bool) -> bool:
+    email = (email or "").strip().lower()
+    if not _tem_coluna_is_gestor():
+        return False
+    if not _buscar_acesso(email):
+        return False
+    _update(email, {"is_gestor": 1 if virar_gestor else 0})
     return True
 
 
@@ -423,24 +475,32 @@ def is_admin() -> bool:
     return bool(session.get("admin"))
 
 
+def is_gestor_setor() -> bool:
+    return bool(session.get("gestor_setor"))
+
+
 def login_session(email: str = "", admin: bool = False, setor: str = "") -> None:
     session["diretor"] = True
     email = (email or "").strip().lower()
     session["email"] = email
     session["setor"] = (setor or "").strip()
 
+    acesso = _buscar_acesso(email) if email else None
+
     is_adm = bool(admin) or (email in _admin_emails())
     if not is_adm and email:
-        acesso = _buscar_acesso(email)
         is_adm = bool(acesso and acesso.get("is_admin"))
 
+    is_gestor = bool(acesso and acesso.get("is_gestor"))
+
     session["admin"] = is_adm
+    session["gestor_setor"] = (not is_adm) and is_gestor
     session["acesso_total"] = is_adm or setor_diretoria(setor) or (not email)
     session.permanent = True
 
 
 def logout_session() -> None:
-    for key in ("diretor", "email", "admin", "setor", "acesso_total"):
+    for key in ("diretor", "email", "admin", "gestor_setor", "setor", "acesso_total"):
         session.pop(key, None)
 
 

@@ -196,16 +196,19 @@ def auth_registrar():
     senha = body.get("senha", "")
     nome = (body.get("nome") or "").strip()
     setor = (body.get("setor") or "").strip()
+    perfil_solicitado = (body.get("perfil_solicitado") or "usuario").strip().lower()
 
     if not email or len(str(senha)) < 6:
         return jsonify({"erro": "e-mail e senha (mín. 6 caracteres) obrigatórios"}), 400
     if not setor:
         return jsonify({"erro": "setor_obrigatorio", "msg": "Escolha o seu setor."}), 400
+    if perfil_solicitado not in {"usuario", "gestor", "diretor"}:
+        return jsonify({"erro": "perfil_invalido", "msg": "Escolha um tipo de acesso válido."}), 400
     if not dominio_permitido(email):
         return jsonify({"erro": "dominio_nao_permitido",
                         "msg": "Use um e-mail da empresa (@ddm.adv.br ou @grupoddm.com.br)."}), 403
 
-    ok, motivo = registrar_acesso(email, senha, nome, setor)
+    ok, motivo = registrar_acesso(email, senha, nome, setor, perfil_solicitado)
     if ok:
         return jsonify({"ok": True, "pendente": True,
                         "msg": "Cadastro enviado. Aguarde a aprovação do administrador."})

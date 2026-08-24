@@ -62,6 +62,12 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
     <select id="r-setor" required>
       <option value="">Selecione o setor…</option>
     </select>
+    <label for="r-perfil">Tipo de acesso solicitado</label>
+    <select id="r-perfil" required>
+      <option value="usuario">Usuário normal</option>
+      <option value="gestor">Gestor do setor</option>
+      <option value="diretor">Diretor</option>
+    </select>
     <label for="r-senha">Crie uma senha</label>
     <input type="password" id="r-senha" placeholder="mín. 6 caracteres" minlength="6" required>
     <label for="r-senha2">Confirme a senha</label>
@@ -133,12 +139,13 @@ async function registrar(ev){
   const nome=document.getElementById('r-nome').value.trim();
   const email=document.getElementById('r-email').value.trim();
   const setor=document.getElementById('r-setor').value;
+  const perfil_solicitado=document.getElementById('r-perfil').value;
   const senha=document.getElementById('r-senha').value;
   const senha2=document.getElementById('r-senha2').value;
   if(!setor){ showErr('Escolha o seu setor.'); return; }
   if(senha!==senha2){ showErr('As senhas não conferem.'); return; }
   try{
-    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,email,senha,setor})});
+    const r=await fetch('/api/auth/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,email,senha,setor,perfil_solicitado})});
     const d=await r.json().catch(()=>({}));
     if(r.ok){
       showOk('Cadastro enviado! Aguarde a aprovação do administrador — você poderá entrar assim que for liberado.');

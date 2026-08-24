@@ -21,6 +21,7 @@ from app.extensions import get_mysql_connection
 
 
 _TEM_COLUNA_IS_GESTOR = None
+_TEM_COLUNA_PERFIL_SOLICITADO = None
 
 
 def _hash(senha: str) -> str:
@@ -80,6 +81,39 @@ def _tem_coluna_is_gestor() -> bool:
     return _TEM_COLUNA_IS_GESTOR
 
 
+def _tem_coluna_perfil_solicitado() -> bool:
+    global _TEM_COLUNA_PERFIL_SOLICITADO
+
+    if _TEM_COLUNA_PERFIL_SOLICITADO is not None:
+        return _TEM_COLUNA_PERFIL_SOLICITADO
+
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor()
+        cursor.execute("SHOW COLUMNS FROM painel_acessos LIKE 'perfil_solicitado'")
+        _TEM_COLUNA_PERFIL_SOLICITADO = cursor.fetchone() is not None
+    except Exception:
+        _TEM_COLUNA_PERFIL_SOLICITADO = False
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return _TEM_COLUNA_PERFIL_SOLICITADO
+
+
+def _normalizar_perfil_solicitado(perfil: str) -> str:
+    perfil = (perfil or "usuario").strip().lower()
+    if perfil in {"usuario", "gestor", "diretor"}:
+        return perfil
+    return "usuario"
+
+
 def _buscar_acesso(email: str) -> dict | None:
     email = (email or "").strip().lower()
 
@@ -93,6 +127,11 @@ def _buscar_acesso(email: str) -> dict | None:
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
         gestor_sql = "is_gestor" if _tem_coluna_is_gestor() else "0 AS is_gestor"
+        perfil_sql = (
+            "perfil_solicitado"
+            if _tem_coluna_perfil_solicitado()
+            else "'usuario' AS perfil_solicitado"
+        )
 
         cursor.execute(
             f"""
@@ -104,7 +143,8 @@ def _buscar_acesso(email: str) -> dict | None:
                 ativo,
                 aprovado,
                 is_admin,
-                {gestor_sql}
+                {gestor_sql},
+                {perfil_sql}
             FROM painel_acessos
             WHERE email = %s
             LIMIT 1
@@ -141,6 +181,8 @@ def _update(email: str, campos: dict) -> None:
     }
     if _tem_coluna_is_gestor():
         campos_permitidos.add("is_gestor")
+    if _tem_coluna_perfil_solicitado():
+        campos_permitidos.add("perfil_solicitado")
 
     campos_validos = {
         chave: valor
@@ -205,9 +247,11 @@ def registrar_acesso(
     senha: str,
     nome: str = "",
     setor: str = "",
+    perfil_solicitado: str = "usuario",
 ) -> tuple[bool, str]:
     email = (email or "").strip().lower()
     setor = (setor or "").strip()
+    perfil_solicitado = _normalizar_perfil_solicitado(perfil_solicitado)
 
     if not dominio_permitido(email):
         return False, "dominio_nao_permitido"
@@ -230,6 +274,7 @@ def registrar_acesso(
                 "senha_hash": _hash(senha),
                 "nome": nome or acesso.get("nome", ""),
                 "setor": setor or acesso.get("setor", ""),
+                "perfil_solicitado": perfil_solicitado,
             },
         )
 
@@ -242,8 +287,11 @@ def registrar_acesso(
         connection = get_mysql_connection()
         cursor = connection.cursor()
         tem_is_gestor = _tem_coluna_is_gestor()
+        tem_perfil_solicitado = _tem_coluna_perfil_solicitado()
         is_gestor_sql = ", is_gestor" if tem_is_gestor else ""
         is_gestor_placeholder = ", %s" if tem_is_gestor else ""
+        perfil_sql = ", perfil_solicitado" if tem_perfil_solicitado else ""
+        perfil_placeholder = ", %s" if tem_perfil_solicitado else ""
         valores = [
             email,
             nome or "",
@@ -255,6 +303,8 @@ def registrar_acesso(
         ]
         if tem_is_gestor:
             valores.append(0)
+        if tem_perfil_solicitado:
+            valores.append(perfil_solicitado)
 
         cursor.execute(
             f"""
@@ -267,8 +317,9 @@ def registrar_acesso(
                 aprovado,
                 is_admin
                 {is_gestor_sql}
+                {perfil_sql}
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s{is_gestor_placeholder})
+            VALUES (%s, %s, %s, %s, %s, %s, %s{is_gestor_placeholder}{perfil_placeholder})
             """,
             valores,
         )
@@ -326,6 +377,11 @@ def listar_acessos() -> list[dict]:
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
         gestor_sql = "is_gestor" if _tem_coluna_is_gestor() else "0 AS is_gestor"
+        perfil_sql = (
+            "perfil_solicitado"
+            if _tem_coluna_perfil_solicitado()
+            else "'usuario' AS perfil_solicitado"
+        )
 
         cursor.execute(
             f"""
@@ -337,6 +393,7 @@ def listar_acessos() -> list[dict]:
                 aprovado,
                 is_admin,
                 {gestor_sql},
+                {perfil_sql},
                 criado_em
             FROM painel_acessos
             ORDER BY criado_em DESC
@@ -357,9 +414,21 @@ def listar_acessos() -> list[dict]:
 
 
 def aprovar_acesso(email: str) -> bool:
-    if not _buscar_acesso(email):
+    acesso = _buscar_acesso(email)
+    if not acesso:
         return False
-    _update(email, {"aprovado": 1, "ativo": 1})
+
+    perfil = _normalizar_perfil_solicitado(acesso.get("perfil_solicitado"))
+    campos = {"aprovado": 1, "ativo": 1}
+
+    if perfil == "diretor":
+        campos.update({"is_admin": 1, "is_gestor": 0})
+    elif perfil == "gestor":
+        campos.update({"is_admin": 0, "is_gestor": 1})
+    else:
+        campos.update({"is_admin": 0, "is_gestor": 0})
+
+    _update(email, campos)
     return True
 
 

@@ -761,9 +761,11 @@ async function loadAcessos(){
     const pend = (lista||[]).filter(a=>!a.aprovado);
     const apr  = (lista||[]).filter(a=>a.aprovado);
     const setorTag = a => `<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">${esc(a.setor||'sem setor')}</span>`;
+    const perfilLabel = a => ({usuario:'usuário normal',gestor:'gestor do setor',diretor:'diretor'}[a.perfil_solicitado] || 'usuário normal');
+    const pedidoTag = a => `<span class="t-sub" style="background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:10px">solicitou: ${esc(perfilLabel(a))}</span>`;
     pDiv.innerHTML = pend.length ? pend.map(a=>`
       <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)}</span>
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${pedidoTag(a)}</span>
         <span style="display:flex;gap:6px">
           <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
@@ -773,7 +775,7 @@ async function loadAcessos(){
     const gestorTag = a => a.is_gestor ? '<span class="t-sub" style="background:#e8f3ff;color:#1d4ed8;padding:2px 8px;border-radius:10px">gestor</span>' : '';
     aDiv.innerHTML = apr.length ? apr.map(a=>`
       <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${gestorTag(a)} ${adminTag(a)}</span>
+        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${gestorTag(a)} ${adminTag(a)} ${pedidoTag(a)}</span>
         <span style="display:flex;gap:6px">
           <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(a.setor||'')}')">Trocar setor</button>
           <button class="btn-sm" style="background:${a.is_gestor?'var(--gray)':'#1d4ed8'}" onclick="tornarGestor('${esc(a.email)}',${a.is_gestor?'false':'true'})">${a.is_gestor?'Remover gestor':'Tornar gestor'}</button>

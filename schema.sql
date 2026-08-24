@@ -39,6 +39,7 @@ create table if not exists painel_acessos (
     aprovado   boolean default false,
     is_admin   boolean default false,
     is_gestor  boolean default false,
+    perfil_solicitado text default 'usuario',
     criado_em  timestamptz default now()
 );
 create index if not exists idx_painel_acessos_email on painel_acessos (lower(email));
@@ -47,6 +48,7 @@ create index if not exists idx_painel_acessos_email on painel_acessos (lower(ema
 --   set search_path to meeting_ai;
 --   alter table painel_acessos add column if not exists aprovado boolean default false;
 --   alter table painel_acessos add column if not exists is_gestor boolean default false;
+--   alter table painel_acessos add column if not exists perfil_solicitado text default 'usuario';
 --   update painel_acessos set aprovado = true where email = 'gisele.oliveira@ddm.adv.br';
 
 -- ── Setores ─────────────────────────────────────────────────────────────────

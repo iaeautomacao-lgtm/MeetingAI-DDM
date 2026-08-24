@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hmac
 import os
+import uuid
 from functools import wraps
 
 from flask import jsonify, session
@@ -293,6 +294,7 @@ def registrar_acesso(
         perfil_sql = ", perfil_solicitado" if tem_perfil_solicitado else ""
         perfil_placeholder = ", %s" if tem_perfil_solicitado else ""
         valores = [
+            str(uuid.uuid4()),
             email,
             nome or "",
             setor,
@@ -309,6 +311,7 @@ def registrar_acesso(
         cursor.execute(
             f"""
             INSERT INTO painel_acessos (
+                id,
                 email,
                 nome,
                 setor,
@@ -319,7 +322,7 @@ def registrar_acesso(
                 {is_gestor_sql}
                 {perfil_sql}
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s{is_gestor_placeholder}{perfil_placeholder})
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s{is_gestor_placeholder}{perfil_placeholder})
             """,
             valores,
         )

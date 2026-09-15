@@ -242,6 +242,7 @@ body {
 .ideas-radar-title h2 { color:#fff; font-family:var(--font-display); font-size:24px; line-height:1.1; }
 .ideas-radar-title .ideas-eyebrow { color:var(--teal); }
 .ideas-radar-filters { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+.ideas-radar-filters.is-hidden, .ideas-impact-filter.is-hidden { display:none; }
 .ideas-radar-filters button, .ideas-impact-filter, .map-tool {
   border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.08); color:#fff;
   border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700;
@@ -970,8 +971,8 @@ async function checkAdmin(){
     IS_ADMIN = !!(s && s.admin);
     const navEnviar=document.getElementById('nav-ideias-enviar');
     const navRadar=document.getElementById('nav-ideias-radar');
-    if(navEnviar) navEnviar.style.display = ACESSO_TOTAL ? 'none' : 'flex';
-    if(navRadar) navRadar.style.display = ACESSO_TOTAL ? 'flex' : 'none';
+    if(navEnviar) navEnviar.style.display = 'flex';
+    if(navRadar) navRadar.style.display = (ACESSO_TOTAL || IS_ADMIN || GESTOR_SETOR) ? 'flex' : 'none';
     if(IS_ADMIN){
       document.getElementById('nav-acessos').style.display='flex';
       document.getElementById('nav-lixeira').style.display='flex';
@@ -983,6 +984,7 @@ async function checkAdmin(){
 
 /* ---------- HUB DE IDEIAS ---------- */
 const IDEIAS_IMPACTOS = ['Reduz tempo','Aumenta receita','Melhora experiência do cliente','Reduz risco','Melhora comunicação interna'];
+const IDEIAS_SETORES_RADAR = ['Comercial','Jurídico','Operação','RH','Financeiro','IA','Planejamento','Backoffice'];
 const IDEIAS_SETOR_POS = {
   'Jurídico': {x:31,y:31}, 'Juridico': {x:31,y:31},
   'Comercial': {x:70,y:32},
@@ -996,12 +998,12 @@ const IDEIAS_SETOR_POS = {
 };
 
 function ideiaSetoresPermitidos(){
+  if(ACESSO_TOTAL || IS_ADMIN) return IDEIAS_SETORES_RADAR.slice();
   const setores = MEUS_SETORES.length ? MEUS_SETORES : (MEU_SETOR ? [MEU_SETOR] : []);
   return setores.length ? setores : ['Comercial','Jurídico','Operação','RH'];
 }
 
 function initIdeiasEnviar(){
-  if(ACESSO_TOTAL){ goto('ideias-radar'); return; }
   if(!IDEIA_DRAFT.autor) IDEIA_DRAFT.autor = (document.getElementById('profile-name')?.textContent || '').trim();
   renderIdeiaJourney();
   drawIdeiasMiniMap();
@@ -1204,7 +1206,7 @@ function normalizarIdeia(i){
   };
 }
 async function loadIdeiasRadar(){
-  if(!ACESSO_TOTAL){ goto('dashboard'); return; }
+  if(!ACESSO_TOTAL && !IS_ADMIN && !GESTOR_SETOR){ goto('dashboard'); return; }
   try{
     IDEIAS=(await apiGet('/api/ideias') || []).map(normalizarIdeia);
     if(!IDEIA_SELECIONADA && IDEIAS.length) IDEIA_SELECIONADA=IDEIAS[0].id;
@@ -1218,9 +1220,12 @@ function ideiasVisiveis(){
   return IDEIAS.filter(i=>(IDEIAS_SETOR_FILTRO==='Todos'||i.setor===IDEIAS_SETOR_FILTRO) && (IDEIAS_IMPACTO_FILTRO==='Todos'||i.impacto===IDEIAS_IMPACTO_FILTRO));
 }
 function renderIdeiasRadar(){
-  const setores=['Todos','Comercial','Jurídico','Operação','RH'];
-  document.getElementById('ideas-sector-filters').innerHTML=setores.map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="IDEIAS_SETOR_FILTRO='${esc(s)}';IDEIA_ACTIVE_SETOR='';renderIdeiasRadar()">${esc(s)}</button>`).join('');
-  document.getElementById('ideas-impact-filter').value=IDEIAS_IMPACTO_FILTRO;
+  const filters=document.getElementById('ideas-sector-filters');
+  const impact=document.getElementById('ideas-impact-filter');
+  filters.classList.toggle('is-hidden', !IDEIAS.length);
+  impact.classList.toggle('is-hidden', !IDEIAS.length);
+  filters.innerHTML=['Todos', ...IDEIAS_SETORES_RADAR].map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="IDEIAS_SETOR_FILTRO='${esc(s)}';IDEIA_ACTIVE_SETOR='${s==='Todos'?'':esc(s)}';renderIdeiasRadar()">${esc(s)}</button>`).join('');
+  impact.value=IDEIAS_IMPACTO_FILTRO;
   const vis=ideiasVisiveis();
   if(!vis.some(i=>i.id===IDEIA_SELECIONADA)) IDEIA_SELECIONADA=vis[0]?.id || '';
   renderIdeiasMap(vis);
@@ -1239,7 +1244,8 @@ function renderIdeiasMap(vis){
   const stage=document.getElementById('ideas-map-stage');
   if(!stage) return;
   stage.querySelectorAll('.idea-node.sector,.idea-node.idea').forEach(n=>n.remove());
-  const setores=[...new Set(vis.map(i=>i.setor))];
+  const setores=IDEIAS_SETORES_RADAR.slice();
+  vis.forEach(i=>{ if(i.setor && !setores.includes(i.setor)) setores.push(i.setor); });
   IDEIAS_MAP_NODES=[]; IDEIAS_MAP_EDGES=[];
   setores.forEach((setor,idx)=>{
     const pos=ideiaSectorPos(setor,idx,setores.length);
@@ -1309,9 +1315,15 @@ function centerIdeiasMap(){ IDEIA_ZOOM=1; IDEIA_PAN={x:0,y:0}; IDEIA_ACTIVE_SETO
 function applyIdeiasMapTransform(){ const st=document.getElementById('ideas-map-stage'); if(st) st.style.transform=`translate(${IDEIA_PAN.x}%, ${IDEIA_PAN.y}%) scale(${IDEIA_ZOOM})`; }
 function renderIdeiasList(vis){
   const el=document.getElementById('ideas-list'), sum=document.getElementById('ideas-panel-summary');
-  if(sum) sum.textContent=`${vis.length} ideias visíveis. Score, prioridade e esforço aparecem apenas para a gestão.`;
+  const setorAtivo = IDEIA_ACTIVE_SETOR || (IDEIAS_SETOR_FILTRO !== 'Todos' ? IDEIAS_SETOR_FILTRO : '');
+  if(sum) sum.textContent=IDEIAS.length
+    ? `${vis.length} ideias visíveis${setorAtivo ? ' em '+setorAtivo : ''}. Score, prioridade e esforço aparecem apenas para a gestão.`
+    : 'Clique em um setor no mapa para explorar o espaço. As ideias enviadas aparecerão aqui.';
   if(!el) return;
-  if(!vis.length){ el.innerHTML='<div class="empty">Nenhuma ideia neste filtro.</div>'; return; }
+  if(!vis.length){
+    el.innerHTML=`<div class="empty">${setorAtivo ? 'Ainda não há ideias em '+esc(setorAtivo)+'.' : 'Ainda não há ideias enviadas.'}<br><span class="t-sub">O mapa já mostra os setores para orientar a navegação.</span></div>`;
+    return;
+  }
   el.innerHTML=vis.map(idea=>`
     <article class="idea-card ${idea.id===IDEIA_SELECIONADA?'selected':''}" onclick="selectIdeia('${idea.id}')">
       <div><span class="chip">${esc(idea.setor)}</span><span class="chip">${esc(idea.impacto)}</span></div>

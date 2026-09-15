@@ -607,12 +607,6 @@ def acessos_gestor():
 @require_auth
 def ideias_desenvolver_rascunho():
     """Desenvolve um rascunho de ideia sem expor chave de IA no frontend."""
-    if tem_acesso_total():
-        return jsonify({
-            "erro": "diretoria_usa_radar",
-            "msg": "A diretoria acompanha as ideias pelo Radar.",
-        }), 403
-
     body = request.get_json(silent=True) or {}
     ideia = {
         "titulo": (body.get("titulo") or "").strip(),
@@ -635,8 +629,8 @@ def ideias_desenvolver_rascunho():
 @bp.get("/ideias")
 @require_auth
 def ideias_listar():
-    """Somente diretoria/acesso total visualiza ideias e Radar."""
-    if not tem_acesso_total():
+    """Diretoria vê todas as ideias; gestores veem ideias dos seus setores."""
+    if not tem_acesso_total() and not is_admin() and not is_gestor_setor():
         return jsonify({"erro": "acesso_restrito"}), 403
 
     connection = None
@@ -644,8 +638,7 @@ def ideias_listar():
     try:
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
-        cursor.execute(
-            """
+        sql = """
             SELECT
                 id,
                 titulo,
@@ -666,11 +659,20 @@ def ideias_listar():
                 criado_em
             FROM ideias
             WHERE status <> %s
-            ORDER BY criado_em DESC
-            LIMIT 200
-            """,
-            ("arquivada",),
-        )
+        """
+        params = ["arquivada"]
+
+        if not tem_acesso_total() and not is_admin():
+            setores = sessao_setores()
+            if not setores:
+                return jsonify([]), 200
+            placeholders = ", ".join(["%s"] * len(setores))
+            sql += f" AND setor IN ({placeholders})"
+            params.extend(setores)
+
+        sql += " ORDER BY criado_em DESC LIMIT 200"
+
+        cursor.execute(sql, tuple(params))
         return jsonify([_normalizar_ideia(row) for row in cursor.fetchall()]), 200
     except Exception as exc:
         current_app.logger.exception("Erro ao listar ideias no MySQL")
@@ -688,17 +690,11 @@ def ideias_listar():
 @bp.post("/ideias")
 @require_auth
 def ideias_criar():
-    """Usuários e gestores enviam ideias; diretoria enxerga no Radar."""
-    if tem_acesso_total():
-        return jsonify({
-            "erro": "diretoria_usa_radar",
-            "msg": "A diretoria acompanha as ideias pelo Radar.",
-        }), 403
-
+    """Usuários, gestores e diretoria podem enviar ideias."""
     body = request.get_json(silent=True) or {}
     setores_permitidos = sessao_setores()
     setor = (body.get("setor") or sessao_setor() or "").strip()
-    if setores_permitidos and setor not in setores_permitidos:
+    if is_authed() and not tem_acesso_total() and not is_admin() and setores_permitidos and setor not in setores_permitidos:
         setor = setores_permitidos[0]
 
     ideia = {
@@ -808,8 +804,8 @@ def ideias_criar():
 @bp.post("/ideias/<ideia_id>/desenvolver")
 @require_auth
 def ideias_desenvolver_salva(ideia_id):
-    """Diretoria reprocessa/desenvolve uma ideia já enviada."""
-    if not tem_acesso_total():
+    """Diretoria reprocessa qualquer ideia; gestores reprocessam ideias dos seus setores."""
+    if not tem_acesso_total() and not is_admin() and not is_gestor_setor():
         return jsonify({"erro": "acesso_restrito"}), 403
 
     connection = None
@@ -828,6 +824,9 @@ def ideias_desenvolver_salva(ideia_id):
         )
         ideia = cursor.fetchone()
         if not ideia:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        if not tem_acesso_total() and not is_admin() and (ideia.get("setor") or "") not in sessao_setores():
             return jsonify({"erro": "não encontrado"}), 404
 
         ai = _desenvolver_ideia_com_ia({

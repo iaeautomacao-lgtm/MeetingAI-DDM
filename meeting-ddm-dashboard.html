@@ -241,41 +241,46 @@ body {
 }
 .ideas-radar-title h2 { color:#fff; font-family:var(--font-display); font-size:24px; line-height:1.1; }
 .ideas-radar-title .ideas-eyebrow { color:var(--teal); }
+.ideas-radar-controls { display:flex; flex-direction:column; align-items:flex-end; gap:8px; max-width:58%; }
 .ideas-radar-filters { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
-.ideas-radar-filters.is-hidden, .ideas-impact-filter.is-hidden { display:none; }
+.ideas-radar-filters.is-hidden, .ideas-filter-row.is-hidden { display:none; }
 .ideas-radar-filters button, .ideas-impact-filter, .map-tool {
   border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.08); color:#fff;
   border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700;
 }
 .ideas-radar-filters button.active { background:var(--teal); color:#102120; }
+.ideas-filter-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; color:#aeb5bf; font-size:11px; }
 .ideas-impact-filter { border-radius:10px; outline:0; }
 .ideas-impact-filter option { color:var(--ink); }
 .ideas-map-tools { position:absolute; z-index:7; right:18px; bottom:18px; display:flex; gap:8px; }
 .map-tool { width:34px; height:34px; border-radius:10px; padding:0; font-size:15px; }
 .ideas-map-stage { position:absolute; inset:0; transform-origin:50% 50%; transition:transform .35s ease; }
 .ideas-map-stage:before {
-  content:""; position:absolute; inset:0; opacity:.62; background:
-    radial-gradient(circle at 28% 32%, rgba(94,196,205,.12), transparent 21%),
-    radial-gradient(circle at 74% 66%, rgba(255,87,6,.10), transparent 24%),
-    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255,255,255,.025) 1px, transparent 1px);
-  background-size:auto, auto, 54px 54px, 54px 54px;
+  content:""; position:absolute; inset:0; opacity:.44; background:
+    radial-gradient(circle at 50% 52%, rgba(255,87,6,.10), transparent 19%),
+    radial-gradient(circle at 22% 28%, rgba(94,196,205,.08), transparent 20%),
+    radial-gradient(circle at 72% 70%, rgba(112,88,222,.08), transparent 22%),
+    linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size:auto, auto, auto, 58px 58px, 58px 58px;
 }
 .ideas-map-stage svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 .idea-edge { fill:none; stroke-linecap:round; transition:opacity .18s, stroke-width .18s, filter .18s; }
 .idea-edge.dim { opacity:.12; }
-.idea-edge.hot { opacity:.92; stroke-width:.45; filter:drop-shadow(0 0 5px rgba(94,196,205,.85)); }
+.idea-edge.hot { opacity:.94; filter:drop-shadow(0 0 5px rgba(94,196,205,.72)); }
 .idea-node {
   position:absolute; transform:translate(-50%,-50%); border-radius:50%; border:1px solid rgba(255,255,255,.28);
   color:#fff; display:grid; place-items:center; font-weight:800; transition:all .18s ease; z-index:3;
 }
-.idea-node.core { width:66px; height:66px; background:linear-gradient(145deg,var(--ddm-orange),#ff8b45); box-shadow:0 0 0 8px rgba(255,87,6,.08),0 0 30px rgba(255,87,6,.28); }
-.idea-node.sector { min-width:72px; min-height:72px; padding:8px; background:#1c6f74; font-size:11px; text-align:center; box-shadow:0 0 0 7px rgba(94,196,205,.07),0 0 24px rgba(94,196,205,.22); }
-.idea-node.sector.active { background:var(--teal); color:#102120; }
-.idea-node.idea { font-size:0; background:radial-gradient(circle at 35% 30%,#fff,var(--ddm-orange-300) 18%,#7058de 72%); box-shadow:0 0 0 5px rgba(255,255,255,.04),0 0 24px rgba(112,88,222,.3); }
+.idea-node.core { width:72px; height:72px; background:linear-gradient(145deg,var(--ddm-orange),#ff8b45); box-shadow:0 0 0 9px rgba(255,87,6,.09),0 0 34px rgba(255,87,6,.34); }
+.idea-node.sector { width:92px; height:92px; padding:9px; background:#1c6f74; font-size:12px; text-align:center; display:flex; flex-direction:column; gap:2px; align-items:center; justify-content:center; }
+.idea-node.sector.active { transform:translate(-50%,-50%) scale(1.08); color:#fff; }
+.sector-icon { font-size:22px; line-height:1; }
+.sector-count { font-size:10px; font-weight:700; opacity:.86; }
+.idea-node.idea { font-size:0; background:radial-gradient(circle at 35% 30%,#fff 0 12%,var(--cluster,#ff8754) 35%,rgba(255,255,255,.08) 78%); box-shadow:0 0 0 5px rgba(255,255,255,.04),0 0 24px var(--cluster-glow,rgba(255,135,84,.3)); }
 .idea-node.idea:after { content:""; width:26%; height:26%; border-radius:inherit; background:rgba(255,255,255,.78); }
-.idea-node.idea:hover, .idea-node.idea.selected { background:radial-gradient(circle at 35% 30%,#fff,var(--teal) 23%,#149f98 76%); box-shadow:0 0 0 8px rgba(94,196,205,.12),0 0 34px rgba(94,196,205,.58); }
-.idea-node.dim { opacity:.35; }
+.idea-node.idea:hover, .idea-node.idea.selected { transform:translate(-50%,-50%) scale(1.18); box-shadow:0 0 0 8px rgba(255,255,255,.08),0 0 34px var(--cluster-glow,rgba(94,196,205,.58)); }
+.idea-node.dim { opacity:.2; filter:saturate(.45); }
 .idea-tooltip {
   position:absolute; z-index:9; display:none; max-width:250px; padding:11px 12px; border-radius:13px;
   background:rgba(255,255,255,.96); color:var(--ink); box-shadow:0 14px 36px rgba(0,0,0,.28); pointer-events:none;
@@ -288,6 +293,9 @@ body {
 .idea-card { border:1px solid var(--border); border-radius:var(--r-md); padding:14px; margin-top:10px; cursor:pointer; background:#fff; }
 .idea-card.selected { border-color:var(--teal); box-shadow:0 0 0 4px rgba(94,196,205,.13); }
 .idea-card h3 { font-family:var(--font-display); font-size:14px; margin:8px 0 3px; }
+.idea-card-section { margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+.idea-card-section b { display:block; font-size:12px; margin-bottom:5px; }
+.idea-card-section p { color:var(--ink-2); font-size:12px; line-height:1.55; }
 .idea-score { height:7px; border-radius:999px; background:var(--bg-alt); overflow:hidden; margin:9px 0; }
 .idea-score span { display:block; height:100%; background:linear-gradient(90deg,var(--ddm-orange),var(--teal)); }
 .idea-ai-box { border:1px solid #dff3f1; background:#f8fbfb; border-radius:var(--r-md); padding:12px; margin-top:10px; }
@@ -627,9 +635,11 @@ body.detalhe-aberto .right-sidebar { display: none; }
               <div class="ideas-eyebrow">INTELIGÊNCIA DE IDEIAS</div>
               <h2>Radar de Ideias</h2>
             </div>
-            <div>
+            <div class="ideas-radar-controls">
               <div class="ideas-radar-filters" id="ideas-sector-filters"></div>
-              <select class="ideas-impact-filter" id="ideas-impact-filter" onchange="IDEIAS_IMPACTO_FILTRO=this.value;renderIdeiasRadar()">
+              <div class="ideas-filter-row" id="ideas-filter-row">
+                <label>Impacto:
+              <select class="ideas-impact-filter" id="ideas-impact-filter" onchange="IDEIAS_IMPACTO_FILTRO=this.value;IDEIA_SELECIONADA='';renderIdeiasRadar()">
                 <option value="Todos">Todos os impactos</option>
                 <option>Reduz tempo</option>
                 <option>Aumenta receita</option>
@@ -637,6 +647,15 @@ body.detalhe-aberto .right-sidebar { display: none; }
                 <option>Reduz risco</option>
                 <option>Melhora comunicação interna</option>
               </select>
+                </label>
+                <label>Ordenar:
+                  <select class="ideas-impact-filter" id="ideas-order-filter" onchange="IDEIA_ORDEM_FILTRO=this.value;renderIdeiasRadar()">
+                    <option value="recentes">Mais recentes</option>
+                    <option value="impacto">Maior impacto</option>
+                    <option value="setor">Setor</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </div>
           <div class="ideas-map-stage" id="ideas-map-stage">
@@ -656,7 +675,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
           </div>
         </section>
         <aside class="ideas-director-panel">
-          <h2>Ideias em destaque</h2>
+          <h2 id="ideas-panel-title">Ideias em destaque</h2>
           <div class="t-sub" id="ideas-panel-summary" style="margin-bottom:10px"></div>
           <div id="ideas-list"></div>
         </aside>
@@ -846,8 +865,8 @@ const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'relevantes';
 let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
-let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_SELECIONADA = '';
-let IDEIA_HOVER = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [];
+let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
+let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [];
 let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null;
 
 /* ---------- utils ---------- */
@@ -996,6 +1015,28 @@ const IDEIAS_SETOR_POS = {
   'Backoffice': {x:17,y:51},
   'Diretores': {x:50,y:50}
 };
+
+const IDEIAS_SETOR_META = {
+  'Comercial': {color:'#27d4c6', icon:'▥'},
+  'JurÃ­dico': {color:'#8d5cff', icon:'§'}, 'Juridico': {color:'#8d5cff', icon:'§'},
+  'OperaÃ§Ã£o': {color:'#ffc247', icon:'⚙'}, 'Operacao': {color:'#ffc247', icon:'⚙'},
+  'RH': {color:'#4e92ff', icon:'◌'},
+  'Financeiro': {color:'#ff5f9d', icon:'$'},
+  'IA': {color:'#5ec4cd', icon:'✦'},
+  'Planejamento': {color:'#ff8754', icon:'⌁'},
+  'Backoffice': {color:'#7ee0a1', icon:'▣'},
+  'Diretores': {color:'#ff5706', icon:'◆'}
+};
+const IDEIAS_CORES_EXTRA = ['#7ee0a1','#ff8754','#5ec4cd','#a0d468','#e67bd8','#7aa7ff'];
+
+function hexToRgba(hex, alpha){
+  const h=String(hex||'#5ec4cd').replace('#','');
+  const n=parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h,16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`;
+}
+function ideiaSectorMeta(setor, idx=0){
+  return IDEIAS_SETOR_META[setor] || {color:IDEIAS_CORES_EXTRA[idx%IDEIAS_CORES_EXTRA.length], icon:'●'};
+}
 
 function ideiaSetoresPermitidos(){
   if(ACESSO_TOTAL || IS_ADMIN) return IDEIAS_SETORES_RADAR.slice();
@@ -1209,7 +1250,6 @@ async function loadIdeiasRadar(){
   if(!ACESSO_TOTAL && !IS_ADMIN && !GESTOR_SETOR){ goto('dashboard'); return; }
   try{
     IDEIAS=(await apiGet('/api/ideias') || []).map(normalizarIdeia);
-    if(!IDEIA_SELECIONADA && IDEIAS.length) IDEIA_SELECIONADA=IDEIAS[0].id;
     renderIdeiasRadar();
     if(!IDEIAS_MAP_RAF) IDEIAS_MAP_RAF=requestAnimationFrame(animateIdeiasMap);
   }catch(e){
@@ -1217,24 +1257,54 @@ async function loadIdeiasRadar(){
   }
 }
 function ideiasVisiveis(){
-  return IDEIAS.filter(i=>(IDEIAS_SETOR_FILTRO==='Todos'||i.setor===IDEIAS_SETOR_FILTRO) && (IDEIAS_IMPACTO_FILTRO==='Todos'||i.impacto===IDEIAS_IMPACTO_FILTRO));
+  return ideiasOrdenadas(ideiasPorImpacto()).filter(i=>IDEIAS_SETOR_FILTRO==='Todos'||i.setor===IDEIAS_SETOR_FILTRO);
+}
+function ideiasPorImpacto(){
+  return IDEIAS.filter(i=>IDEIAS_IMPACTO_FILTRO==='Todos'||i.impacto===IDEIAS_IMPACTO_FILTRO);
+}
+function ideiasOrdenadas(lista){
+  const arr=lista.slice();
+  if(IDEIA_ORDEM_FILTRO==='impacto') return arr.sort((a,b)=>(b.score||0)-(a.score||0));
+  if(IDEIA_ORDEM_FILTRO==='setor') return arr.sort((a,b)=>String(a.setor||'').localeCompare(String(b.setor||'')) || String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
+  return arr.sort((a,b)=>String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
+}
+function ideiasSetoresMapa(){
+  const setores=IDEIAS_SETORES_RADAR.slice();
+  IDEIAS.forEach(i=>{ if(i.setor && !setores.includes(i.setor)) setores.push(i.setor); });
+  return setores;
 }
 function renderIdeiasRadar(){
   const filters=document.getElementById('ideas-sector-filters');
   const impact=document.getElementById('ideas-impact-filter');
-  filters.classList.toggle('is-hidden', !IDEIAS.length);
-  impact.classList.toggle('is-hidden', !IDEIAS.length);
-  filters.innerHTML=['Todos', ...IDEIAS_SETORES_RADAR].map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="IDEIAS_SETOR_FILTRO='${esc(s)}';IDEIA_ACTIVE_SETOR='${s==='Todos'?'':esc(s)}';renderIdeiasRadar()">${esc(s)}</button>`).join('');
+  const order=document.getElementById('ideas-order-filter');
+  const filterRow=document.getElementById('ideas-filter-row');
+  filterRow?.classList.toggle('is-hidden', !IDEIAS.length);
+  const setores=ideiasSetoresMapa();
+  filters.innerHTML=['Todos', ...setores].map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="focusIdeiasSector('${esc(s)}')">${esc(s)}</button>`).join('');
   impact.value=IDEIAS_IMPACTO_FILTRO;
-  const vis=ideiasVisiveis();
-  if(!vis.some(i=>i.id===IDEIA_SELECIONADA)) IDEIA_SELECIONADA=vis[0]?.id || '';
-  renderIdeiasMap(vis);
-  renderIdeiasList(vis);
+  if(order) order.value=IDEIA_ORDEM_FILTRO;
+  const mapa=ideiasOrdenadas(ideiasPorImpacto());
+  const painel=ideiasVisiveis();
+  if(IDEIA_SELECIONADA && !mapa.some(i=>i.id===IDEIA_SELECIONADA)) IDEIA_SELECIONADA='';
+  renderIdeiasMap(mapa);
+  renderIdeiasList(painel);
 }
 function ideiaSectorPos(setor, idx, total){
-  if(IDEIAS_SETOR_POS[setor]) return IDEIAS_SETOR_POS[setor];
-  const a=(idx/Math.max(1,total))*Math.PI*2-Math.PI/2;
-  return {x:50+Math.cos(a)*32,y:50+Math.sin(a)*29};
+  const presets = {
+    'Comercial': {x:73,y:34},
+    'JurÃ­dico': {x:68,y:68}, 'Juridico': {x:68,y:68},
+    'OperaÃ§Ã£o': {x:30,y:67}, 'Operacao': {x:30,y:67},
+    'RH': {x:28,y:34},
+    'Financeiro': {x:50,y:78},
+    'IA': {x:84,y:51},
+    'Planejamento': {x:50,y:20},
+    'Backoffice': {x:16,y:52}
+  };
+  if(presets[setor]) return presets[setor];
+  const golden=Math.PI*(3-Math.sqrt(5));
+  const a=idx*golden-Math.PI/2;
+  const ring=29+(idx%3)*3;
+  return {x:50+Math.cos(a)*ring,y:50+Math.sin(a)*ring*.88};
 }
 function ideiasRelated(a,b){
   if(a.id===b.id) return false;
@@ -1244,18 +1314,20 @@ function renderIdeiasMap(vis){
   const stage=document.getElementById('ideas-map-stage');
   if(!stage) return;
   stage.querySelectorAll('.idea-node.sector,.idea-node.idea').forEach(n=>n.remove());
-  const setores=IDEIAS_SETORES_RADAR.slice();
-  vis.forEach(i=>{ if(i.setor && !setores.includes(i.setor)) setores.push(i.setor); });
+  const setores=ideiasSetoresMapa();
   IDEIAS_MAP_NODES=[]; IDEIAS_MAP_EDGES=[];
   setores.forEach((setor,idx)=>{
     const pos=ideiaSectorPos(setor,idx,setores.length);
-    IDEIAS_MAP_NODES.push({id:'s-'+setor,type:'sector',setor,x:pos.x,y:pos.y,baseX:pos.x,baseY:pos.y});
+    const meta=ideiaSectorMeta(setor,idx);
+    IDEIAS_MAP_NODES.push({id:'s-'+setor,type:'sector',setor,x:pos.x,y:pos.y,baseX:pos.x,baseY:pos.y,meta});
     IDEIAS_MAP_EDGES.push({from:{x:50,y:50},to:pos,kind:'sector',ids:['s-'+setor]});
     const ideiasSetor=vis.filter(i=>i.setor===setor);
     ideiasSetor.forEach((idea,j)=>{
-      const a=(j/Math.max(1,ideiasSetor.length))*Math.PI*2+idx*.7, r=10+(j%2)*4+Math.min(8,ideiasSetor.length);
-      const x=pos.x+Math.cos(a)*r, y=pos.y+Math.sin(a)*r*.72;
-      IDEIAS_MAP_NODES.push({id:idea.id,type:'idea',idea,setor,x,y,baseX:x,baseY:y,phase:Math.random()*Math.PI*2});
+      const a=(j/Math.max(1,ideiasSetor.length))*Math.PI*2+idx*.47;
+      const r=11+(j%3)*3+Math.min(7,ideiasSetor.length*.45);
+      const x=Math.max(8,Math.min(92,pos.x+Math.cos(a)*r));
+      const y=Math.max(9,Math.min(91,pos.y+Math.sin(a)*r*.76));
+      IDEIAS_MAP_NODES.push({id:idea.id,type:'idea',idea,setor,x,y,baseX:x,baseY:y,phase:Math.random()*Math.PI*2,meta});
       IDEIAS_MAP_EDGES.push({from:pos,to:{x,y},kind:'idea',ids:[idea.id,'s-'+setor]});
     });
   });
@@ -1272,23 +1344,30 @@ function drawIdeiasMapFrame(){
   const stage=document.getElementById('ideas-map-stage'), edges=document.getElementById('ideas-edges');
   if(!stage||!edges) return;
   const focus=IDEIA_HOVER || IDEIA_SELECIONADA;
+  const setorFocus=IDEIA_HOVER_SETOR || IDEIA_ACTIVE_SETOR || '';
   edges.innerHTML=IDEIAS_MAP_EDGES.map(edge=>{
-    const active=focus && edge.ids.includes(focus), dim=focus && !active;
+    const active=(focus && edge.ids.includes(focus)) || (setorFocus && edge.ids.includes('s-'+setorFocus));
+    const dim=(focus||setorFocus) && !active;
     const mx=(edge.from.x+edge.to.x)/2, my=(edge.from.y+edge.to.y)/2-(edge.kind==='related'?9:4);
-    const stroke=edge.kind==='sector'?'rgba(94,196,205,.42)':edge.kind==='related'?'rgba(255,135,84,.28)':'rgba(255,255,255,.22)';
-    const width=edge.kind==='sector'?'.32':edge.kind==='related'?'.2':'.16';
+    const stroke=edge.kind==='sector'?'rgba(255,255,255,.42)':edge.kind==='related'?'rgba(255,135,84,.25)':'rgba(255,255,255,.18)';
+    const width=edge.kind==='sector'?'.42':edge.kind==='related'?'.16':'.12';
     return `<path class="idea-edge ${active?'hot':''} ${dim?'dim':''}" d="M ${edge.from.x} ${edge.from.y} Q ${mx} ${my} ${edge.to.x} ${edge.to.y}" stroke="${stroke}" stroke-width="${width}"/>`;
   }).join('');
   stage.querySelectorAll('.idea-node.sector,.idea-node.idea').forEach(n=>n.remove());
   IDEIAS_MAP_NODES.forEach(node=>{
     if(node.type==='sector'){
       const active=IDEIA_ACTIVE_SETOR===node.setor || IDEIAS_SETOR_FILTRO===node.setor;
-      stage.insertAdjacentHTML('beforeend',`<button class="idea-node sector ${active?'active':''}" style="left:${node.x}%;top:${node.y}%" onclick="focusIdeiasSector('${esc(node.setor)}')">${esc(node.setor)}</button>`);
+      const dim=(setorFocus && setorFocus!==node.setor) || (focus && !IDEIAS_MAP_EDGES.some(e=>e.ids.includes(focus)&&e.ids.includes('s-'+node.setor)));
+      const count=IDEIAS.filter(i=>i.setor===node.setor).length;
+      const meta=node.meta || ideiaSectorMeta(node.setor);
+      const glow=hexToRgba(meta.color,.28);
+      stage.insertAdjacentHTML('beforeend',`<button class="idea-node sector ${active?'active':''} ${dim?'dim':''}" style="left:${node.x}%;top:${node.y}%;background:${meta.color};box-shadow:0 0 0 7px ${hexToRgba(meta.color,.12)},0 0 28px ${glow}" onmouseenter="hoverIdeiasSector('${esc(node.setor)}')" onmouseleave="hoverIdeiasSector('')" onclick="focusIdeiasSector('${esc(node.setor)}')"><span class="sector-icon">${esc(meta.icon)}</span><span>${esc(node.setor)}</span><span class="sector-count">${count} ideia${count===1?'':'s'}</span></button>`);
       return;
     }
     const idea=node.idea, size=Math.round(26+(idea.score-55)*.55);
-    const dim=focus && !IDEIAS_MAP_EDGES.some(e=>e.ids.includes(focus)&&e.ids.includes(idea.id)) && focus!==idea.id;
-    stage.insertAdjacentHTML('beforeend',`<button class="idea-node idea ${idea.id===IDEIA_SELECIONADA?'selected':''} ${dim?'dim':''}" style="left:${node.x}%;top:${node.y}%;width:${size}px;height:${size}px" onmouseenter="showIdeiaTip(event,'${idea.id}')" onmousemove="moveIdeiaTip(event)" onmouseleave="hideIdeiaTip()" onclick="selectIdeia('${idea.id}')"></button>`);
+    const meta=node.meta || ideiaSectorMeta(node.setor);
+    const dim=(setorFocus && setorFocus!==node.setor) || (focus && !IDEIAS_MAP_EDGES.some(e=>e.ids.includes(focus)&&e.ids.includes(idea.id)) && focus!==idea.id);
+    stage.insertAdjacentHTML('beforeend',`<button class="idea-node idea ${idea.id===IDEIA_SELECIONADA?'selected':''} ${dim?'dim':''}" style="left:${node.x}%;top:${node.y}%;width:${size}px;height:${size}px;--cluster:${meta.color};--cluster-glow:${hexToRgba(meta.color,.46)}" onmouseenter="showIdeiaTip(event,'${idea.id}')" onmousemove="moveIdeiaTip(event)" onmouseleave="hideIdeiaTip()" onclick="selectIdeia('${idea.id}')"></button>`);
   });
 }
 function showIdeiaTip(ev,id){
@@ -1338,6 +1417,66 @@ function renderIdeiasList(vis){
         <button class="btn-sm" style="margin-top:10px;background:var(--ink)" onclick="event.stopPropagation();desenvolverIdeiaSalva('${idea.id}')">Desenvolver mais</button>
       </div>
     </article>`).join('');
+}
+function showIdeiaTip(ev,id){
+  IDEIA_HOVER=id;
+  const idea=IDEIAS.find(i=>i.id===id), tip=document.getElementById('idea-tooltip');
+  if(!idea||!tip) return;
+  tip.innerHTML=`<b>${esc(idea.titulo)}</b><span>${esc(idea.autor_nome)} · ${esc(idea.impacto)}</span>`;
+  tip.style.display='block'; moveIdeiaTip(ev); drawIdeiasMapFrame();
+}
+function hoverIdeiasSector(setor){ IDEIA_HOVER_SETOR=setor||''; drawIdeiasMapFrame(); }
+function selectIdeia(id){
+  IDEIA_SELECIONADA=id;
+  const idea=IDEIAS.find(i=>i.id===id);
+  if(idea){ IDEIA_ACTIVE_SETOR=idea.setor; IDEIAS_SETOR_FILTRO=idea.setor; }
+  renderIdeiasList(ideiasVisiveis());
+  drawIdeiasMapFrame();
+}
+function focusIdeiasSector(setor){
+  if(setor==='Todos'){
+    IDEIA_ACTIVE_SETOR=''; IDEIAS_SETOR_FILTRO='Todos'; IDEIA_SELECIONADA=''; IDEIA_ZOOM=1; IDEIA_PAN={x:0,y:0};
+    renderIdeiasRadar(); return;
+  }
+  IDEIA_ACTIVE_SETOR=setor; IDEIAS_SETOR_FILTRO=setor; IDEIA_SELECIONADA=''; IDEIA_ZOOM=1.18;
+  const pos=ideiaSectorPos(setor,0,1); IDEIA_PAN={x:(50-pos.x)*.7,y:(50-pos.y)*.7};
+  renderIdeiasRadar();
+}
+function centerIdeiasMap(){
+  IDEIA_ZOOM=1; IDEIA_PAN={x:0,y:0}; IDEIA_ACTIVE_SETOR=''; IDEIAS_SETOR_FILTRO='Todos'; IDEIA_SELECIONADA='';
+  renderIdeiasRadar();
+}
+function renderIdeiasList(vis){
+  const el=document.getElementById('ideas-list'), sum=document.getElementById('ideas-panel-summary'), title=document.getElementById('ideas-panel-title');
+  const setorAtivo = IDEIA_ACTIVE_SETOR || (IDEIAS_SETOR_FILTRO !== 'Todos' ? IDEIAS_SETOR_FILTRO : '');
+  const setoresComIdeia = new Set(ideiasPorImpacto().map(i=>i.setor).filter(Boolean)).size;
+  if(title) title.textContent = setorAtivo ? setorAtivo : 'Ideias em destaque';
+  if(sum) sum.textContent = setorAtivo
+    ? `${vis.length} ideias encontradas`
+    : `${ideiasPorImpacto().length} ideias · ${setoresComIdeia} setores`;
+  if(!el) return;
+  if(!vis.length){
+    el.innerHTML=`<div class="empty">${setorAtivo ? 'Ainda não há ideias em '+esc(setorAtivo)+'.' : 'Ainda não há ideias enviadas.'}<br><span class="t-sub">O radar já mostra todos os setores para orientar a navegação.</span></div>`;
+    return;
+  }
+  const selecionada=IDEIAS.find(i=>i.id===IDEIA_SELECIONADA);
+  const lista=selecionada ? [selecionada, ...vis.filter(i=>i.id!==selecionada.id)] : vis.slice(0, setorAtivo ? vis.length : 7);
+  el.innerHTML=lista.map(idea=>{
+    const aberta=idea.id===IDEIA_SELECIONADA;
+    return `
+    <article class="idea-card ${aberta?'selected':''}" onclick="selectIdeia('${idea.id}')">
+      <div><span class="chip">${esc(idea.setor)}</span><span class="chip">${esc(idea.impacto)}</span></div>
+      <h3>${esc(idea.ai_titulo || idea.titulo)}</h3>
+      <div class="t-sub">Ideia de ${esc(idea.autor_nome)} · prioridade ${idea.score}/100</div>
+      ${aberta ? `
+        <div class="idea-card-section"><b>Ideia original</b><p>${esc(idea.solucao || idea.dor)}</p></div>
+        <div class="idea-card-section"><b>Potencial identificado</b><p>${esc(idea.ai_potencial || 'A IA ainda pode desenvolver melhor este potencial.')}</p></div>
+        <div class="idea-card-section"><b>Desenvolvimento da IA</b><p>${esc(idea.ai_proposta || idea.ai_problema || '')}</p></div>
+        <div class="idea-card-section"><b>Impactos</b><p>${asList(idea.impactos_possiveis).map(g=>esc(g)).join(' · ') || esc(idea.impacto)}</p></div>
+        <div class="idea-card-section"><b>Próximo passo sugerido</b><p>${esc(idea.ai_primeiro_passo || 'Definir um piloto simples com responsável, prazo e critério de sucesso.')}</p></div>
+        <button class="btn-sm" style="margin-top:12px;background:var(--ink)" onclick="event.stopPropagation();desenvolverIdeiaSalva('${idea.id}')">Desenvolver mais</button>
+      ` : `<p class="t-sub" style="color:var(--ink-2);line-height:1.5;margin-top:7px">${esc(idea.ai_potencial || idea.solucao || '')}</p>`}
+    </article>`}).join('');
 }
 async function desenvolverIdeiaSalva(id){
   try{ await apiPost('/api/ideias/'+id+'/desenvolver'); toast('Ideia desenvolvida pela IA.'); loadIdeiasRadar(); }

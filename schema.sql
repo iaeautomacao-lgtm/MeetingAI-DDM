@@ -34,6 +34,7 @@ create table if not exists painel_acessos (
     email      text unique not null,
     nome       text default '',
     setor      text default '',
+    setores    text,
     senha_hash text,
     ativo      boolean default true,
     aprovado   boolean default false,

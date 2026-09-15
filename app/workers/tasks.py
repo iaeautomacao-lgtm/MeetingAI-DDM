@@ -566,9 +566,10 @@ def _processar_recall(reuniao_id: str, bot_id: str):
             }
 
             if novo_status == "error":
-                campos["erro_msg"] = (
-                    f"bot Skribby: {status}"
-                )
+                stop_reason = (bot or {}).get("stop_reason")
+                campos["erro_msg"] = f"bot Skribby: {status}"
+                if stop_reason:
+                    campos["erro_msg"] += f" ({stop_reason})"
 
             atualizar_reuniao(campos)
 

@@ -34,6 +34,7 @@ from app.auth import (
     is_admin,
     sessao_email,
     sessao_setor,
+    sessao_setores,
     tem_acesso_total,
     is_gestor_setor,
     _buscar_acesso,
@@ -67,7 +68,11 @@ def _escopo_reunioes_sql() -> tuple[str, list]:
         return "", []
 
     if is_gestor_setor():
-        return " AND setor = %s", [sessao_setor()]
+        setores = sessao_setores()
+        if not setores:
+            return " AND 1 = 0", []
+        placeholders = ", ".join(["%s"] * len(setores))
+        return f" AND setor IN ({placeholders})", setores
 
     solicitantes = _solicitantes_sessao()
     if not solicitantes:
@@ -85,7 +90,7 @@ def _pode_acessar_reuniao(reuniao: dict) -> bool:
         return True
 
     if is_gestor_setor():
-        return (reuniao.get("setor") or "") == sessao_setor()
+        return (reuniao.get("setor") or "") in sessao_setores()
 
     solicitante = _normalizar_texto_acesso(reuniao.get("solicitante") or "")
     return bool(solicitante and solicitante in _solicitantes_sessao())
@@ -240,10 +245,12 @@ def auth_status():
     email = sessao_email()
     nome = ""
     setor = sessao_setor()
+    setores = sessao_setores()
     if email:
         acesso = _buscar_acesso(email)
         nome = (acesso or {}).get("nome") or email.split("@")[0]
         setor = (acesso or {}).get("setor") or setor
+        setores = (acesso or {}).get("setores") or setores
     elif is_authed():
         nome = "Diretoria"
     return jsonify({
@@ -253,6 +260,7 @@ def auth_status():
         "gestor_setor": is_gestor_setor(),
         "nome": nome,
         "setor": setor,
+        "setores": setores,
         "acesso_total": tem_acesso_total(),
     })
 
@@ -324,7 +332,8 @@ def acessos_setor():
     body = request.get_json(silent=True) or {}
     email = (body.get("email") or "").strip().lower()
     setor = (body.get("setor") or "").strip()
-    if definir_setor(email, setor):
+    setores = body.get("setores")
+    if definir_setor(email, setor, setores):
         return jsonify({"ok": True})
     return jsonify({"erro": "não encontrado"}), 404
 
@@ -753,6 +762,71 @@ def listar_reunioes():
 
         return jsonify({
             "erro": "Não foi possível carregar as reuniões.",
+            "detalhe": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.get("/reunioes/erros")
+@require_admin
+def listar_erros_reunioes():
+    """Diagnostico interno: ultimas falhas persistidas por reuniao."""
+    connection = None
+    cursor = None
+
+    try:
+        limite = request.args.get("limite", "100")
+
+        try:
+            limite = int(limite)
+        except (TypeError, ValueError):
+            limite = 100
+
+        limite = max(1, min(limite, 200))
+
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                titulo,
+                setor,
+                solicitante,
+                data,
+                plataforma,
+                status,
+                recall_bot_id,
+                erro_msg,
+                criado_em
+            FROM reunioes
+            WHERE excluida_em IS NULL
+              AND (
+                status = %s
+                OR COALESCE(erro_msg, '') <> ''
+              )
+            ORDER BY COALESCE(data, criado_em) DESC
+            LIMIT %s
+            """,
+            ("error", limite),
+        )
+
+        return jsonify(cursor.fetchall()), 200
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao listar falhas internas de reuniões"
+        )
+
+        return jsonify({
+            "erro": "Não foi possível carregar os erros das reuniões.",
             "detalhe": str(exc),
         }), 500
 
@@ -1749,9 +1823,21 @@ def criar_gravacao():
             ),
         }), 500
 
+    vocabulario_reuniao = [
+        body.get("cliente"),
+        body.get("titulo"),
+        body.get("setor"),
+        "Grupo DDM",
+        "DDM",
+        "Acordito",
+    ]
+
     # Solicita ao Skribby a criação do bot.
     try:
-        bot = create_bot(meeting_url)
+        bot = create_bot(
+            meeting_url,
+            custom_vocabulary=vocabulario_reuniao,
+        )
 
     except Exception as exc:
         current_app.logger.exception(
@@ -1788,8 +1874,10 @@ def criar_gravacao():
         solicitante = sessao_email()
 
     setor = (body.get("setor") or "").strip()
-    if is_authed() and not tem_acesso_total() and sessao_setor():
-        setor = sessao_setor()
+    if is_authed() and not tem_acesso_total():
+        setores_sessao = sessao_setores()
+        if setores_sessao:
+            setor = setor if setor in setores_sessao else setores_sessao[0]
     modalidade = (body.get("modalidade") or "online").strip()
     local_reuniao = (body.get("local_reuniao") or "").strip()
     cliente = (body.get("cliente") or "").strip()
@@ -1904,11 +1992,7 @@ def skribby_webhook():
         or ""
     )
 
-    if (
-        tipo == "status_update"
-        and novo_status == "finished"
-        and bot_id
-    ):
+    if tipo == "status_update" and novo_status and bot_id:
         connection = None
         cursor = None
 
@@ -1931,11 +2015,38 @@ def skribby_webhook():
             if reuniao:
                 reuniao_id = reuniao["id"]
 
-                threading.Thread(
-                    target=_processar_recall,
-                    args=(reuniao_id, bot_id),
-                    daemon=True,
-                ).start()
+                if novo_status == "finished":
+                    threading.Thread(
+                        target=_processar_recall,
+                        args=(reuniao_id, bot_id),
+                        daemon=True,
+                    ).start()
+
+                elif novo_status in (
+                    "not_admitted",
+                    "auth_required",
+                    "invalid_credentials",
+                    "invalid_api_key",
+                    "failed",
+                ):
+                    stop_reason = (
+                        (body.get("data") or {}).get("stop_reason")
+                        or ""
+                    )
+                    erro_msg = f"bot Skribby: {novo_status}"
+                    if stop_reason:
+                        erro_msg += f" ({stop_reason})"
+
+                    cursor.execute(
+                        """
+                        UPDATE reunioes
+                        SET status = %s,
+                            erro_msg = %s
+                        WHERE id = %s
+                        """,
+                        ("error", erro_msg, reuniao_id),
+                    )
+                    connection.commit()
 
         except Exception as exc:
             current_app.logger.exception(
@@ -1958,6 +2069,92 @@ def skribby_webhook():
                 connection.close()
 
     return jsonify({"ok": True}), 200
+
+
+@bp.get("/gravacoes/<reuniao_id>/status")
+@require_auth
+def status_gravacao(reuniao_id: str):
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                recall_bot_id,
+                status,
+                setor,
+                solicitante
+            FROM reunioes
+            WHERE id = %s
+              AND excluida_em IS NULL
+            LIMIT 1
+            """,
+            (reuniao_id,),
+        )
+
+        reuniao = cursor.fetchone()
+
+        if not reuniao:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        if not _pode_acessar_reuniao(reuniao):
+            return jsonify({"erro": "não encontrado"}), 404
+
+        bot_id = reuniao.get("recall_bot_id")
+        if not bot_id:
+            return jsonify({
+                "erro": "reunião sem bot Skribby"
+            }), 400
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao buscar reunião para status do Skribby"
+        )
+
+        return jsonify({
+            "erro": "falha_banco",
+            "msg": str(exc),
+        }), 500
+
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+        if (
+            connection is not None
+            and connection.is_connected()
+        ):
+            connection.close()
+
+    try:
+        from app.pipeline.skribby_client import get_bot, bot_status
+
+        bot = get_bot(bot_id)
+        status = bot_status(bot)
+        stop_reason = bot.get("stop_reason") or ""
+
+        return jsonify({
+            "bot_id": bot_id,
+            "bot_status": status,
+            "stop_reason": stop_reason,
+            "status": reuniao.get("status"),
+        }), 200
+
+    except Exception as exc:
+        current_app.logger.exception(
+            "Erro ao consultar status do bot Skribby %s",
+            bot_id,
+        )
+
+        return jsonify({
+            "erro": "falha_skribby",
+            "msg": str(exc),
+        }), 502
+
 
 @bp.post("/gravacoes/<reuniao_id>/processar")
 @require_auth

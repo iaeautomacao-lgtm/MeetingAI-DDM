@@ -74,6 +74,32 @@ def _webhook_url() -> str | None:
     return url
 
 
+def _initial_chat_message() -> str:
+    return (
+        os.getenv("SKRIBBY_INITIAL_CHAT_MESSAGE", "").strip()
+        or (
+            "Olá! Sou o Acordito, o assistente do Grupo DDM. "
+            "Estou aqui para acompanhar e registrar a reunião."
+        )
+    )
+
+
+def _custom_vocabulary(extra: list[str] | None = None) -> list[str]:
+    configured = os.getenv("SKRIBBY_CUSTOM_VOCABULARY", "")
+    words = [
+        item.strip()
+        for item in configured.replace("\n", ",").split(",")
+        if item.strip()
+    ]
+
+    for item in extra or []:
+        item = str(item or "").strip()
+        if item:
+            words.append(item)
+
+    return list(dict.fromkeys(words))
+
+
 def _detect_service(meeting_url: str) -> str:
     """Descobre a plataforma pela URL. Skribby exige: gmeet | teams | zoom."""
     u = (meeting_url or "").lower()
@@ -88,7 +114,11 @@ def _detect_service(meeting_url: str) -> str:
 
 # ── Bot ────────────────────────────────────────────────────────────────────────
 
-def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
+def create_bot(
+    meeting_url: str,
+    bot_name: str | None = None,
+    custom_vocabulary: list[str] | None = None,
+) -> dict:
     """
     Cria bot que entra na reunião, grava e transcreve.
     Retorna o JSON do bot (o id fica em ['id']).
@@ -100,7 +130,7 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
         "lang": _lang(),
         # Bot sai sozinho → vira 'finished' → gera transcrição (e não gasta crédito à toa).
         "stop_options": {
-            "waiting_room_timeout": int(os.getenv("SKRIBBY_WAITING_ROOM_TIMEOUT", "5")),
+            "waiting_room_timeout": int(os.getenv("SKRIBBY_WAITING_ROOM_TIMEOUT", "10")),
             "empty_meeting_timeout": int(os.getenv("SKRIBBY_EMPTY_TIMEOUT", "2")),
             "last_person_detection": int(os.getenv("SKRIBBY_LAST_PERSON", "1")),
             "time_limit": int(os.getenv("SKRIBBY_TIME_LIMIT", "180")),
@@ -110,6 +140,8 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
     model = _model()
     if model:
         payload["transcription_model"] = model
+
+    payload["initial_chat_message"] = _initial_chat_message()
 
     avatar = _avatar_url()
     if avatar:
@@ -125,6 +157,10 @@ def create_bot(meeting_url: str, bot_name: str | None = None) -> dict:
     # modelo async (soniox/stt-async-v5) nada disso vem. Desligado por padrão:
     # é cobrado à parte e ainda não confirmamos se o nome persiste no
     # transcript guardado após a reunião. Ligar com SKRIBBY_REALTIME_AUDIO=1.
+    vocabulary = _custom_vocabulary(custom_vocabulary)
+    if vocabulary:
+        payload["custom_vocabulary"] = vocabulary
+
     if os.getenv("SKRIBBY_REALTIME_AUDIO", "").strip() in ("1", "true", "True"):
         payload["realtime_audio"] = True
 

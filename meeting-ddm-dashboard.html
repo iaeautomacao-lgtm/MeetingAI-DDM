@@ -176,6 +176,10 @@ body {
 .panel h3 { font-family: var(--font-display); font-size: 13px; margin-bottom: 10px; }
 .panel .li { font-size: 12px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--border); }
 .panel .li:last-child { border-bottom: none; }
+.access-panel { max-height: none; }
+.access-approved-panel { min-height: 420px; max-height: calc(100vh - 310px); }
+.access-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.access-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Generic list rows (Reuniões / Transcrições / E-mails) */
 .list { display: flex; flex-direction: column; gap: 10px; }
@@ -268,6 +272,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .modal { background: #fff; border-radius: var(--r-lg); padding: 32px; width: 100%; max-width: 440px; }
 .modal h3 { font-family: var(--font-display); font-size: 20px; margin-bottom: 4px; }
 .modal-sub { font-size: 12px; color: var(--gray); margin-bottom: 22px; }
+.modal-alert { margin: -8px 0 18px; padding: 11px 13px; border-radius: var(--r-md); background: var(--ddm-orange-50); border: 1px solid #FFE0CE; color: var(--ink-2); font-size: 12px; line-height: 1.45; }
 .modal label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 6px; color: var(--ink-2); }
 .modal input, .modal select { width: 100%; background: var(--bg-alt); border: 1px solid transparent; border-radius: var(--r-md); padding: 12px 14px; font-family: var(--font-body); font-size: 14px; outline: none; }
 .modal input:focus, .modal select:focus { border-color: var(--ddm-orange); }
@@ -503,11 +508,11 @@ body.detalhe-aberto .right-sidebar { display: none; }
 
     <!-- ===== PAGE: ACESSOS (admin) ===== -->
     <section class="page" id="page-acessos">
-      <div class="panel" style="margin-bottom:16px">
+      <div class="panel access-panel" style="margin-bottom:16px">
         <h3>Pedidos de acesso pendentes</h3>
         <div id="acessos-pendentes"><div class="t-sub">Carregando…</div></div>
       </div>
-      <div class="panel">
+      <div class="panel access-panel access-approved-panel">
         <h3>Acessos aprovados</h3>
         <div id="acessos-aprovados"><div class="t-sub">Carregando…</div></div>
       </div>
@@ -535,7 +540,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
   <!-- RIGHT SIDEBAR -->
   <aside class="right-sidebar">
     <div class="rs-header">
-      <h2 class="rs-title">Agenda</h2>
+      <h2 class="rs-title">Histórico</h2>
       <button class="btn-icon" onclick="goto('reunioes')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
       </button>
@@ -549,6 +554,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
   <div class="modal">
     <h3>Nova Reunião</h3>
     <p class="modal-sub">O assistente Acordito entra na reunião, grava e gera a ata.</p>
+    <div class="modal-alert">A reunião precisa estar em andamento ou prestes a começar — se houver sala de espera, admita o Acordito.</div>
     <label>Link da reunião *</label>
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
     <label>Título da reunião</label>
@@ -620,6 +626,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
 const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'relevantes';
+let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
 
 /* ---------- utils ---------- */
 function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
@@ -630,6 +637,17 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&am
 function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function fmtHora(iso){ if(!iso) return '--'; const d=new Date(iso); return isNaN(d)?'--':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function statusLabel(s){ return ({completed:'Concluída',pending:'Aguardando',processing:'Processando',sem_transcricao:'Sem transcrição',error:'Erro'}[s]||s||'—'); }
+function botStatusLabel(s){
+  return ({scheduled:'Agendado',booting:'Iniciando',joining:'Aguardando admissao',waiting_to_record:'Aguardando gravacao',recording:'Gravando',leaving:'Saindo',processing:'Processando audio',transcribing:'Transcrevendo',finished:'Finalizado',not_admitted:'Nao admitido',bot_detected:'Bloqueado',auth_required:'Login exigido',invalid_credentials:'Credencial invalida',invalid_api_key:'Chave invalida',failed:'Falhou'}[s]||s||'Aguardando');
+}
+function botStatusHint(s){
+  if(s==='joining') return 'O Acordito esta tentando entrar. Verifique a janela da reuniao e aceite a entrada dele se aparecer na sala de espera.';
+  if(s==='recording') return 'O Acordito esta dentro da reuniao e gravando.';
+  if(s==='processing'||s==='transcribing'||s==='leaving') return 'A reuniao terminou ou esta finalizando. Em breve a transcricao podera ser puxada.';
+  if(s==='finished') return 'A transcricao ja deve estar disponivel. Clique em Puxar transcricao agora se ela ainda nao apareceu.';
+  if(s==='not_admitted') return 'O Acordito nao foi admitido. Confira se alguem negou a entrada ou se o tempo de espera acabou.';
+  return 'Status consultado diretamente no Skribby.';
+}
 function asList(v){
   if(Array.isArray(v)) return v;
   if(v==null || v==='') return [];
@@ -676,6 +694,7 @@ function fecharSidebar(){
 }
 function goto(page, opts={}){
   fecharSidebar();  // fecha a gaveta ao navegar (mobile)
+  if(BOT_STATUS_TIMER){ clearInterval(BOT_STATUS_TIMER); BOT_STATUS_TIMER = null; }
   if(page!=='detalhe'){ prevPage = page; document.body.classList.remove('detalhe-aberto'); }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -695,7 +714,7 @@ function goto(page, opts={}){
 function goBack(){ goto(prevPage); }
 
 /* ---------- ACESSOS (admin) ---------- */
-let ACESSO_TOTAL=true, MEU_SETOR='', MEU_EMAIL='', IS_ADMIN=false, GESTOR_SETOR=false;
+let ACESSO_TOTAL=true, MEU_SETOR='', MEUS_SETORES=[], MEU_EMAIL='', IS_ADMIN=false, GESTOR_SETOR=false;
 async function checkAdmin(){
   try{
     const s = await apiGet('/api/auth/status');
@@ -704,6 +723,7 @@ async function checkAdmin(){
     ACESSO_TOTAL = !!(s && s.acesso_total);
     GESTOR_SETOR = !!(s && s.gestor_setor);
     MEU_SETOR = (s && s.setor) || '';
+    MEUS_SETORES = asList(s && s.setores);
     MEU_EMAIL = (s && s.email) || '';
     document.getElementById('profile-name').textContent = nome;
     document.getElementById('profile-email').textContent = (s && s.email) || '';
@@ -711,7 +731,7 @@ async function checkAdmin(){
     document.getElementById('welcome-title').textContent = 'Olá, ' + primeiro;
     // preenche "Minha conta" nas Configurações
     const an=document.getElementById('acc-nome'); if(an) an.value = nome==='Diretoria'?'':nome;
-    const asx=document.getElementById('acc-setor'); if(asx) asx.value = MEU_SETOR || (ACESSO_TOTAL?'Diretoria (acesso total)':'—');
+    const asx=document.getElementById('acc-setor'); if(asx) asx.value = MEUS_SETORES.length ? MEUS_SETORES.join(', ') : (MEU_SETOR || (ACESSO_TOTAL?'Diretoria (acesso total)':'—'));
     const ae=document.getElementById('acc-email'); if(ae) ae.value = (s && s.email) || '(conta-mestre)';
     IS_ADMIN = !!(s && s.admin);
     if(IS_ADMIN){
@@ -760,13 +780,22 @@ async function loadAcessos(){
     const lista = await apiGet('/api/acessos');
     const pend = (lista||[]).filter(a=>!a.aprovado);
     const apr  = (lista||[]).filter(a=>a.aprovado);
-    const setorTag = a => `<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">${esc(a.setor||'sem setor')}</span>`;
+    const setoresAcesso = a => {
+      const setores = asList(a.setores).length ? asList(a.setores) : (a.setor ? [a.setor] : []);
+      return setores.slice(0,2);
+    };
+    const setorTag = a => {
+      const setores = setoresAcesso(a);
+      return setores.length
+        ? setores.map(s=>`<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">${esc(s)}</span>`).join(' ')
+        : `<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">sem setor</span>`;
+    };
     const perfilLabel = a => ({usuario:'usuário normal',gestor:'gestor do setor',diretor:'diretor'}[a.perfil_solicitado] || 'usuário normal');
     const pedidoTag = a => `<span class="t-sub" style="background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:10px">solicitou: ${esc(perfilLabel(a))}</span>`;
     pDiv.innerHTML = pend.length ? pend.map(a=>`
-      <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+      <div class="li access-row">
         <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${pedidoTag(a)}</span>
-        <span style="display:flex;gap:6px">
+        <span class="access-actions">
           <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
         </span>
@@ -774,10 +803,10 @@ async function loadAcessos(){
     const adminTag = a => a.is_admin ? '<span class="t-sub" style="background:#fff3e0;color:#b45309;padding:2px 8px;border-radius:10px">diretor</span>' : '';
     const gestorTag = a => a.is_gestor ? '<span class="t-sub" style="background:#e8f3ff;color:#1d4ed8;padding:2px 8px;border-radius:10px">gestor</span>' : '';
     aDiv.innerHTML = apr.length ? apr.map(a=>`
-      <div class="li" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+      <div class="li access-row">
         <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${gestorTag(a)} ${adminTag(a)} ${pedidoTag(a)}</span>
-        <span style="display:flex;gap:6px">
-          <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(a.setor||'')}')">Trocar setor</button>
+        <span class="access-actions">
+          <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(setoresAcesso(a).join(', '))}')">Trocar setores</button>
           <button class="btn-sm" style="background:${a.is_gestor?'var(--gray)':'#1d4ed8'}" onclick="tornarGestor('${esc(a.email)}',${a.is_gestor?'false':'true'})">${a.is_gestor?'Remover gestor':'Tornar gestor'}</button>
           <button class="btn-sm" style="background:${a.is_admin?'var(--gray)':'#b45309'}" onclick="tornarAdmin('${esc(a.email)}',${a.is_admin?'false':'true'})">${a.is_admin?'Remover diretor':'Tornar diretor'}</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
@@ -806,6 +835,18 @@ async function trocarSetor(email, atual){
   try{ await apiPost('/api/acessos/setor',{email,setor:novo.trim()}); toast('Setor atualizado ✓'); loadAcessos(); }
   catch(e){ toast('Erro ao trocar setor'); }
 }
+async function trocarSetor(email, atual){
+  let setores=[];
+  try{ setores=(await apiGet('/api/setores')||[]).map(s=>s.nome); }catch(e){}
+  const opcoes = setores.length ? '\nSetores: '+setores.join(', ') : '';
+  const novo = prompt('Setores para '+email+' (ate 2, separados por virgula):'+opcoes, atual||'');
+  if(novo===null) return;
+  const escolhidos = novo.split(',').map(s=>s.trim()).filter(Boolean).slice(0,2);
+  if(!escolhidos.length){ toast('Informe ao menos um setor.'); return; }
+  try{ await apiPost('/api/acessos/setor',{email,setor:escolhidos[0],setores:escolhidos}); toast('Setores atualizados'); loadAcessos(); }
+  catch(e){ toast('Erro ao trocar setor'); }
+}
+
 async function aprovar(email){
   try{ await apiPost('/api/acessos/aprovar',{email}); toast('Acesso aprovado ✓'); loadAcessos(); atualizarBadgeAcessos(); }
   catch(e){ toast('Erro ao aprovar'); }
@@ -883,12 +924,13 @@ async function loadReunioes(){
   try {
     allReunioes = await apiGet('/api/reunioes') || [];
     const tabs = document.getElementById('setor-tabs');
-    if(!ACESSO_TOTAL){
+    if(!ACESSO_TOTAL && !(GESTOR_SETOR && MEUS_SETORES.length > 1)){
       // usuário comum: só o próprio setor — sem abas de outros setores
       tabs.style.display='none';
     } else {
       let setores = [];
-      try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
+      if(GESTOR_SETOR && !ACESSO_TOTAL) setores = MEUS_SETORES.slice();
+      else try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
       allReunioes.forEach(r=>{ if(r.setor && !setores.includes(r.setor)) setores.push(r.setor); });
       tabs.style.display='';
       tabs.innerHTML =
@@ -1016,6 +1058,43 @@ function exportarReuniaoPdf(){
   w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),300);
 }
 
+async function atualizarStatusBot(id){
+  const box = document.getElementById('bot-live-status');
+  if(!box) return;
+
+  try {
+    const d = await apiGet('/api/gravacoes/'+id+'/status');
+    const s = d.bot_status || '';
+    const alerta = s === 'joining';
+    const terminal = ['finished','not_admitted','failed','auth_required','invalid_credentials','invalid_api_key'].includes(s);
+
+    box.innerHTML = `
+      <div style="margin-top:12px;padding:12px 14px;border:1px solid ${alerta?'#ffb199':'var(--border)'};background:${alerta?'#fff3ec':'var(--bg-alt)'};border-radius:10px;font-size:13px;line-height:1.5">
+        <b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}
+        ${d.stop_reason?`<br><span class="t-sub">Motivo: ${esc(d.stop_reason)}</span>`:''}
+        <br><span class="t-sub">${esc(botStatusHint(s))}</span>
+      </div>`;
+
+    if(alerta && !BOT_STATUS_TOASTED[id]){
+      BOT_STATUS_TOASTED[id] = true;
+      toast('Acordito aguardando admissao. Aceite a entrada na janela da reuniao.', 7000);
+    }
+
+    if(terminal && BOT_STATUS_TIMER){
+      clearInterval(BOT_STATUS_TIMER);
+      BOT_STATUS_TIMER = null;
+    }
+  } catch(e){
+    box.innerHTML = `<div style="margin-top:12px" class="t-sub">Nao foi possivel consultar o status ao vivo do Acordito.</div>`;
+  }
+}
+
+function acompanharStatusBot(id){
+  if(BOT_STATUS_TIMER){ clearInterval(BOT_STATUS_TIMER); BOT_STATUS_TIMER = null; }
+  atualizarStatusBot(id);
+  BOT_STATUS_TIMER = setInterval(()=>atualizarStatusBot(id), 15000);
+}
+
 async function loadDetalhe(id){
   goto('detalhe'); document.getElementById('page-detalhe').classList.add('active');
   document.querySelector('.nav-item[data-page="'+prevPage+'"]')?.classList.add('active');
@@ -1028,6 +1107,8 @@ async function loadDetalhe(id){
     const utt=asList(r.utterances);
     const pendControls = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall')
       ? `<button class="btn-sm" style="margin-top:12px" onclick="processar('${r.id}')">Puxar transcrição agora</button>` : '';
+    const botLive = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall')
+      ? `<div id="bot-live-status"></div>` : '';
     el.innerHTML = `
       <div class="detail-head det-head">
         <h2>${esc(r.titulo||'Reunião')}</h2>
@@ -1035,6 +1116,7 @@ async function loadDetalhe(id){
         <div class="welcome-date" style="margin-top:4px">${esc(_metaReuniao(r))}${r.solicitante?' · cadastrado por <b>'+esc(r.solicitante)+'</b>':''}</div>
         ${r.status==='error'?`<div style="margin-top:14px;padding:12px 14px;background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;color:#a3271e;font-size:13px;line-height:1.5"><b>⚠ O que houve:</b> ${esc(erroAmigavel(r.erro_msg))}${r.erro_msg?`<br><span style="opacity:.7;font-size:12px">Detalhe técnico: ${esc(r.erro_msg)}</span>`:''}</div>`:''}
         ${pendControls}
+        ${botLive}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn-sm" onclick="abrirEditarReuniao()">Editar dados</button>
           ${utt.length?`<button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button>`:''}
@@ -1065,6 +1147,7 @@ async function loadDetalhe(id){
       </div>`:''}
     `;
     document.body.classList.add('detalhe-aberto');
+    if(botLive) acompanharStatusBot(r.id);
     if(utt.length){ carregarLocutores(r.id); _uttAtual = utt; renderTranscricao(); }
   } catch(e){ el.innerHTML='<div class="empty">Erro ao carregar: '+esc(e.message)+'</div>'; }
 }

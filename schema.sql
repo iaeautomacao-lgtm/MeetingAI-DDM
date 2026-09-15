@@ -71,6 +71,8 @@ create table if not exists reunioes (
     modalidade        text default 'online',      -- online | presencial
     local_reuniao     text default '',            -- online | sede RJ | sede SP | outro local
     cliente           text default '',            -- cliente envolvido, se houver
+    compartilhado_setores jsonb default '[]'::jsonb,
+    compartilhado_emails  jsonb default '[]'::jsonb,
     data              timestamptz,
     plataforma        text default 'teams',      -- teams | recall | avulso
     status            text default 'pending',     -- pending|processing|completed|sem_transcricao|error

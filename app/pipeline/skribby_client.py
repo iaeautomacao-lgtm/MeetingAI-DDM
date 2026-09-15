@@ -118,6 +118,7 @@ def create_bot(
     meeting_url: str,
     bot_name: str | None = None,
     custom_vocabulary: list[str] | None = None,
+    scheduled_start_time: int | None = None,
 ) -> dict:
     """
     Cria bot que entra na reunião, grava e transcreve.
@@ -140,6 +141,9 @@ def create_bot(
     model = _model()
     if model:
         payload["transcription_model"] = model
+
+    if scheduled_start_time:
+        payload["scheduled_start_time"] = int(scheduled_start_time)
 
     payload["initial_chat_message"] = _initial_chat_message()
 

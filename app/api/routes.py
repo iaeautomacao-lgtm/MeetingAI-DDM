@@ -40,9 +40,91 @@ from app.auth import (
     _buscar_acesso,
 )
 
+_REUNIOES_COLUNAS_CACHE = None
+
 
 def _normalizar_texto_acesso(valor: str) -> str:
     return " ".join((valor or "").strip().lower().split())
+
+
+def _colunas_reunioes() -> set[str]:
+    global _REUNIOES_COLUNAS_CACHE
+    if _REUNIOES_COLUNAS_CACHE is not None:
+        return _REUNIOES_COLUNAS_CACHE
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SHOW COLUMNS FROM reunioes")
+        _REUNIOES_COLUNAS_CACHE = {
+            str(row.get("Field") or "")
+            for row in cursor.fetchall()
+            if row.get("Field")
+        }
+    except Exception:
+        current_app.logger.exception("Erro ao inspecionar colunas de reunioes")
+        _REUNIOES_COLUNAS_CACHE = set()
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return _REUNIOES_COLUNAS_CACHE
+
+
+def _tem_coluna_reunioes(nome: str) -> bool:
+    return nome in _colunas_reunioes()
+
+
+def _normalizar_lista_texto(valor) -> list[str]:
+    if isinstance(valor, list):
+        items = valor
+    elif isinstance(valor, str) and valor.strip():
+        texto = valor.strip()
+        try:
+            parsed = json.loads(texto)
+            items = parsed if isinstance(parsed, list) else [texto]
+        except json.JSONDecodeError:
+            items = texto.replace(";", ",").replace("\n", ",").split(",")
+    else:
+        items = []
+
+    normalizados = []
+    for item in items:
+        texto = str(item or "").strip()
+        if texto and texto not in normalizados:
+            normalizados.append(texto)
+    return normalizados
+
+
+def _json_like_param(valor: str) -> str:
+    return '%"' + json.dumps(valor, ensure_ascii=False)[1:-1] + '"%'
+
+
+def _parse_datetime_reuniao(valor: str) -> datetime | None:
+    texto = (valor or "").strip()
+    if not texto:
+        return None
+    try:
+        parsed = datetime.fromisoformat(texto.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _scheduled_start_timestamp(valor: str) -> int | None:
+    data = _parse_datetime_reuniao(valor)
+    if not data:
+        return None
+    # Janela de tolerancia: se estiver muito perto, entra agora.
+    if data <= datetime.now(timezone.utc) + timedelta(minutes=1):
+        return None
+    return int(data.timestamp())
 
 
 def _solicitantes_sessao() -> list[str]:
@@ -67,33 +149,72 @@ def _escopo_reunioes_sql() -> tuple[str, list]:
     if tem_acesso_total():
         return "", []
 
+    tem_share_setores = _tem_coluna_reunioes("compartilhado_setores")
+    tem_share_emails = _tem_coluna_reunioes("compartilhado_emails")
+    email = sessao_email()
+
     if is_gestor_setor():
         setores = sessao_setores()
         if not setores:
             return " AND 1 = 0", []
         placeholders = ", ".join(["%s"] * len(setores))
-        return f" AND setor IN ({placeholders})", setores
+        partes = [f"setor IN ({placeholders})"]
+        params = list(setores)
+        if tem_share_setores:
+            partes.extend(["COALESCE(compartilhado_setores, '') LIKE %s"] * len(setores))
+            params.extend(_json_like_param(setor) for setor in setores)
+        if tem_share_emails and email:
+            partes.append("COALESCE(compartilhado_emails, '') LIKE %s")
+            params.append(_json_like_param(email))
+        return " AND (" + " OR ".join(partes) + ")", params
 
     solicitantes = _solicitantes_sessao()
-    if not solicitantes:
+    setores = sessao_setores()
+    if not solicitantes and not setores:
         return " AND 1 = 0", []
 
-    placeholders = ", ".join(["%s"] * len(solicitantes))
-    return (
-        f" AND LOWER(TRIM(COALESCE(solicitante, ''))) IN ({placeholders})",
-        solicitantes,
-    )
+    partes = []
+    params = []
+    if solicitantes:
+        placeholders = ", ".join(["%s"] * len(solicitantes))
+        partes.append(f"LOWER(TRIM(COALESCE(solicitante, ''))) IN ({placeholders})")
+        params.extend(solicitantes)
+    if tem_share_emails and email:
+        partes.append("COALESCE(compartilhado_emails, '') LIKE %s")
+        params.append(_json_like_param(email))
+    if tem_share_setores and setores:
+        partes.extend(["COALESCE(compartilhado_setores, '') LIKE %s"] * len(setores))
+        params.extend(_json_like_param(setor) for setor in setores)
+
+    return " AND (" + " OR ".join(partes) + ")", params
 
 
 def _pode_acessar_reuniao(reuniao: dict) -> bool:
     if tem_acesso_total():
         return True
 
+    compartilhado_setores = _normalizar_lista_texto(reuniao.get("compartilhado_setores"))
+    compartilhado_emails = [
+        email.lower()
+        for email in _normalizar_lista_texto(reuniao.get("compartilhado_emails"))
+    ]
+    email = (sessao_email() or "").lower()
+
     if is_gestor_setor():
-        return (reuniao.get("setor") or "") in sessao_setores()
+        setores = sessao_setores()
+        return (
+            (reuniao.get("setor") or "") in setores
+            or any(setor in compartilhado_setores for setor in setores)
+            or bool(email and email in compartilhado_emails)
+        )
 
     solicitante = _normalizar_texto_acesso(reuniao.get("solicitante") or "")
-    return bool(solicitante and solicitante in _solicitantes_sessao())
+    setores = sessao_setores()
+    return bool(
+        (solicitante and solicitante in _solicitantes_sessao())
+        or (email and email in compartilhado_emails)
+        or any(setor in compartilhado_setores for setor in setores)
+    )
 
 
 def _normalizar_json_reuniao(reuniao: dict) -> dict:
@@ -136,8 +257,126 @@ def _normalizar_json_reuniao(reuniao: dict) -> dict:
             clima = {}
 
     reuniao["clima"] = clima if isinstance(clima, dict) else {}
+    reuniao["compartilhado_setores"] = _normalizar_lista_texto(
+        reuniao.get("compartilhado_setores")
+    )
+    reuniao["compartilhado_emails"] = _normalizar_lista_texto(
+        reuniao.get("compartilhado_emails")
+    )
 
     return reuniao
+
+
+def _normalizar_json_lista(valor):
+    if isinstance(valor, list):
+        return valor
+    if isinstance(valor, str) and valor.strip():
+        try:
+            parsed = json.loads(valor)
+            return parsed if isinstance(parsed, list) else []
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def _score_ideia(ideia: dict) -> int:
+    texto = " ".join([
+        ideia.get("titulo") or "",
+        ideia.get("dor") or "",
+        ideia.get("solucao") or "",
+        ideia.get("impacto") or "",
+    ])
+    base = 58 + (len(texto) % 23)
+    if (ideia.get("impacto") or "").lower() in {"reduz risco", "aumenta receita"}:
+        base += 9
+    if len(ideia.get("solucao") or "") > 120:
+        base += 6
+    return max(55, min(96, base))
+
+
+def _fallback_ia_ideia(ideia: dict) -> dict:
+    setor = ideia.get("setor") or "setor envolvido"
+    impacto = ideia.get("impacto") or "impacto operacional"
+    titulo = ideia.get("titulo") or f"Melhorar rotina de {setor}"
+    ganhos_por_impacto = {
+        "Reduz tempo": ["Menos retrabalho", "Ganho de tempo", "Fluxo mais previsível"],
+        "Aumenta receita": ["Follow-up mais rápido", "Mais oportunidades visíveis", "Melhor conversão"],
+        "Melhora experiência do cliente": ["Menos atrito", "Resposta mais clara", "Atendimento mais consistente"],
+        "Reduz risco": ["Redução de risco", "Mais rastreabilidade", "Menos perda de prazo"],
+        "Melhora comunicação interna": ["Informação centralizada", "Responsáveis mais claros", "Menos ruído entre áreas"],
+    }
+    return {
+        "titulo": titulo,
+        "problema": ideia.get("dor") or "",
+        "proposta": ideia.get("solucao") or "",
+        "potencial": (
+            f"Organizar essa percepção em uma iniciativa de {setor}, "
+            f"com responsável definido, métrica simples e validação rápida."
+        ),
+        "impactos_possiveis": ganhos_por_impacto.get(
+            impacto,
+            ["Aprendizado rápido", "Decisão mais clara", "Teste com baixo esforço"],
+        ),
+        "primeiro_passo": (
+            f"Criar um piloto de 30 dias em {setor}, acompanhando resultado "
+            "antes de ampliar para outras áreas."
+        ),
+    }
+
+
+def _desenvolver_ideia_com_ia(ideia: dict) -> dict:
+    system = (
+        "Você é um parceiro de inovação corporativa do Grupo DDM. "
+        "Desenvolva ideias de colaboradores com linguagem acolhedora, objetiva "
+        "e prática. Não avalie a pessoa e não use tom de julgamento. "
+        "Responda somente JSON válido."
+    )
+    user = json.dumps(
+        {
+            "instrucoes": {
+                "idioma": "pt-BR",
+                "formato": {
+                    "titulo": "string curta e executiva",
+                    "problema": "string fiel à percepção original",
+                    "proposta": "string clara, prática e sem exageros",
+                    "potencial": "string com o potencial identificado",
+                    "impactos_possiveis": ["3 strings curtas"],
+                    "primeiro_passo": "string com um piloto ou ação inicial",
+                },
+                "restricoes": [
+                    "não invente dados",
+                    "não use score",
+                    "não diga que a ideia original estava ruim",
+                ],
+            },
+            "ideia": ideia,
+        },
+        ensure_ascii=False,
+    )
+    try:
+        from app.pipeline.analysis import _chat, _parse_json
+
+        raw = _chat(system, user, max_tokens=900, json_mode=True)
+        data = _parse_json(raw or "") or {}
+    except Exception:
+        current_app.logger.exception("Erro ao desenvolver ideia com IA")
+        data = {}
+    fallback = _fallback_ia_ideia(ideia)
+    merged = {**fallback, **{k: v for k, v in data.items() if v}}
+    merged["impactos_possiveis"] = (
+        merged["impactos_possiveis"]
+        if isinstance(merged.get("impactos_possiveis"), list)
+        else fallback["impactos_possiveis"]
+    )
+    return merged
+
+
+def _normalizar_ideia(row: dict) -> dict:
+    row["impactos_possiveis"] = _normalizar_json_lista(row.get("impactos_possiveis"))
+    criado = row.get("criado_em")
+    if isinstance(criado, datetime):
+        row["criado_em"] = criado.isoformat()
+    return row
 
 
 # Hosts de reunião aceitos no /gravacoes (endpoint público). Bloqueia
@@ -360,6 +599,282 @@ def acessos_gestor():
     if definir_gestor(email, virar):
         return jsonify({"ok": True})
     return jsonify({"erro": "não encontrado"}), 404
+
+
+# ── Hub de Ideias ─────────────────────────────────────────────────────────────
+
+@bp.post("/ideias/desenvolver")
+@require_auth
+def ideias_desenvolver_rascunho():
+    """Desenvolve um rascunho de ideia sem expor chave de IA no frontend."""
+    if tem_acesso_total():
+        return jsonify({
+            "erro": "diretoria_usa_radar",
+            "msg": "A diretoria acompanha as ideias pelo Radar.",
+        }), 403
+
+    body = request.get_json(silent=True) or {}
+    ideia = {
+        "titulo": (body.get("titulo") or "").strip(),
+        "setor": (body.get("setor") or sessao_setor() or "").strip(),
+        "dor": (body.get("dor") or "").strip(),
+        "solucao": (body.get("solucao") or "").strip(),
+        "impacto": (body.get("impacto") or "").strip(),
+        "autor": (body.get("autor") or "").strip() or sessao_email() or "Colaborador DDM",
+    }
+
+    if not ideia["dor"] or not ideia["solucao"] or not ideia["setor"] or not ideia["impacto"]:
+        return jsonify({
+            "erro": "campos_obrigatorios",
+            "msg": "Preencha percepção, melhoria, setor e impacto.",
+        }), 400
+
+    return jsonify(_desenvolver_ideia_com_ia(ideia)), 200
+
+
+@bp.get("/ideias")
+@require_auth
+def ideias_listar():
+    """Somente diretoria/acesso total visualiza ideias e Radar."""
+    if not tem_acesso_total():
+        return jsonify({"erro": "acesso_restrito"}), 403
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT
+                id,
+                titulo,
+                setor,
+                dor,
+                solucao,
+                impacto,
+                autor_nome,
+                autor_email,
+                ai_titulo,
+                ai_problema,
+                ai_proposta,
+                ai_potencial,
+                impactos_possiveis,
+                ai_primeiro_passo,
+                score,
+                status,
+                criado_em
+            FROM ideias
+            WHERE status <> %s
+            ORDER BY criado_em DESC
+            LIMIT 200
+            """,
+            ("arquivada",),
+        )
+        return jsonify([_normalizar_ideia(row) for row in cursor.fetchall()]), 200
+    except Exception as exc:
+        current_app.logger.exception("Erro ao listar ideias no MySQL")
+        return jsonify({
+            "erro": "Não foi possível carregar as ideias.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/ideias")
+@require_auth
+def ideias_criar():
+    """Usuários e gestores enviam ideias; diretoria enxerga no Radar."""
+    if tem_acesso_total():
+        return jsonify({
+            "erro": "diretoria_usa_radar",
+            "msg": "A diretoria acompanha as ideias pelo Radar.",
+        }), 403
+
+    body = request.get_json(silent=True) or {}
+    setores_permitidos = sessao_setores()
+    setor = (body.get("setor") or sessao_setor() or "").strip()
+    if setores_permitidos and setor not in setores_permitidos:
+        setor = setores_permitidos[0]
+
+    ideia = {
+        "id": str(uuid.uuid4()),
+        "titulo": (body.get("titulo") or "").strip(),
+        "setor": setor,
+        "dor": (body.get("dor") or "").strip(),
+        "solucao": (body.get("solucao") or "").strip(),
+        "impacto": (body.get("impacto") or "").strip(),
+        "autor_nome": (body.get("autor") or "").strip() or sessao_email() or "Colaborador DDM",
+        "autor_email": sessao_email() or "",
+    }
+
+    if not ideia["dor"] or not ideia["solucao"] or not ideia["setor"] or not ideia["impacto"]:
+        return jsonify({
+            "erro": "campos_obrigatorios",
+            "msg": "Preencha percepção, melhoria, setor e impacto.",
+        }), 400
+
+    ai = _desenvolver_ideia_com_ia({
+        "titulo": ideia["titulo"],
+        "setor": ideia["setor"],
+        "dor": ideia["dor"],
+        "solucao": ideia["solucao"],
+        "impacto": ideia["impacto"],
+        "autor": ideia["autor_nome"],
+    })
+    if not ideia["titulo"]:
+        ideia["titulo"] = ai.get("titulo") or _fallback_ia_ideia(ideia)["titulo"]
+
+    score = _score_ideia(ideia)
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            INSERT INTO ideias (
+                id,
+                titulo,
+                setor,
+                dor,
+                solucao,
+                impacto,
+                autor_nome,
+                autor_email,
+                ai_titulo,
+                ai_problema,
+                ai_proposta,
+                ai_potencial,
+                impactos_possiveis,
+                ai_primeiro_passo,
+                score,
+                status,
+                criado_em
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """,
+            (
+                ideia["id"],
+                ideia["titulo"],
+                ideia["setor"],
+                ideia["dor"],
+                ideia["solucao"],
+                ideia["impacto"],
+                ideia["autor_nome"],
+                ideia["autor_email"],
+                ai.get("titulo") or ideia["titulo"],
+                ai.get("problema") or ideia["dor"],
+                ai.get("proposta") or ideia["solucao"],
+                ai.get("potencial") or "",
+                json.dumps(ai.get("impactos_possiveis") or [], ensure_ascii=False),
+                ai.get("primeiro_passo") or "",
+                score,
+                "nova",
+            ),
+        )
+        connection.commit()
+        ideia_salva = {
+            **ideia,
+            "ai_titulo": ai.get("titulo") or ideia["titulo"],
+            "ai_problema": ai.get("problema") or ideia["dor"],
+            "ai_proposta": ai.get("proposta") or ideia["solucao"],
+            "ai_potencial": ai.get("potencial") or "",
+            "impactos_possiveis": ai.get("impactos_possiveis") or [],
+            "ai_primeiro_passo": ai.get("primeiro_passo") or "",
+            "score": score,
+            "status": "nova",
+        }
+        return jsonify(ideia_salva), 201
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+        current_app.logger.exception("Erro ao salvar ideia no MySQL")
+        return jsonify({
+            "erro": "Não foi possível salvar a ideia.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/ideias/<ideia_id>/desenvolver")
+@require_auth
+def ideias_desenvolver_salva(ideia_id):
+    """Diretoria reprocessa/desenvolve uma ideia já enviada."""
+    if not tem_acesso_total():
+        return jsonify({"erro": "acesso_restrito"}), 403
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT *
+            FROM ideias
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (ideia_id,),
+        )
+        ideia = cursor.fetchone()
+        if not ideia:
+            return jsonify({"erro": "não encontrado"}), 404
+
+        ai = _desenvolver_ideia_com_ia({
+            "titulo": ideia.get("titulo") or "",
+            "setor": ideia.get("setor") or "",
+            "dor": ideia.get("dor") or "",
+            "solucao": ideia.get("solucao") or "",
+            "impacto": ideia.get("impacto") or "",
+            "autor": ideia.get("autor_nome") or "",
+        })
+        cursor.execute(
+            """
+            UPDATE ideias
+            SET
+                ai_titulo = %s,
+                ai_problema = %s,
+                ai_proposta = %s,
+                ai_potencial = %s,
+                impactos_possiveis = %s,
+                ai_primeiro_passo = %s
+            WHERE id = %s
+            """,
+            (
+                ai.get("titulo") or ideia.get("titulo") or "",
+                ai.get("problema") or ideia.get("dor") or "",
+                ai.get("proposta") or ideia.get("solucao") or "",
+                ai.get("potencial") or "",
+                json.dumps(ai.get("impactos_possiveis") or [], ensure_ascii=False),
+                ai.get("primeiro_passo") or "",
+                ideia_id,
+            ),
+        )
+        connection.commit()
+        return jsonify(ai), 200
+    except Exception as exc:
+        if connection is not None:
+            connection.rollback()
+        current_app.logger.exception("Erro ao desenvolver ideia salva no MySQL")
+        return jsonify({
+            "erro": "Não foi possível desenvolver a ideia.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Live ──────────────────────────────────────────────────────────────────────
@@ -718,7 +1233,9 @@ def listar_reunioes():
         participantes,
         resumo_executivo,
         status,
-        plataforma
+        plataforma,
+        compartilhado_setores,
+        compartilhado_emails
         FROM reunioes
         WHERE excluida_em IS NULL
         """
@@ -753,7 +1270,10 @@ def listar_reunioes():
         sql += " ORDER BY data DESC LIMIT 50"
 
         cursor.execute(sql, params)
-        reunioes = cursor.fetchall()
+        reunioes = [
+            _normalizar_json_reuniao(reuniao)
+            for reuniao in cursor.fetchall()
+        ]
 
         return jsonify(reunioes), 200
 
@@ -902,13 +1422,21 @@ def atualizar_metadados_reuniao(reuniao_id: str):
         "modalidade",
         "local_reuniao",
         "cliente",
+        "compartilhado_setores",
+        "compartilhado_emails",
     }
 
     valores = {}
     for campo in campos_permitidos:
         if campo in body:
             valor = body.get(campo)
-            valores[campo] = "" if valor is None else str(valor).strip()
+            if campo in {"compartilhado_setores", "compartilhado_emails"}:
+                valores[campo] = json.dumps(
+                    _normalizar_lista_texto(valor),
+                    ensure_ascii=False,
+                )
+            else:
+                valores[campo] = "" if valor is None else str(valor).strip()
 
     if "titulo" in valores and not valores["titulo"]:
         return jsonify({
@@ -943,7 +1471,12 @@ def atualizar_metadados_reuniao(reuniao_id: str):
 
         cursor.execute(
             """
-            SELECT id, setor, solicitante
+            SELECT
+                id,
+                setor,
+                solicitante,
+                compartilhado_setores,
+                compartilhado_emails
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -1012,7 +1545,15 @@ def _carregar_reuniao_locutores(reuniao_id: str):
 
         cursor.execute(
             """
-            SELECT id, setor, solicitante, recall_bot_id, utterances, participantes
+            SELECT
+                id,
+                setor,
+                solicitante,
+                recall_bot_id,
+                utterances,
+                participantes,
+                compartilhado_setores,
+                compartilhado_emails
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -1831,12 +2372,18 @@ def criar_gravacao():
         "DDM",
         "Acordito",
     ]
+    data_reuniao = (
+        (body.get("data") or "").strip()
+        or datetime.now(timezone.utc).isoformat()
+    )
+    scheduled_start_time = _scheduled_start_timestamp(data_reuniao)
 
     # Solicita ao Skribby a criação do bot.
     try:
         bot = create_bot(
             meeting_url,
             custom_vocabulary=vocabulario_reuniao,
+            scheduled_start_time=scheduled_start_time,
         )
 
     except Exception as exc:
@@ -1858,11 +2405,6 @@ def criar_gravacao():
         }), 502
 
     reuniao_id = str(uuid.uuid4())
-
-    data_reuniao = (
-        (body.get("data") or "").strip()
-        or datetime.now(timezone.utc).isoformat()
-    )
 
     titulo = (
         (body.get("titulo") or "").strip()
@@ -1958,7 +2500,12 @@ def criar_gravacao():
     return jsonify({
         "reuniao_id": reuniao_id,
         "bot_id": bot_id,
-        "status": "bot entrando na reunião",
+        "status": (
+            "bot agendado"
+            if scheduled_start_time
+            else "bot entrando na reunião"
+        ),
+        "scheduled_start_time": scheduled_start_time,
     }), 202
 
 @bp.post("/skribby/webhook")
@@ -2087,7 +2634,9 @@ def status_gravacao(reuniao_id: str):
                 recall_bot_id,
                 status,
                 setor,
-                solicitante
+                solicitante,
+                compartilhado_setores,
+                compartilhado_emails
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL
@@ -2180,7 +2729,9 @@ def processar_gravacao_manual(reuniao_id: str):
                 recall_bot_id,
                 status,
                 setor,
-                solicitante
+                solicitante,
+                compartilhado_setores,
+                compartilhado_emails
             FROM reunioes
             WHERE id = %s
               AND excluida_em IS NULL

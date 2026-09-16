@@ -183,24 +183,24 @@ body {
 .access-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ================== HUB DE IDEIAS ================== */
-.ideas-page { min-height: calc(100vh - 118px); overflow: auto; padding-bottom: 18px; }
-.ideas-shell { min-height: 100%; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 14px; }
+.ideas-page { min-height: 0; overflow: auto; padding-bottom: 28px; }
+.ideas-shell { min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 12px; }
 .ideas-hero {
   background: linear-gradient(120deg,#fff 0%,#fff7f1 54%,#eefdfb 100%);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 18px 22px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 108px;
+  min-height: 92px;
 }
 .ideas-eyebrow { color: var(--ddm-orange); font: 700 10px var(--font-body); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
 .ideas-hero h2 { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 31px); line-height: 1.1; }
-.ideas-hero p { color: var(--gray); font-size: 13px; line-height: 1.55; max-width: 640px; margin-top: 8px; }
+.ideas-hero p { color: var(--gray); font-size: 12px; line-height: 1.45; max-width: 640px; margin-top: 6px; }
 .ideas-mini-map {
-  position: relative; flex: 0 0 min(300px,32%); min-width: 230px; height: 112px; border-radius: 22px; overflow: hidden;
+  position: relative; flex: 0 0 min(280px,31%); min-width: 220px; height: 96px; border-radius: 20px; overflow: hidden;
   background:
     radial-gradient(circle at 36% 34%, rgba(94,196,205,.24), transparent 30%),
     radial-gradient(circle at 68% 72%, rgba(255,87,6,.18), transparent 34%),
@@ -226,16 +226,16 @@ body {
   68% { transform:translate(153px,6px); opacity:.9; }
   100% { transform:translate(190px,58px); opacity:.15; }
 }
-.ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(320px,.82fr) minmax(360px,1.18fr); gap: 14px; align-items: stretch; }
+.ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(360px,.92fr) minmax(360px,1.08fr); gap: 14px; align-items: stretch; }
 .idea-left-stack { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .idea-journey, .idea-ai-preview, .ideas-radar-card, .ideas-director-panel {
   background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg);
   box-shadow: 0 6px 18px rgba(31,31,31,.04);
 }
-.idea-journey { min-height: 360px; padding: 20px; display: flex; flex-direction: column; }
-.idea-start, .idea-step { flex: 1; display: grid; align-content: center; }
-.idea-start h3, .idea-step h3 { font-family: var(--font-display); font-size: clamp(22px,2.6vw,34px); line-height: 1.13; }
-.idea-start p, .idea-step p { color: var(--gray); font-size: 13px; line-height: 1.65; margin-top: 10px; max-width: 560px; }
+.idea-journey { min-height: 0; padding: 18px 20px; display: flex; flex-direction: column; }
+.idea-start, .idea-step { flex: 1; display: grid; align-content: start; }
+.idea-start h3, .idea-step h3 { font-family: var(--font-display); font-size: clamp(22px,2.1vw,28px); line-height: 1.08; }
+.idea-start p, .idea-step p { color: var(--gray); font-size: 12px; line-height: 1.55; margin-top: 8px; max-width: 560px; }
 .idea-inspiration-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
 .idea-inspiration-card {
   border:1px solid var(--border); background:linear-gradient(145deg,#fff,#fff8f4); border-radius:var(--r-md);
@@ -269,17 +269,17 @@ body {
 .idea-input:focus, .idea-select:focus { background:#fff; border-color:var(--ddm-orange); box-shadow:0 0 0 4px rgba(255,87,6,.08); }
 .idea-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
 .idea-step-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:20px; }
-.idea-ai-preview { min-height:360px; padding:20px; overflow:hidden; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
+.idea-ai-preview { min-height:0; padding:18px 20px; overflow:hidden; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
 .idea-preview-empty { min-height:100%; display:grid; place-items:center; text-align:center; color:var(--gray); border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:26px; }
 .idea-preview-empty b { display:block; color:var(--ink); font-family:var(--font-display); margin:12px 0 6px; }
 .idea-preview-orb { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; margin:auto; background:var(--ink); color:var(--teal); font-weight:800; font-size:22px; }
-.idea-live-map { height:min(360px, calc(100vh - 340px)); min-height:270px; box-sizing:border-box; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:18px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
-.idea-live-inner { position:relative; width:min(420px,100%); aspect-ratio:1.25; }
+.idea-live-map { height:min(300px, calc(100vh - 310px)); min-height:240px; box-sizing:border-box; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:14px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
+.idea-live-inner { position:relative; width:min(350px,100%); aspect-ratio:1.25; }
 .idea-live-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:9px 12px; background:#fff; border:1px solid var(--border); box-shadow:0 10px 24px rgba(31,31,31,.07); color:var(--gray); font-size:12px; font-weight:800; }
 .idea-live-node.core { left:50%; top:50%; width:76px; height:76px; display:grid; place-items:center; padding:0; background:var(--ink); color:var(--teal); font-size:22px; }
 .idea-live-node.active { color:var(--ink); border-color:#bfeceb; box-shadow:0 0 0 6px rgba(94,196,205,.12),0 12px 28px rgba(94,196,205,.18); }
 .idea-live-line { position:absolute; height:1px; background:#d8e5e4; transform-origin:left center; opacity:.9; }
-.idea-live-copy { text-align:center; max-width:420px; margin:18px auto 0; color:var(--gray); font-size:13px; line-height:1.55; }
+.idea-live-copy { text-align:center; max-width:420px; margin:10px auto 0; color:var(--gray); font-size:12px; line-height:1.45; }
 .idea-developed-card { border:1px solid #dff3f1; background:linear-gradient(145deg,#fff,#f7fffe); border-radius:var(--r-md); padding:16px; margin-top:12px; }
 .idea-developed-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
 .idea-developed-metrics span { background:#f0fbfa; border-radius:14px; padding:11px; color:#12746d; font-size:12px; font-weight:800; }
@@ -289,6 +289,7 @@ body {
   background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg);
   box-shadow:0 6px 18px rgba(31,31,31,.04); padding:14px 16px; max-height:184px; overflow:auto;
 }
+.my-ideas-panel.inline { margin-top:12px; padding:12px; max-height:128px; border-radius:var(--r-md); box-shadow:none; background:#fbfdfd; }
 .my-ideas-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }
 .my-ideas-head h3 { font-family:var(--font-display); font-size:16px; line-height:1.2; }
 .my-ideas-count { color:var(--gray); font-size:11px; font-weight:800; white-space:nowrap; }
@@ -721,16 +722,6 @@ body.detalhe-aberto .right-sidebar { display: none; }
           <div class="idea-left-stack">
             <section class="idea-journey">
               <div id="idea-journey"></div>
-            </section>
-            <section class="my-ideas-panel" aria-label="Minhas ideias enviadas">
-              <div class="my-ideas-head">
-                <div>
-                  <div class="ideas-eyebrow">Seu histórico</div>
-                  <h3>Minhas ideias enviadas</h3>
-                </div>
-                <span class="my-ideas-count" id="minhas-ideias-count">Carregando</span>
-              </div>
-              <div id="minhas-ideias-list" class="my-ideas-empty">Carregando suas ideias...</div>
             </section>
           </div>
           <aside class="idea-ai-preview">
@@ -1535,8 +1526,19 @@ function renderIdeiaJourney(){
             </button>`).join('')}
         </div>
         <button class="idea-free-start" onclick="escolherInicioIdeia('livre')">✨ Conte sua ideia do seu jeito...</button>
+        <section class="my-ideas-panel inline" aria-label="Minhas ideias enviadas">
+          <div class="my-ideas-head">
+            <div>
+              <div class="ideas-eyebrow">Seu histórico</div>
+              <h3>Minhas ideias enviadas</h3>
+            </div>
+            <span class="my-ideas-count" id="minhas-ideias-count">Carregando</span>
+          </div>
+          <div id="minhas-ideias-list" class="my-ideas-empty">Carregando suas ideias...</div>
+        </section>
       </div>`;
     renderIdeiaLivePreview();
+    renderMinhasIdeias();
     return;
   }
   if(IDEIA_STEP===1){

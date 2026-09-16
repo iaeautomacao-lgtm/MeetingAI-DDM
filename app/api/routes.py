@@ -632,6 +632,7 @@ def ideias_listar():
     """Diretoria vê todas as ideias; gestores veem ideias dos seus setores; usuário vê as próprias."""
     minhas = str(request.args.get("minhas") or "").lower() in {"1", "true", "sim", "yes"}
     email_usuario = sessao_email()
+    autores_usuario = _solicitantes_sessao()
 
     if not minhas and not tem_acesso_total() and not is_admin() and not is_gestor_setor():
         return jsonify({"erro": "acesso_restrito"}), 403
@@ -666,10 +667,17 @@ def ideias_listar():
         params = ["arquivada"]
 
         if minhas:
-            if not email_usuario:
+            if not email_usuario and not autores_usuario:
                 return jsonify([]), 200
-            sql += " AND autor_email = %s"
-            params.append(email_usuario)
+            partes_autor = []
+            if email_usuario:
+                partes_autor.append("LOWER(TRIM(autor_email)) = %s")
+                params.append(_normalizar_texto_acesso(email_usuario))
+            if autores_usuario:
+                placeholders = ", ".join(["%s"] * len(autores_usuario))
+                partes_autor.append(f"LOWER(TRIM(autor_nome)) IN ({placeholders})")
+                params.extend(autores_usuario)
+            sql += " AND (" + " OR ".join(partes_autor) + ")"
         elif not tem_acesso_total() and not is_admin():
             setores = sessao_setores()
             if not setores:

@@ -267,26 +267,28 @@ body {
 .idea-impact-chips span { background:#effbf9; color:#12746d; border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700; }
 .ideas-radar-page { height: calc(100vh - 118px); min-height: 560px; overflow:hidden; }
 .ideas-radar-layout { height:100%; min-height:0; display:grid; grid-template-columns:minmax(460px,1.2fr) minmax(330px,.8fr); gap:16px; }
-.ideas-radar-card { position:relative; min-height:0; overflow:hidden; background:#101214; border-color:#24282c; }
+.ideas-radar-card { position:relative; min-height:0; overflow:hidden; background:#101214; border-color:#24282c; display:flex; flex-direction:column; }
 .ideas-radar-top {
-  position:absolute; z-index:6; left:18px; top:16px; right:18px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+  position:relative; z-index:6; min-height:132px; padding:18px 18px 14px; display:flex; flex-direction:column; gap:13px; border-bottom:1px solid rgba(255,255,255,.08);
 }
+.ideas-radar-title p { color:#bac1ca; font-size:12px; margin-top:6px; }
 .ideas-radar-title h2 { color:#fff; font-family:var(--font-display); font-size:24px; line-height:1.1; }
 .ideas-radar-title .ideas-eyebrow { color:var(--teal); }
-.ideas-radar-controls { display:flex; flex-direction:column; align-items:flex-end; gap:8px; max-width:58%; }
-.ideas-radar-filters { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+.ideas-radar-controls { display:flex; align-items:center; gap:12px; max-width:100%; min-width:0; }
+.ideas-radar-controls:before { content:"Setor"; color:#aeb5bf; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; flex:0 0 auto; }
+.ideas-radar-filters { display:flex; gap:7px; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; scrollbar-width:thin; padding-bottom:2px; min-width:0; }
 .ideas-radar-filters.is-hidden, .ideas-filter-row.is-hidden { display:none; }
 .ideas-radar-filters button, .ideas-impact-filter, .map-tool {
   border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.08); color:#fff;
-  border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700;
+  border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700; white-space:nowrap;
 }
 .ideas-radar-filters button.active { background:var(--teal); color:#102120; }
-.ideas-filter-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; color:#aeb5bf; font-size:11px; }
+.ideas-filter-row { display:none !important; }
 .ideas-impact-filter { border-radius:10px; outline:0; }
 .ideas-impact-filter option { color:var(--ink); }
 .ideas-map-tools { position:absolute; z-index:7; right:18px; bottom:18px; display:flex; gap:8px; }
 .map-tool { width:34px; height:34px; border-radius:10px; padding:0; font-size:15px; }
-.ideas-map-stage { position:absolute; inset:0; transform-origin:50% 50%; transition:transform .35s ease; }
+.ideas-map-stage { position:relative; flex:1; min-height:0; transform-origin:50% 50%; transition:transform .35s ease; margin-top:28px; }
 .ideas-map-stage:before {
   content:""; position:absolute; inset:0; opacity:.44; background:
     radial-gradient(circle at 50% 52%, rgba(255,87,6,.10), transparent 19%),
@@ -669,6 +671,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
             <div class="ideas-radar-title">
               <div class="ideas-eyebrow">INTELIGÊNCIA DE IDEIAS</div>
               <h2>Radar de Ideias</h2>
+              <p>Explore os setores e descubra as ideias conectadas.</p>
             </div>
             <div class="ideas-radar-controls">
               <div class="ideas-radar-filters" id="ideas-sector-filters"></div>
@@ -910,7 +913,7 @@ let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'relevantes';
 let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
-let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [];
+let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [], IDEIAS_MOSTRAR_SETORES = false;
 let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null;
 
 /* ---------- utils ---------- */
@@ -1468,7 +1471,12 @@ function renderIdeiasRadar(){
   const filterRow=document.getElementById('ideas-filter-row');
   filterRow?.classList.toggle('is-hidden', !IDEIAS.length);
   const setores=ideiasSetoresMapa();
-  filters.innerHTML=['Todos', ...setores].map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="focusIdeiasSector('${esc(s)}')">${esc(s)}</button>`).join('');
+  const principais=setores.slice(0,4);
+  const ordenados=[...principais.filter(s=>setores.includes(s)), ...setores.filter(s=>!principais.includes(s))];
+  const visiveis=IDEIAS_MOSTRAR_SETORES ? ordenados : ordenados.slice(0,4);
+  const extras=Math.max(0, ordenados.length-visiveis.length);
+  filters.innerHTML=['Todos', ...visiveis].map(s=>`<button class="${s===IDEIAS_SETOR_FILTRO?'active':''}" onclick="focusIdeiasSector('${esc(s)}')">${esc(s)}</button>`).join('')+
+    (extras ? `<button onclick="IDEIAS_MOSTRAR_SETORES=!IDEIAS_MOSTRAR_SETORES;renderIdeiasRadar()">+${extras} setores ▾</button>` : (IDEIAS_MOSTRAR_SETORES && ordenados.length>4 ? `<button onclick="IDEIAS_MOSTRAR_SETORES=false;renderIdeiasRadar()">Menos setores</button>` : ''));
   impact.value=IDEIAS_IMPACTO_FILTRO;
   if(order) order.value=IDEIA_ORDEM_FILTRO;
   const mapa=ideiasOrdenadas(ideiasPorImpacto());
@@ -1479,14 +1487,14 @@ function renderIdeiasRadar(){
 }
 function ideiaSectorPos(setor, idx, total){
   const presets = {
-    'Comercial': {x:73,y:34},
+    'Comercial': {x:73,y:38},
     'JurÃ­dico': {x:68,y:68}, 'Juridico': {x:68,y:68},
     'OperaÃ§Ã£o': {x:30,y:67}, 'Operacao': {x:30,y:67},
-    'RH': {x:28,y:34},
-    'Financeiro': {x:50,y:78},
-    'IA': {x:84,y:51},
-    'Planejamento': {x:50,y:20},
-    'Backoffice': {x:16,y:52}
+    'RH': {x:28,y:39},
+    'Financeiro': {x:50,y:80},
+    'IA': {x:84,y:54},
+    'Planejamento': {x:50,y:25},
+    'Backoffice': {x:16,y:55}
   };
   if(presets[setor]) return presets[setor];
   const golden=Math.PI*(3-Math.sqrt(5));

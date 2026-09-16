@@ -177,6 +177,45 @@ body {
 .panel h3 { font-family: var(--font-display); font-size: 13px; margin-bottom: 10px; }
 .panel .li { font-size: 12px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--border); }
 .panel .li:last-child { border-bottom: none; }
+.dashboard-idea-banner {
+  margin-top: 22px; border: 1px solid #dcecea; border-left: 5px solid var(--ddm-orange);
+  border-radius: var(--r-lg); padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  background: linear-gradient(120deg,#fffaf6 0%,#fff 50%,#effdfb 100%);
+  box-shadow: 0 8px 24px rgba(31,31,31,.04);
+}
+.dashboard-idea-copy { max-width: 650px; }
+.dashboard-idea-kicker { color: var(--ddm-orange); font: 800 10px var(--font-body); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 7px; }
+.dashboard-idea-copy h2 { font-family: var(--font-display); font-size: clamp(20px,2.2vw,30px); line-height: 1.08; margin-bottom: 8px; }
+.dashboard-idea-copy p { color: var(--gray); font-size: 13px; line-height: 1.55; max-width: 560px; margin-bottom: 14px; }
+.dashboard-idea-art {
+  position: relative; flex: 0 0 230px; height: 120px; border-radius: 22px; overflow: visible;
+  background:
+    radial-gradient(circle at 48% 48%, rgba(94,196,205,.20), transparent 36%),
+    radial-gradient(circle at 78% 24%, rgba(255,87,6,.12), transparent 30%);
+}
+.dashboard-idea-art span {
+  position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:7px 10px;
+  background:rgba(255,255,255,.74); border:1px solid rgba(54,200,192,.18);
+  box-shadow:0 8px 25px rgba(31,31,31,.06); backdrop-filter:blur(8px);
+  font-size:11px; font-weight:800; color:var(--ink); animation:miniFloat 4s ease-in-out infinite;
+}
+.dashboard-idea-art span:nth-child(1){left:22%;top:28%;color:#d95417}
+.dashboard-idea-art span:nth-child(1)::before{content:"💡 Ideia"}
+.dashboard-idea-art span:nth-child(2){left:28%;top:78%;color:#b77900;animation-delay:.45s}
+.dashboard-idea-art span:nth-child(2)::before{content:"⚡ Tempo"}
+.dashboard-idea-art span:nth-child(3){left:78%;top:28%;color:#d95417;animation-delay:.8s}
+.dashboard-idea-art span:nth-child(3)::before{content:"↗ Oportunidade"}
+.dashboard-idea-art span:nth-child(4){left:76%;top:76%;color:#1d8a56;animation-delay:1s}
+.dashboard-idea-art span:nth-child(4)::before{content:"◉ Impacto"}
+.dashboard-idea-art:before,
+.dashboard-idea-art:after { content:""; position:absolute; left:28%; right:22%; height:1px; background:linear-gradient(90deg,transparent,rgba(54,200,192,.62),rgba(255,87,6,.22),transparent); transform-origin:left center; }
+.dashboard-idea-art:before { top:43%; transform:rotate(16deg); box-shadow:0 28px 0 rgba(54,200,192,.34); }
+.dashboard-idea-art:after { top:55%; transform:rotate(-17deg); box-shadow:0 28px 0 rgba(255,87,6,.16); }
+.dashboard-idea-art b {
+  position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:46px; height:46px; border-radius:16px;
+  display:grid; place-items:center; background:linear-gradient(145deg,#e9fffd,#bdf3ef); color:#13746d;
+  box-shadow:0 0 0 8px rgba(94,196,205,.14),0 14px 34px rgba(94,196,205,.24);
+}
 .access-panel { max-height: none; }
 .access-approved-panel { min-height: 420px; max-height: calc(100vh - 310px); }
 .access-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
@@ -197,38 +236,57 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 92px;
+  min-height: 124px;
 }
 .ideas-eyebrow { color: var(--ddm-orange); font: 700 10px var(--font-body); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
 .ideas-hero h2 { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 31px); line-height: 1.1; }
 .ideas-hero p { color: var(--gray); font-size: 12px; line-height: 1.45; max-width: 640px; margin-top: 6px; }
 .ideas-mini-map {
-  position: relative; flex: 0 0 min(280px,31%); min-width: 220px; height: 96px; border-radius: 20px; overflow: hidden;
+  position: relative; flex: 0 0 min(330px,36%); min-width: 260px; height: 118px; border-radius: 22px; overflow: visible;
   background:
-    radial-gradient(circle at 36% 34%, rgba(94,196,205,.24), transparent 30%),
-    radial-gradient(circle at 68% 72%, rgba(255,87,6,.18), transparent 34%),
-    #111518;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 18px 44px rgba(17,21,24,.14);
+    radial-gradient(circle at 50% 52%, rgba(94,196,205,.18), transparent 34%),
+    radial-gradient(circle at 78% 20%, rgba(255,87,6,.11), transparent 28%);
 }
-.ideas-mini-flow { position:absolute; inset:14px 18px; color:#fff; font-size:11px; font-weight:800; }
-.mini-flow-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:8px 10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.13); box-shadow:0 0 24px rgba(94,196,205,.14); }
-.mini-flow-node.idea { left:23%; top:30%; color:#ffd6c4; }
-.mini-flow-node.ai { left:50%; top:52%; width:46px; height:46px; display:grid; place-items:center; padding:0; background:#1f1f1f; color:var(--teal); font-size:19px; box-shadow:0 0 0 7px rgba(94,196,205,.08),0 0 26px rgba(94,196,205,.32); }
-.mini-flow-node.time { left:30%; top:78%; color:#ffc247; }
-.mini-flow-node.impact { left:75%; top:76%; color:#7ee0a1; }
-.mini-flow-node.gain { left:75%; top:27%; color:#ff8754; }
-.mini-flow-line { position:absolute; height:1px; background:linear-gradient(90deg,transparent,rgba(94,196,205,.65),transparent); transform-origin:left center; }
-.mini-flow-line.one { left:29%; top:37%; width:69px; transform:rotate(26deg); }
-.mini-flow-line.two { left:55%; top:47%; width:70px; transform:rotate(-24deg); }
-.mini-flow-line.three { left:55%; top:61%; width:73px; transform:rotate(22deg); }
-.mini-flow-line.four { left:34%; top:68%; width:66px; transform:rotate(-28deg); }
-.mini-flow-pulse { position:absolute; left:21%; top:30%; width:6px; height:6px; border-radius:50%; background:var(--teal); box-shadow:0 0 14px var(--teal); animation:miniPulse 3.2s ease-in-out infinite; }
+.ideas-mini-map:before,
+.ideas-mini-map:after {
+  content:""; position:absolute; border-radius:50%; filter:blur(18px); opacity:.55; pointer-events:none;
+}
+.ideas-mini-map:before { width:112px; height:112px; right:54px; top:-12px; background:rgba(94,196,205,.18); }
+.ideas-mini-map:after { width:82px; height:82px; right:6px; bottom:0; background:rgba(255,87,6,.13); }
+.ideas-mini-flow { position:absolute; inset:8px 6px; color:var(--ink); font-size:11px; font-weight:800; z-index:1; }
+.mini-flow-node {
+  position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:8px 12px;
+  background:rgba(255,255,255,.72); border:1px solid rgba(54,200,192,.18);
+  box-shadow:0 8px 25px rgba(31,31,31,.06); backdrop-filter:blur(8px);
+  animation:miniFloat 4s ease-in-out infinite;
+}
+.mini-flow-node.idea { left:22%; top:24%; color:#d95417; animation-delay:.2s; }
+.mini-flow-node.ai {
+  left:50%; top:52%; width:48px; height:48px; display:grid; place-items:center; padding:0;
+  background:linear-gradient(145deg,#e9fffd,#bdf3ef); color:#13746d; font-size:18px;
+  border-color:rgba(54,200,192,.34); box-shadow:0 0 0 8px rgba(94,196,205,.14),0 14px 34px rgba(94,196,205,.24);
+}
+.mini-flow-node.time { left:27%; top:77%; color:#b77900; animation-delay:.45s; }
+.mini-flow-node.impact { left:76%; top:78%; color:#1d8a56; animation-delay:.75s; }
+.mini-flow-node.gain { left:78%; top:26%; color:#d95417; animation-delay:1s; }
+.mini-flow-line {
+  position:absolute; height:1px; background:linear-gradient(90deg,transparent,rgba(54,200,192,.62),rgba(255,87,6,.22),transparent);
+  transform-origin:left center; opacity:.7; animation:miniDraw .9s ease both;
+}
+.mini-flow-line.one { left:27%; top:34%; width:84px; transform:rotate(24deg); }
+.mini-flow-line.two { left:55%; top:46%; width:87px; transform:rotate(-24deg); animation-delay:.1s; }
+.mini-flow-line.three { left:55%; top:60%; width:88px; transform:rotate(24deg); animation-delay:.18s; }
+.mini-flow-line.four { left:31%; top:68%; width:78px; transform:rotate(-27deg); animation-delay:.25s; }
+.mini-flow-pulse { position:absolute; left:21%; top:27%; width:6px; height:6px; border-radius:50%; background:var(--teal); box-shadow:0 0 14px var(--teal); animation:miniPulse 3.2s ease-in-out infinite; }
+.ideas-mini-map:hover .mini-flow-line { background:linear-gradient(90deg,transparent,rgba(54,200,192,.9),rgba(255,87,6,.35),transparent); opacity:1; }
 @keyframes miniPulse {
   0% { transform:translate(0,0); opacity:.1; }
-  32% { transform:translate(76px,32px); opacity:1; }
-  68% { transform:translate(153px,6px); opacity:.9; }
-  100% { transform:translate(190px,58px); opacity:.15; }
+  32% { transform:translate(86px,32px); opacity:1; }
+  68% { transform:translate(171px,3px); opacity:.9; }
+  100% { transform:translate(194px,60px); opacity:.15; }
 }
+@keyframes miniFloat { 0%,100%{ margin-top:0; } 50%{ margin-top:-4px; } }
+@keyframes miniDraw { from{ clip-path:inset(0 100% 0 0); } to{ clip-path:inset(0); } }
 .ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(360px,.92fr) minmax(360px,1.08fr); gap: 14px; align-items: stretch; }
 .idea-left-stack { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .idea-journey, .idea-ai-preview, .ideas-radar-card, .ideas-director-panel {
@@ -523,6 +581,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
   .ideas-workspace { grid-template-columns: minmax(300px,.9fr) minmax(330px,1.1fr); }
   .ideas-hero h2 { font-size: 24px; }
   .idea-start h3, .idea-step h3 { font-size: 26px; }
+  .dashboard-idea-art { flex-basis: 180px; }
 }
 
 /* Telas médias / zoom: afrouxa a largura fixa e reduz padding */
@@ -537,6 +596,8 @@ body.detalhe-aberto .right-sidebar { display: none; }
   .ideas-workspace { grid-template-columns: 1fr; }
   .idea-ai-preview, .idea-journey { min-height: 320px; }
   .idea-live-map { height: 320px; min-height: 260px; }
+  .dashboard-idea-banner { align-items:flex-start; }
+  .dashboard-idea-art { flex-basis:160px; height:96px; }
 }
 
 /* Celular: sidebar vira gaveta (drawer) deslizante, com hamburguer */
@@ -561,6 +622,8 @@ body.detalhe-aberto .right-sidebar { display: none; }
   .ideas-hero { flex-direction: column; }
   .ideas-mini-map { width: 100%; flex: none; }
   .idea-inspiration-grid, .idea-field-grid { grid-template-columns: 1fr; }
+  .dashboard-idea-banner { flex-direction:column; padding:18px; }
+  .dashboard-idea-art { width:100%; flex:none; }
 }
 
 @media (max-width: 480px) {
@@ -608,7 +671,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
       </div> -->
       <div class="nav-item" data-page="ideias-enviar" onclick="goto('ideias-enviar')" id="nav-ideias-enviar" style="display:none">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.5-6.5l-2.1 2.1M8.6 15.4l-2.1 2.1m0-12l2.1 2.1m6.8 6.8l2.1 2.1"></path><path stroke-linecap="round" stroke-linejoin="round" d="M9 12a3 3 0 116 0c0 1.1-.6 1.9-1.4 2.5-.4.3-.6.8-.6 1.3h-2c0-.5-.2-1-.6-1.3A3 3 0 019 12z"></path></svg>
-        Enviar Ideia
+        Compartilhar ideia
       </div>
       <div class="nav-item" data-page="ideias-radar" onclick="goto('ideias-radar')" id="nav-ideias-radar" style="display:none">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v6m0 6v6M3 12h6m6 0h6M5.6 5.6l4.2 4.2m4.4 4.4l4.2 4.2m0-12.8l-4.2 4.2m-4.4 4.4l-4.2 4.2"></path></svg>
@@ -690,6 +753,18 @@ body.detalhe-aberto .right-sidebar { display: none; }
           </div>
         </div>
       </div>
+
+      <section class="dashboard-idea-banner" id="dashboard-idea-banner">
+        <div class="dashboard-idea-copy">
+          <div class="dashboard-idea-kicker">Teve uma ideia?</div>
+          <h2>Uma ideia pode começar pequena. O impacto não precisa ser.</h2>
+          <p>Viu algo que pode melhorar? Compartilhe com a gente. A IA ajuda você a desenvolver a ideia.</p>
+          <button class="btn-primary" onclick="goto('ideias-enviar')">Colocar minha ideia em movimento →</button>
+        </div>
+        <div class="dashboard-idea-art" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><b>✦</b>
+        </div>
+      </section>
     </section>
 
     <!-- ===== PAGE: REUNIÕES ===== -->
@@ -1148,7 +1223,9 @@ async function checkAdmin(){
     IS_ADMIN = !!(s && s.admin);
     const navEnviar=document.getElementById('nav-ideias-enviar');
     const navRadar=document.getElementById('nav-ideias-radar');
+    const dashboardIdeaBanner=document.getElementById('dashboard-idea-banner');
     if(navEnviar) navEnviar.style.display = 'flex';
+    if(dashboardIdeaBanner) dashboardIdeaBanner.style.display = navEnviar && navEnviar.style.display === 'none' ? 'none' : 'flex';
     if(navRadar) navRadar.style.display = (ACESSO_TOTAL || IS_ADMIN || GESTOR_SETOR) ? 'flex' : 'none';
     if(ACESSO_TOTAL || IS_ADMIN){
       contarIdeiasNovas();

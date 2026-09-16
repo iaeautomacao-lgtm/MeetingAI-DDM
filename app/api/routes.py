@@ -41,6 +41,7 @@ from app.auth import (
 )
 
 _REUNIOES_COLUNAS_CACHE = None
+_IDEIAS_OCULTAS_TABELA_CACHE = None
 
 
 def _normalizar_texto_acesso(valor: str) -> str:
@@ -77,6 +78,30 @@ def _colunas_reunioes() -> set[str]:
 
 def _tem_coluna_reunioes(nome: str) -> bool:
     return nome in _colunas_reunioes()
+
+
+def _tem_tabela_ideias_ocultas() -> bool:
+    global _IDEIAS_OCULTAS_TABELA_CACHE
+    if _IDEIAS_OCULTAS_TABELA_CACHE is not None:
+        return _IDEIAS_OCULTAS_TABELA_CACHE
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SHOW TABLES LIKE %s", ("ideias_ocultas_usuario",))
+        _IDEIAS_OCULTAS_TABELA_CACHE = cursor.fetchone() is not None
+    except Exception:
+        current_app.logger.exception("Erro ao verificar tabela ideias_ocultas_usuario")
+        _IDEIAS_OCULTAS_TABELA_CACHE = False
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    return _IDEIAS_OCULTAS_TABELA_CACHE
 
 
 def _normalizar_lista_texto(valor) -> list[str]:
@@ -678,7 +703,7 @@ def ideias_listar():
                 partes_autor.append(f"LOWER(TRIM(autor_nome)) IN ({placeholders})")
                 params.extend(autores_usuario)
             sql += " AND (" + " OR ".join(partes_autor) + ")"
-            if email_usuario:
+            if email_usuario and _tem_tabela_ideias_ocultas():
                 sql += """
                     AND NOT EXISTS (
                         SELECT 1
@@ -757,6 +782,12 @@ def ideias_excluir(ideia_id: str):
         )
         if not pode_ocultar:
             return jsonify({"erro": "acesso_restrito"}), 403
+
+        if not _tem_tabela_ideias_ocultas():
+            return jsonify({
+                "erro": "migração_pendente",
+                "msg": "Rode a migração 2026-09-16_create_ideias_ocultas_usuario.sql para remover ideias da lista do usuário.",
+            }), 409
 
         cursor.execute(
             """

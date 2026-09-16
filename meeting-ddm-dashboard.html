@@ -199,10 +199,32 @@ body {
 .ideas-hero h2 { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 31px); line-height: 1.1; }
 .ideas-hero p { color: var(--gray); font-size: 13px; line-height: 1.55; max-width: 640px; margin-top: 8px; }
 .ideas-mini-map {
-  position: relative; flex: 0 0 300px; height: 92px; border-radius: 18px; overflow: hidden;
-  background: #141719; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  position: relative; flex: 0 0 300px; height: 124px; border-radius: 22px; overflow: hidden;
+  background:
+    radial-gradient(circle at 36% 34%, rgba(94,196,205,.24), transparent 30%),
+    radial-gradient(circle at 68% 72%, rgba(255,87,6,.18), transparent 34%),
+    #111518;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 18px 44px rgba(17,21,24,.14);
 }
-.ideas-mini-map canvas { width: 100%; height: 100%; display: block; }
+.ideas-mini-flow { position:absolute; inset:14px 18px; color:#fff; font-size:11px; font-weight:800; }
+.mini-flow-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:8px 10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.13); box-shadow:0 0 24px rgba(94,196,205,.14); }
+.mini-flow-node.idea { left:23%; top:30%; color:#ffd6c4; }
+.mini-flow-node.ai { left:50%; top:52%; width:46px; height:46px; display:grid; place-items:center; padding:0; background:#1f1f1f; color:var(--teal); font-size:19px; box-shadow:0 0 0 7px rgba(94,196,205,.08),0 0 26px rgba(94,196,205,.32); }
+.mini-flow-node.time { left:30%; top:78%; color:#ffc247; }
+.mini-flow-node.impact { left:75%; top:76%; color:#7ee0a1; }
+.mini-flow-node.gain { left:75%; top:27%; color:#ff8754; }
+.mini-flow-line { position:absolute; height:1px; background:linear-gradient(90deg,transparent,rgba(94,196,205,.65),transparent); transform-origin:left center; }
+.mini-flow-line.one { left:29%; top:37%; width:69px; transform:rotate(26deg); }
+.mini-flow-line.two { left:55%; top:47%; width:70px; transform:rotate(-24deg); }
+.mini-flow-line.three { left:55%; top:61%; width:73px; transform:rotate(22deg); }
+.mini-flow-line.four { left:34%; top:68%; width:66px; transform:rotate(-28deg); }
+.mini-flow-pulse { position:absolute; left:21%; top:30%; width:6px; height:6px; border-radius:50%; background:var(--teal); box-shadow:0 0 14px var(--teal); animation:miniPulse 3.2s ease-in-out infinite; }
+@keyframes miniPulse {
+  0% { transform:translate(0,0); opacity:.1; }
+  32% { transform:translate(76px,32px); opacity:1; }
+  68% { transform:translate(153px,6px); opacity:.9; }
+  100% { transform:translate(190px,58px); opacity:.15; }
+}
 .ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(330px,.86fr) minmax(0,1.14fr); gap: 16px; }
 .idea-journey, .idea-ai-preview, .ideas-radar-card, .ideas-director-panel {
   background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg);
@@ -245,11 +267,11 @@ body {
 .idea-input:focus, .idea-select:focus { background:#fff; border-color:var(--ddm-orange); box-shadow:0 0 0 4px rgba(255,87,6,.08); }
 .idea-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
 .idea-step-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:20px; }
-.idea-ai-preview { min-height:0; padding:24px; overflow:auto; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
+.idea-ai-preview { min-height:0; padding:24px; overflow:hidden; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
 .idea-preview-empty { min-height:100%; display:grid; place-items:center; text-align:center; color:var(--gray); border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:26px; }
 .idea-preview-empty b { display:block; color:var(--ink); font-family:var(--font-display); margin:12px 0 6px; }
 .idea-preview-orb { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; margin:auto; background:var(--ink); color:var(--teal); font-weight:800; font-size:22px; }
-.idea-live-map { min-height:100%; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:24px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
+.idea-live-map { height:calc(100% - 35px); min-height:0; box-sizing:border-box; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:18px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
 .idea-live-inner { position:relative; width:min(420px,100%); aspect-ratio:1.25; }
 .idea-live-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:9px 12px; background:#fff; border:1px solid var(--border); box-shadow:0 10px 24px rgba(31,31,31,.07); color:var(--gray); font-size:12px; font-weight:800; }
 .idea-live-node.core { left:50%; top:50%; width:76px; height:76px; display:grid; place-items:center; padding:0; background:var(--ink); color:var(--teal); font-size:22px; }
@@ -321,7 +343,7 @@ body {
 }
 .idea-tooltip b { font-family:var(--font-display); font-size:13px; }
 .idea-tooltip span { display:block; margin-top:5px; color:var(--gray); font-size:11px; line-height:1.35; }
-.ideas-map-hint { position:absolute; z-index:5; left:18px; bottom:16px; display:flex; gap:10px; flex-wrap:wrap; color:#b8bdc7; font-size:11px; }
+.ideas-map-hint { display:none; }
 .ideas-director-panel { min-height:0; padding:18px; overflow:auto; }
 .ideas-director-panel h2 { font-family:var(--font-display); font-size:17px; margin-bottom:5px; }
 .idea-card { border:1px solid var(--border); border-radius:var(--r-md); padding:14px; margin-top:10px; cursor:pointer; background:#fff; }
@@ -364,6 +386,11 @@ body {
 .row-live-status.warn { border-color: #FFE0CE; background: var(--ddm-orange-50); }
 .row-live-status.error { border-color: #F6C9C9; background: #FDECEC; }
 .row-live-status small { display: block; color: var(--gray); margin-top: 3px; }
+.row-error-summary {
+  flex-basis:100%; margin-top:8px; padding:9px 11px; border-radius:10px;
+  border:1px solid #F6C9C9; background:#FDECEC; color:#8f1f19; font-size:12px; line-height:1.45;
+}
+.row-error-summary b { color:#7f1d1d; }
 
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
@@ -642,7 +669,20 @@ body.detalhe-aberto .right-sidebar { display: none; }
             <h2>Compartilhe algo que pode fazer a diferença.</h2>
             <p>Não precisa estar pronto. Conte o que você percebeu e a IA ajuda a transformar isso em uma ideia mais clara.</p>
           </div>
-          <div class="ideas-mini-map"><canvas id="ideas-mini-canvas"></canvas></div>
+          <div class="ideas-mini-map">
+            <div class="ideas-mini-flow">
+              <span class="mini-flow-line one"></span>
+              <span class="mini-flow-line two"></span>
+              <span class="mini-flow-line three"></span>
+              <span class="mini-flow-line four"></span>
+              <span class="mini-flow-pulse"></span>
+              <span class="mini-flow-node idea">💡 Ideia</span>
+              <span class="mini-flow-node ai">✦ IA</span>
+              <span class="mini-flow-node gain">↗ Oportunidade</span>
+              <span class="mini-flow-node time">⚡ Tempo</span>
+              <span class="mini-flow-node impact">Impacto</span>
+            </div>
+          </div>
         </div>
         <div class="ideas-workspace">
           <section class="idea-journey">
@@ -768,6 +808,13 @@ body.detalhe-aberto .right-sidebar { display: none; }
         <div class="li">3. O bot <b>Acordito</b> entra, grava e transcreve.</div>
         <div class="li">4. Ao encerrar, a reunião aparece em <b>Reuniões</b> com análise por IA.</div>
       </div>
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Pontos de atenção do Acordito</h3>
+        <div class="li"><b>Admissão:</b> se houver sala de espera, alguém dentro da reunião precisa aceitar a entrada do Acordito.</div>
+        <div class="li"><b>Agendamento:</b> confira data e hora. O Acordito tentará entrar automaticamente no horário informado.</div>
+        <div class="li"><b>Restrições:</b> login obrigatório, convidados externos bloqueados ou bloqueio contra bots podem impedir a entrada.</div>
+        <div class="li"><b>Reunião em andamento:</b> para envio imediato, a reunião precisa estar aberta ou prestes a começar.</div>
+      </div>
       <div class="panel">
         <h3>Status do sistema</h3>
         <div class="li">Captura de reuniões: <b>Skribby (bot Acordito)</b></div>
@@ -828,12 +875,12 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <div class="modal-alert">A reunião precisa estar em andamento ou prestes a começar — se houver sala de espera, admita o Acordito.</div>
     <label>Link da reunião *</label>
     <div class="modal-alert modal-alert-full">
-      <b>AtenÃ§Ã£o ao acesso do Acordito:</b>
+      <b>Aten&ccedil;&atilde;o ao acesso do Acordito:</b>
       <ul>
-        <li>Se for agora, a reuniÃ£o precisa estar em andamento ou prestes a comeÃ§ar.</li>
+        <li>Se for agora, a reuni&atilde;o precisa estar em andamento ou prestes a come&ccedil;ar.</li>
         <li>Se for agendada, confira data e hora para o Acordito tentar entrar no momento certo.</li>
-        <li>Se houver sala de espera, alguÃ©m precisa admitir o Acordito.</li>
-        <li>Login obrigatÃ³rio, convidados externos bloqueados ou restriÃ§Ã£o contra bots podem impedir a entrada.</li>
+        <li>Se houver sala de espera, algu&eacute;m precisa admitir o Acordito.</li>
+        <li>Login obrigat&oacute;rio, convidados externos bloqueados ou restri&ccedil;&atilde;o contra bots podem impedir a entrada.</li>
       </ul>
     </div>
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
@@ -926,15 +973,15 @@ function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)
 function fmtHora(iso){ if(!iso) return '--'; const d=new Date(iso); return isNaN(d)?'--':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function statusLabel(s){ return ({completed:'Concluída',pending:'Aguardando',processing:'Processando',sem_transcricao:'Sem transcrição',error:'Erro'}[s]||s||'—'); }
 function botStatusLabel(s){
-  return ({scheduled:'Agendado',booting:'Iniciando',joining:'Aguardando admissao',waiting_to_record:'Aguardando gravacao',recording:'Gravando',leaving:'Saindo',processing:'Processando audio',transcribing:'Transcrevendo',finished:'Finalizado',not_admitted:'Nao admitido',bot_detected:'Bloqueado',auth_required:'Login exigido',invalid_credentials:'Credencial invalida',invalid_api_key:'Chave invalida',failed:'Falhou'}[s]||s||'Aguardando');
+  return ({scheduled:'Agendado',booting:'Iniciando',joining:'Aguardando admissão',waiting_to_record:'Aguardando gravação',recording:'Gravando',leaving:'Saindo',processing:'Processando áudio',transcribing:'Transcrevendo',finished:'Finalizado',not_admitted:'Não admitido',bot_detected:'Bloqueado',auth_required:'Login exigido',invalid_credentials:'Credencial inválida',invalid_api_key:'Chave inválida',failed:'Falhou'}[s]||s||'Aguardando');
 }
 function botStatusHint(s){
-  if(s==='scheduled') return 'O Acordito ja esta agendado e tentara entrar automaticamente no horario da reuniao.';
-  if(s==='joining') return 'O Acordito esta tentando entrar. Verifique a janela da reuniao e aceite a entrada dele se aparecer na sala de espera.';
-  if(s==='recording') return 'O Acordito esta dentro da reuniao e gravando.';
-  if(s==='processing'||s==='transcribing'||s==='leaving') return 'A reuniao terminou ou esta finalizando. Em breve a transcricao podera ser puxada.';
-  if(s==='finished') return 'A transcricao ja deve estar disponivel. Clique em Puxar transcricao agora se ela ainda nao apareceu.';
-  if(s==='not_admitted') return 'O Acordito nao foi admitido. Confira se alguem negou a entrada ou se o tempo de espera acabou.';
+  if(s==='scheduled') return 'O Acordito já está agendado e tentará entrar automaticamente no horário da reunião.';
+  if(s==='joining') return 'O Acordito está tentando entrar. Verifique a janela da reunião e aceite a entrada dele se aparecer na sala de espera.';
+  if(s==='recording') return 'O Acordito está dentro da reunião e gravando.';
+  if(s==='processing'||s==='transcribing'||s==='leaving') return 'A reunião terminou ou está finalizando. Em breve a transcrição poderá ser puxada.';
+  if(s==='finished') return 'A transcrição já deve estar disponível. Clique em Puxar transcrição agora se ela ainda não apareceu.';
+  if(s==='not_admitted') return 'O Acordito não foi admitido. Confira se alguém negou a entrada ou se o tempo de espera acabou.';
   return 'Status consultado diretamente no Skribby.';
 }
 function asList(v){
@@ -971,8 +1018,13 @@ function erroAmigavel(msg){
   if(m.includes('timeout')||m.includes('timed out')) return 'Tempo esgotado ao processar. Tente reprocessar.';
   return msg || 'Erro não especificado.';
 }
+function erroResumoReuniao(msg, status=''){
+  const base = erroAmigavel(msg || status || '');
+  if(!base || base.includes('Erro n')) return '';
+  return base.length > 170 ? base.slice(0,167)+'...' : base;
+}
 function speakerLabel(v){
-  return (!v || v==='?') ? 'Locutor nao identificado' : v;
+  return (!v || v==='?') ? 'Locutor não identificado' : v;
 }
 function participanteLabel(p){
   const nome = p.nome || p;
@@ -1166,6 +1218,17 @@ function classeStatusAoVivo(s){
   if(['not_admitted','failed','auth_required','invalid_credentials','invalid_api_key','bot_detected'].includes(s)) return 'error';
   return 'warn';
 }
+function atualizarResumoErroLinha(id, texto){
+  if(!texto) return;
+  const row=document.getElementById('row-'+id);
+  if(!row) return;
+  let box=document.getElementById('row-error-'+id);
+  if(!box){
+    row.insertAdjacentHTML('beforeend', `<div class="row-error-summary" id="row-error-${esc(id)}"></div>`);
+    box=document.getElementById('row-error-'+id);
+  }
+  if(box) box.innerHTML=`<b>Motivo:</b> ${esc(texto)}`;
+}
 async function atualizarStatusAoVivoLista(list){
   const pendentes = (list||[])
     .filter(r=>(r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall'))
@@ -1178,6 +1241,7 @@ async function atualizarStatusAoVivoLista(list){
       const s=(d.status||d.bot_status||'').trim();
       el.className='row-live-status '+classeStatusAoVivo(s);
       el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}<small>${esc(botStatusHint(s))}</small>`;
+      if(classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(d.erro_msg || d.stop_reason || s, s));
     }catch(e){
       el.className='row-live-status error';
       el.innerHTML='<b>Status ao vivo do Acordito:</b> não foi possível consultar agora.';
@@ -1916,6 +1980,22 @@ function rowReuniao(r){
 }
 
 /* ---------- TRANSCRIÇÕES ---------- */
+function rowReuniao(r){
+  const dur = r.duracao_minutos!=null ? r.duracao_minutos+' min' : '-';
+  const pend = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall');
+  const compartilhada = compartilhamentoResumo(r);
+  const erroResumo = r.status==='error' ? erroResumoReuniao(r.erro_msg || r.resumo_executivo || 'error', 'error') : '';
+  return `<div class="row ${pend?'with-live':''}" id="row-${esc(r.id)}" onclick="goto('detalhe',{id:'${r.id}'})">
+    <div class="r-main"><div class="r-title">${esc(r.titulo||'Reunião')}</div>
+    <div class="r-sub">${esc(r.resumo_executivo||r.setor||'-')}</div>
+    ${compartilhada?`<div class="r-sub" style="color:var(--ddm-orange);margin-top:3px">${esc(compartilhada)}</div>`:''}</div>
+    <div class="r-meta">${fmtData(r.data)}<br>${dur}</div>
+    <span class="badge ${r.status}">${statusLabel(r.status)}</span>
+    ${pend?`<button class="btn-sm" onclick="event.stopPropagation();processar('${r.id}')">Puxar</button>`:''}
+    ${pend?`<div class="row-live-status" id="live-row-${esc(r.id)}"><b>Status ao vivo do Acordito:</b> consultando...</div>`:''}
+    ${erroResumo?`<div class="row-error-summary" id="row-error-${esc(r.id)}"><b>Motivo:</b> ${esc(erroResumo)}</div>`:''}
+  </div>`;
+}
 async function loadTranscricoes(){
   try {
     const data = await apiGet('/api/reunioes?status=completed') || [];
@@ -2033,7 +2113,7 @@ async function atualizarStatusBot(id){
 
     if(alerta && !BOT_STATUS_TOASTED[id]){
       BOT_STATUS_TOASTED[id] = true;
-      toast('Acordito aguardando admissao. Aceite a entrada na janela da reuniao.', 7000);
+      toast('Acordito aguardando admissão. Aceite a entrada na janela da reunião.', 7000);
     }
 
     if(terminal && BOT_STATUS_TIMER){
@@ -2041,7 +2121,7 @@ async function atualizarStatusBot(id){
       BOT_STATUS_TIMER = null;
     }
   } catch(e){
-    box.innerHTML = `<div style="margin-top:12px" class="t-sub">Nao foi possivel consultar o status ao vivo do Acordito.</div>`;
+    box.innerHTML = `<div style="margin-top:12px" class="t-sub">Não foi possível consultar o status ao vivo do Acordito.</div>`;
   }
 }
 
@@ -2112,7 +2192,7 @@ async function loadDetalhe(id){
 
 /* ---------- INSIGHTS DA IA ---------- */
 /* Quatro blocos fixos no topo: o que a pessoa precisa saber sem abrir a
-   transcricao. Reunioes analisadas antes desta versao vem sem esses campos —
+   transcrição. Reuniões analisadas antes desta versão vêm sem esses campos —
    por isso cada bloco tem estado vazio proprio em vez de sumir. */
 
 const CLIMA_LABEL = {
@@ -2253,7 +2333,7 @@ async function perguntarIA(id){
   } finally { btn.disabled=false; btn.textContent='Perguntar'; }
 }
 
-/* Transcricao: escondida por padrao (o valor esta nos insights), com filtro
+/* Transcrição: escondida por padrão (o valor está nos insights), com filtro
    por participante para o gestor ver so o que fulano falou. */
 let _uttAtual = [], _filtroLocutor = '';
 
@@ -2298,7 +2378,7 @@ function renderTranscricao(){
 }
 
 /* ---------- LIXEIRA (admin) ---------- */
-/* Excluir nao apaga: marca a reuniao como excluida e ela fica recuperavel pelo
+/* Excluir não apaga: marca a reunião como excluída e ela fica recuperável pelo
    prazo de retencao. Some do painel, dos KPIs e da busca no mesmo instante. */
 
 async function excluirReuniao(id, titulo){
@@ -2492,7 +2572,7 @@ async function preencherSetoresSelect(sel, atual){
 
 async function abrirEditarReuniao(){
   const r=_reuniaoAtual;
-  if(!r){ toast('Abra uma reuniao primeiro.'); return; }
+  if(!r){ toast('Abra uma reunião primeiro.'); return; }
   _editandoReuniaoId = r.id;
   document.getElementById('e-titulo').value = r.titulo || '';
   document.getElementById('e-data').value = valorDatetimeLocal(r.data);
@@ -2527,14 +2607,14 @@ async function salvarEdicaoReuniao(){
     compartilhado_setores: parseListaCampo(document.getElementById('e-share-setores').value),
     compartilhado_emails: parseListaCampo(document.getElementById('e-share-emails').value).map(e=>e.toLowerCase())
   };
-  if(!titulo){ toast('Informe o titulo da reuniao.'); return; }
+  if(!titulo){ toast('Informe o título da reunião.'); return; }
   if(!body.setor){ toast('Informe o setor.'); return; }
   const btn=document.getElementById('e-btn');
   btn.disabled=true; btn.textContent='Salvando...';
   try{
     await apiPost('/api/reunioes/'+id+'/metadados', body);
     fecharEditarReuniao();
-    toast('Dados da reuniao atualizados.');
+    toast('Dados da reunião atualizados.');
     loadDetalhe(id);
     loadReunioes();
   }catch(e){
@@ -2584,11 +2664,11 @@ async function enviarReuniao(){
   finally{ btn.disabled=false; btn.textContent='Enviar assistente Acordito'; }
 }
 async function processar(id){
-  toast('Puxando transcricao...');
+  toast('Puxando transcrição...');
   try {
     const r = await apiPost('/api/gravacoes/'+id+'/processar');
     if(r.status==='pending' || r.status==='sem_transcricao'){
-      toast(r.msg || 'A transcricao ainda nao esta pronta.',5000);
+      toast(r.msg || 'A transcrição ainda não está pronta.',5000);
     } else {
       toast('Processado! Atualizando...',3000);
     }

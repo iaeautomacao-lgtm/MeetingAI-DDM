@@ -483,6 +483,7 @@ def _processar_recall(reuniao_id: str, bot_id: str):
     pelo webhook e pelo processamento manual.
     """
     from app.pipeline.skribby_client import (
+        classify_bot_issue,
         get_bot,
         bot_status,
         parse_skribby_transcript,
@@ -567,9 +568,13 @@ def _processar_recall(reuniao_id: str, bot_id: str):
 
             if novo_status == "error":
                 stop_reason = (bot or {}).get("stop_reason")
-                campos["erro_msg"] = f"bot Skribby: {status}"
-                if stop_reason:
-                    campos["erro_msg"] += f" ({stop_reason})"
+                issue = classify_bot_issue(status, stop_reason)
+                campos["erro_msg"] = (
+                    f"{issue['titulo']}: {issue['mensagem']} "
+                    f"Ação sugerida: {issue['acao']}"
+                )
+                if issue.get("tecnico"):
+                    campos["erro_msg"] += f" | técnico: {issue['tecnico']}"
 
             atualizar_reuniao(campos)
 

@@ -629,8 +629,11 @@ def ideias_desenvolver_rascunho():
 @bp.get("/ideias")
 @require_auth
 def ideias_listar():
-    """Diretoria vê todas as ideias; gestores veem ideias dos seus setores."""
-    if not tem_acesso_total() and not is_admin() and not is_gestor_setor():
+    """Diretoria vê todas as ideias; gestores veem ideias dos seus setores; usuário vê as próprias."""
+    minhas = str(request.args.get("minhas") or "").lower() in {"1", "true", "sim", "yes"}
+    email_usuario = sessao_email()
+
+    if not minhas and not tem_acesso_total() and not is_admin() and not is_gestor_setor():
         return jsonify({"erro": "acesso_restrito"}), 403
 
     connection = None
@@ -662,7 +665,12 @@ def ideias_listar():
         """
         params = ["arquivada"]
 
-        if not tem_acesso_total() and not is_admin():
+        if minhas:
+            if not email_usuario:
+                return jsonify([]), 200
+            sql += " AND autor_email = %s"
+            params.append(email_usuario)
+        elif not tem_acesso_total() and not is_admin():
             setores = sessao_setores()
             if not setores:
                 return jsonify([]), 200
@@ -678,6 +686,81 @@ def ideias_listar():
         current_app.logger.exception("Erro ao listar ideias no MySQL")
         return jsonify({
             "erro": "Não foi possível carregar as ideias.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.get("/ideias/notificacoes")
+@require_auth
+def ideias_notificacoes():
+    """Conta ideias novas para a diretoria."""
+    if not tem_acesso_total() and not is_admin():
+        return jsonify({"novas": 0}), 200
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM ideias
+            WHERE status = %s
+            """,
+            ("nova",),
+        )
+        row = cursor.fetchone() or {}
+        return jsonify({"novas": int(row.get("total") or 0)}), 200
+    except Exception as exc:
+        current_app.logger.exception("Erro ao contar ideias novas")
+        return jsonify({
+            "erro": "Não foi possível contar as ideias novas.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/ideias/notificacoes/visualizar")
+@require_auth
+def ideias_notificacoes_visualizar():
+    """Marca ideias novas como visualizadas pela diretoria."""
+    if not tem_acesso_total() and not is_admin():
+        return jsonify({"ok": True, "atualizadas": 0}), 200
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            UPDATE ideias
+            SET status = %s
+            WHERE status = %s
+            """,
+            ("visualizada", "nova"),
+        )
+        connection.commit()
+        return jsonify({
+            "ok": True,
+            "atualizadas": cursor.rowcount,
+        }), 200
+    except Exception as exc:
+        if connection is not None and connection.is_connected():
+            connection.rollback()
+        current_app.logger.exception("Erro ao visualizar ideias novas")
+        return jsonify({
+            "erro": "Não foi possível atualizar as notificações de ideias.",
             "detalhe": str(exc),
         }), 500
     finally:
@@ -1231,6 +1314,7 @@ def listar_reunioes():
         duracao_minutos,
         participantes,
         resumo_executivo,
+        erro_msg,
         status,
         plataforma,
         compartilhado_setores,
@@ -2579,9 +2663,14 @@ def skribby_webhook():
                         (body.get("data") or {}).get("stop_reason")
                         or ""
                     )
-                    erro_msg = f"bot Skribby: {novo_status}"
-                    if stop_reason:
-                        erro_msg += f" ({stop_reason})"
+                    from app.pipeline.skribby_client import classify_bot_issue
+                    issue = classify_bot_issue(novo_status, stop_reason)
+                    erro_msg = (
+                        f"{issue['titulo']}: {issue['mensagem']} "
+                        f"Ação sugerida: {issue['acao']}"
+                    )
+                    if issue.get("tecnico"):
+                        erro_msg += f" | técnico: {issue['tecnico']}"
 
                     cursor.execute(
                         """
@@ -2632,6 +2721,7 @@ def status_gravacao(reuniao_id: str):
             SELECT
                 recall_bot_id,
                 status,
+                erro_msg,
                 setor,
                 solicitante,
                 compartilhado_setores,
@@ -2679,17 +2769,24 @@ def status_gravacao(reuniao_id: str):
             connection.close()
 
     try:
-        from app.pipeline.skribby_client import get_bot, bot_status
+        from app.pipeline.skribby_client import (
+            classify_bot_issue,
+            get_bot,
+            bot_status,
+        )
 
         bot = get_bot(bot_id)
         status = bot_status(bot)
         stop_reason = bot.get("stop_reason") or ""
+        classificacao = classify_bot_issue(status, stop_reason)
 
         return jsonify({
             "bot_id": bot_id,
             "bot_status": status,
             "stop_reason": stop_reason,
+            "classificacao": classificacao,
             "status": reuniao.get("status"),
+            "erro_msg": reuniao.get("erro_msg") or "",
         }), 200
 
     except Exception as exc:

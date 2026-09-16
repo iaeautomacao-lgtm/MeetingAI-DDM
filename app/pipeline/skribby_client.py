@@ -211,6 +211,147 @@ def bot_status(bot: dict) -> str:
     return (bot.get("status") or "") if isinstance(bot, dict) else ""
 
 
+def classify_bot_issue(
+    status: str = "",
+    stop_reason: str = "",
+    detail: str = "",
+) -> dict:
+    """Classifica falhas do bot em causas úteis para o usuário."""
+    status = (status or "").strip()
+    stop_reason = (stop_reason or "").strip()
+    detail = (detail or "").strip()
+    raw = " ".join([status, stop_reason, detail]).lower()
+
+    issue = {
+        "categoria": "erro_tecnico",
+        "titulo": "Erro técnico do Skribby",
+        "mensagem": (
+            "O Skribby retornou uma falha técnica ao tentar entrar, gravar "
+            "ou processar a reunião."
+        ),
+        "acao": "Tente novamente. Se repetir, verifique a chave/API do Skribby e os logs internos.",
+        "tecnico": " ".join(x for x in (status, stop_reason, detail) if x),
+    }
+
+    if status == "not_admitted":
+        issue.update({
+            "categoria": "nao_admitido",
+            "titulo": "Acordito não foi admitido",
+            "mensagem": (
+                "O Acordito ficou na sala de espera e não conseguiu entrar "
+                "na reunião."
+            ),
+            "acao": "Peça para alguém na reunião aceitar a entrada do Acordito.",
+        })
+
+    if any(x in raw for x in (
+        "request_denied",
+        "denied",
+        "rejected",
+        "declined",
+        "rejected_by_host",
+        "denied_by_host",
+    )):
+        issue.update({
+            "categoria": "entrada_recusada",
+            "titulo": "Entrada recusada",
+            "mensagem": (
+                "A entrada do Acordito foi recusada pela reunião ou por alguém "
+                "que estava controlando a admissão."
+            ),
+            "acao": "Envie novamente e peça para aceitarem o Acordito na sala de espera.",
+        })
+
+    if any(x in raw for x in (
+        "waiting_room_timeout",
+        "waiting room timeout",
+        "timeout_waiting_room",
+        "not_admitted_timeout",
+        "admission_timeout",
+        "waited",
+        "timed out",
+        "timeout",
+    )):
+        issue.update({
+            "categoria": "tempo_espera",
+            "titulo": "Tempo de espera esgotado",
+            "mensagem": (
+                "O Acordito aguardou na sala de espera até o limite configurado "
+                "e saiu sem ser admitido."
+            ),
+            "acao": "Envie novamente e aceite a entrada antes do tempo limite.",
+        })
+
+    if status in {"auth_required", "invalid_credentials"} or any(x in raw for x in (
+        "auth_required",
+        "login_required",
+        "sign in",
+        "sign-in",
+        "authentication",
+        "authenticated",
+        "invalid_credentials",
+    )):
+        issue.update({
+            "categoria": "login_obrigatorio",
+            "titulo": "Login obrigatório",
+            "mensagem": (
+                "A reunião exige autenticação ou credenciais que o Acordito "
+                "não possui."
+            ),
+            "acao": "Permita convidados externos ou use um link que não exija login.",
+        })
+
+    if status == "bot_detected" or any(x in raw for x in (
+        "bot_detected",
+        "bot detected",
+        "recording_disabled",
+        "recording blocked",
+        "recording_not_allowed",
+        "transcription_not_allowed",
+        "permission_denied_recording",
+    )):
+        issue.update({
+            "categoria": "restricao_gravacao",
+            "titulo": "Restrição contra gravação ou bot",
+            "mensagem": (
+                "A reunião parece bloquear bots, gravação ou transcrição "
+                "automática."
+            ),
+            "acao": "Revise as permissões da reunião para convidados, gravação e transcrição.",
+        })
+
+    if any(x in raw for x in (
+        "external",
+        "guest",
+        "lobby policy",
+        "organization",
+        "tenant",
+        "policy",
+        "domain",
+        "not allowed",
+        "forbidden",
+    )) and issue["categoria"] in {"nao_admitido", "erro_tecnico"}:
+        issue.update({
+            "categoria": "restricao_reuniao",
+            "titulo": "Restrição da reunião",
+            "mensagem": (
+                "A configuração da chamada pode estar bloqueando convidados "
+                "externos ou participantes automatizados."
+            ),
+            "acao": "Verifique as políticas de lobby, convidados externos e permissões da reunião.",
+        })
+
+    if status == "invalid_api_key":
+        issue.update({
+            "categoria": "credencial_skribby",
+            "titulo": "Chave do Skribby inválida",
+            "mensagem": "A credencial usada para consultar o Skribby está inválida.",
+            "acao": "Atualize a SKRIBBY_API_KEY no ambiente/cPanel.",
+        })
+
+    return issue
+
+
 # ── Transcrição ─────────────────────────────────────────────────────────────────
 
 def fetch_transcript(bot_id: str) -> list[dict]:

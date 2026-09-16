@@ -183,24 +183,24 @@ body {
 .access-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ================== HUB DE IDEIAS ================== */
-.ideas-page { height: calc(100vh - 118px); min-height: 560px; overflow: hidden; }
-.ideas-shell { height: 100%; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 16px; }
+.ideas-page { min-height: calc(100vh - 118px); overflow: auto; padding-bottom: 18px; }
+.ideas-shell { min-height: 100%; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 14px; }
 .ideas-hero {
   background: linear-gradient(120deg,#fff 0%,#fff7f1 54%,#eefdfb 100%);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 22px 24px;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 120px;
+  min-height: 108px;
 }
 .ideas-eyebrow { color: var(--ddm-orange); font: 700 10px var(--font-body); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
 .ideas-hero h2 { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 31px); line-height: 1.1; }
 .ideas-hero p { color: var(--gray); font-size: 13px; line-height: 1.55; max-width: 640px; margin-top: 8px; }
 .ideas-mini-map {
-  position: relative; flex: 0 0 300px; height: 124px; border-radius: 22px; overflow: hidden;
+  position: relative; flex: 0 0 min(300px,32%); min-width: 230px; height: 112px; border-radius: 22px; overflow: hidden;
   background:
     radial-gradient(circle at 36% 34%, rgba(94,196,205,.24), transparent 30%),
     radial-gradient(circle at 68% 72%, rgba(255,87,6,.18), transparent 34%),
@@ -226,26 +226,27 @@ body {
   68% { transform:translate(153px,6px); opacity:.9; }
   100% { transform:translate(190px,58px); opacity:.15; }
 }
-.ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(330px,.86fr) minmax(0,1.14fr); gap: 16px; }
+.ideas-workspace { min-height: 0; display: grid; grid-template-columns: minmax(320px,.82fr) minmax(360px,1.18fr); gap: 14px; align-items: stretch; }
+.idea-left-stack { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .idea-journey, .idea-ai-preview, .ideas-radar-card, .ideas-director-panel {
   background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg);
   box-shadow: 0 6px 18px rgba(31,31,31,.04);
 }
-.idea-journey { min-height: 0; padding: 24px; display: flex; flex-direction: column; }
+.idea-journey { min-height: 360px; padding: 20px; display: flex; flex-direction: column; }
 .idea-start, .idea-step { flex: 1; display: grid; align-content: center; }
 .idea-start h3, .idea-step h3 { font-family: var(--font-display); font-size: clamp(22px,2.6vw,34px); line-height: 1.13; }
 .idea-start p, .idea-step p { color: var(--gray); font-size: 13px; line-height: 1.65; margin-top: 10px; max-width: 560px; }
-.idea-inspiration-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; }
+.idea-inspiration-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
 .idea-inspiration-card {
   border:1px solid var(--border); background:linear-gradient(145deg,#fff,#fff8f4); border-radius:var(--r-md);
-  padding:15px; text-align:left; cursor:pointer; transition:transform .16s, border-color .16s, box-shadow .16s;
+  padding:13px; text-align:left; cursor:pointer; transition:transform .16s, border-color .16s, box-shadow .16s;
 }
 .idea-inspiration-card:hover { transform:translateY(-2px); border-color:#ffd1ba; box-shadow:0 12px 26px rgba(255,87,6,.10); }
 .idea-inspiration-card b { display:block; font-family:var(--font-display); font-size:14px; margin-bottom:4px; }
 .idea-inspiration-card span { color:var(--gray); font-size:12px; line-height:1.35; }
 .idea-free-start {
   width:100%; margin-top:14px; border:1px dashed #cfd8d7; background:#f9fbfb; border-radius:var(--r-md);
-  padding:15px; text-align:left; font-weight:700; color:var(--ink); cursor:pointer;
+  padding:13px; text-align:left; font-weight:700; color:var(--ink); cursor:pointer;
 }
 .idea-stepper { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
 .idea-stepper span { position:relative; color:var(--gray); font-size:11px; font-weight:800; padding-top:17px; }
@@ -268,11 +269,11 @@ body {
 .idea-input:focus, .idea-select:focus { background:#fff; border-color:var(--ddm-orange); box-shadow:0 0 0 4px rgba(255,87,6,.08); }
 .idea-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
 .idea-step-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:20px; }
-.idea-ai-preview { min-height:0; padding:24px; overflow:hidden; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
+.idea-ai-preview { min-height:360px; padding:20px; overflow:hidden; background:linear-gradient(145deg,#fff 0%,#f9fffe 100%); }
 .idea-preview-empty { min-height:100%; display:grid; place-items:center; text-align:center; color:var(--gray); border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:26px; }
 .idea-preview-empty b { display:block; color:var(--ink); font-family:var(--font-display); margin:12px 0 6px; }
 .idea-preview-orb { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; margin:auto; background:var(--ink); color:var(--teal); font-weight:800; font-size:22px; }
-.idea-live-map { height:calc(100% - 35px); min-height:0; box-sizing:border-box; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:18px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
+.idea-live-map { height:min(360px, calc(100vh - 340px)); min-height:270px; box-sizing:border-box; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:18px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
 .idea-live-inner { position:relative; width:min(420px,100%); aspect-ratio:1.25; }
 .idea-live-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:9px 12px; background:#fff; border:1px solid var(--border); box-shadow:0 10px 24px rgba(31,31,31,.07); color:var(--gray); font-size:12px; font-weight:800; }
 .idea-live-node.core { left:50%; top:50%; width:76px; height:76px; display:grid; place-items:center; padding:0; background:var(--ink); color:var(--teal); font-size:22px; }
@@ -284,6 +285,19 @@ body {
 .idea-developed-metrics span { background:#f0fbfa; border-radius:14px; padding:11px; color:#12746d; font-size:12px; font-weight:800; }
 .idea-developed h3 { font-family:var(--font-display); font-size:24px; line-height:1.18; margin:10px 0 14px; }
 .idea-section { border-top:1px solid var(--border); padding-top:13px; margin-top:13px; }
+.my-ideas-panel {
+  background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg);
+  box-shadow:0 6px 18px rgba(31,31,31,.04); padding:14px 16px; max-height:184px; overflow:auto;
+}
+.my-ideas-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.my-ideas-head h3 { font-family:var(--font-display); font-size:16px; line-height:1.2; }
+.my-ideas-count { color:var(--gray); font-size:11px; font-weight:800; white-space:nowrap; }
+.my-idea-card { border-top:1px solid var(--border); padding:10px 0; }
+.my-idea-card:first-child { border-top:0; }
+.my-idea-title { font-weight:800; font-size:12px; line-height:1.25; margin-bottom:4px; }
+.my-idea-meta { display:flex; gap:6px; flex-wrap:wrap; color:var(--gray); font-size:11px; line-height:1.35; }
+.my-idea-status { color:#13766f; background:#eefbf9; border-radius:999px; padding:2px 7px; font-weight:800; }
+.my-ideas-empty { color:var(--gray); font-size:12px; line-height:1.45; padding:8px 0 2px; }
 .idea-section h4 { font-family:var(--font-display); color:#168d86; font-size:12px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
 .idea-section p { color:var(--ink-2); font-size:13px; line-height:1.58; }
 .idea-impact-chips { display:flex; flex-wrap:wrap; gap:8px; }
@@ -495,11 +509,24 @@ body.detalhe-aberto .right-sidebar { display: none; }
 
 @media (max-width: 1100px) { .right-sidebar { display: none; } }
 
+@media (max-width: 1260px) {
+  .ideas-workspace { grid-template-columns: minmax(300px,.9fr) minmax(330px,1.1fr); }
+  .ideas-hero h2 { font-size: 24px; }
+  .idea-start h3, .idea-step h3 { font-size: 26px; }
+}
+
 /* Telas médias / zoom: afrouxa a largura fixa e reduz padding */
 @media (max-width: 900px) {
   body { padding: 16px; align-items: flex-start; }
   .app-container { height: auto; min-height: 100vh; }
   .main-area { padding: 24px; }
+  .ideas-page { min-height: 0; }
+  .ideas-shell { display: flex; flex-direction: column; }
+  .ideas-hero { align-items: flex-start; }
+  .ideas-mini-map { flex-basis: 240px; min-width: 220px; }
+  .ideas-workspace { grid-template-columns: 1fr; }
+  .idea-ai-preview, .idea-journey { min-height: 320px; }
+  .idea-live-map { height: 320px; min-height: 260px; }
 }
 
 /* Celular: sidebar vira gaveta (drawer) deslizante, com hamburguer */
@@ -521,6 +548,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
   .search-box input { width: 100%; min-width: 0; }
   .topbar-actions { gap: 8px; }
   .btn-primary { padding: 10px 14px; }
+  .ideas-hero { flex-direction: column; }
+  .ideas-mini-map { width: 100%; flex: none; }
+  .idea-inspiration-grid, .idea-field-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
@@ -688,9 +718,21 @@ body.detalhe-aberto .right-sidebar { display: none; }
           </div>
         </div>
         <div class="ideas-workspace">
-          <section class="idea-journey">
-            <div id="idea-journey"></div>
-          </section>
+          <div class="idea-left-stack">
+            <section class="idea-journey">
+              <div id="idea-journey"></div>
+            </section>
+            <section class="my-ideas-panel" aria-label="Minhas ideias enviadas">
+              <div class="my-ideas-head">
+                <div>
+                  <div class="ideas-eyebrow">Seu histórico</div>
+                  <h3>Minhas ideias enviadas</h3>
+                </div>
+                <span class="my-ideas-count" id="minhas-ideias-count">Carregando</span>
+              </div>
+              <div id="minhas-ideias-list" class="my-ideas-empty">Carregando suas ideias...</div>
+            </section>
+          </div>
           <aside class="idea-ai-preview">
             <div class="ideas-eyebrow" style="color:#168d86">Copiloto de Ideias</div>
             <h2 style="font-family:var(--font-display);font-size:18px;margin-bottom:12px">IA desenvolve junto</h2>
@@ -965,7 +1007,7 @@ let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
 let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [], IDEIAS_MOSTRAR_SETORES = false;
-let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null;
+let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null, MINHAS_IDEIAS = [];
 
 /* ---------- utils ---------- */
 function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
@@ -987,6 +1029,12 @@ function botStatusHint(s){
   if(s==='finished') return 'A transcrição já deve estar disponível. Clique em Puxar transcrição agora se ela ainda não apareceu.';
   if(s==='not_admitted') return 'O Acordito não foi admitido. Confira se alguém negou a entrada ou se o tempo de espera acabou.';
   return 'Status consultado diretamente no Skribby.';
+}
+function botIssueText(d){
+  const c = d && d.classificacao;
+  if(!c) return '';
+  const partes = [c.titulo, c.mensagem, c.acao ? 'Ação: '+c.acao : ''].filter(Boolean);
+  return partes.join(' · ');
 }
 function asList(v){
   if(Array.isArray(v)) return v;
@@ -1013,6 +1061,11 @@ function parseListaCampo(valor){
 }
 function erroAmigavel(msg){
   const m=(msg||'').toLowerCase();
+  if(m.includes('tempo de espera esgotado')) return msg;
+  if(m.includes('entrada recusada')) return msg;
+  if(m.includes('restrição da reunião')) return msg;
+  if(m.includes('restrição contra gravação')) return msg;
+  if(m.includes('erro técnico do scribby')) return msg;
   if(m.includes('api key was reported as leaked') || m.includes('permission_denied')) return 'A chave do Gemini foi bloqueada pelo Google porque foi reportada como vazada. Gere uma nova chave e atualize o .env/local e as variaveis do cPanel.';
   if(m.includes('not_admitted')) return 'O bot Acordito não foi admitido na reunião (ficou na sala de espera). Alguém dentro da reunião precisa aceitar a entrada dele, ou permitir convidados externos.';
   if(m.includes('bot_detected')) return 'A plataforma da reunião bloqueou o bot. Verifique as configurações que barram participantes externos/gravação.';
@@ -1197,6 +1250,51 @@ function initIdeiasEnviar(){
   if(!IDEIA_DRAFT.autor) IDEIA_DRAFT.autor = (document.getElementById('profile-name')?.textContent || '').trim();
   renderIdeiaJourney();
   drawIdeiasMiniMap();
+  loadMinhasIdeias();
+}
+
+function statusIdeiaLabel(status){
+  const mapa={nova:'Nova', visualizada:'Vista pela diretoria', em_analise:'Em análise', aprovada:'Aprovada', arquivada:'Arquivada'};
+  return mapa[status] || status || 'Enviada';
+}
+function renderMinhasIdeias(){
+  const list=document.getElementById('minhas-ideias-list');
+  const count=document.getElementById('minhas-ideias-count');
+  if(!list) return;
+  if(count) count.textContent = MINHAS_IDEIAS.length ? `${MINHAS_IDEIAS.length} enviada${MINHAS_IDEIAS.length===1?'':'s'}` : 'Nenhuma enviada';
+  if(!MINHAS_IDEIAS.length){
+    list.className='my-ideas-empty';
+    list.innerHTML='Quando você compartilhar uma ideia, ela aparecerá aqui com o status de acompanhamento.';
+    return;
+  }
+  list.className='';
+  list.innerHTML=MINHAS_IDEIAS.slice(0,5).map(i=>`
+    <div class="my-idea-card">
+      <div class="my-idea-title">${esc(i.ai_titulo || i.titulo)}</div>
+      <div class="my-idea-meta">
+        <span>${esc(i.setor)}</span>
+        <span>•</span>
+        <span>${esc(i.impacto)}</span>
+        <span>•</span>
+        <span>${fmtData(i.criado_em)}</span>
+        <span class="my-idea-status">${esc(statusIdeiaLabel(i.status))}</span>
+      </div>
+    </div>`).join('');
+}
+async function loadMinhasIdeias(){
+  const list=document.getElementById('minhas-ideias-list');
+  if(list){
+    list.className='my-ideas-empty';
+    list.innerHTML='Carregando suas ideias...';
+  }
+  try{
+    MINHAS_IDEIAS=(await apiGet('/api/ideias?minhas=1') || []).map(normalizarIdeia);
+    renderMinhasIdeias();
+  }catch(e){
+    const count=document.getElementById('minhas-ideias-count');
+    if(count) count.textContent='Indisponível';
+    if(list) list.innerHTML='Não foi possível carregar suas ideias agora.';
+  }
 }
 
 function renderIdeiaJourney(){
@@ -1281,18 +1379,21 @@ function atualizarResumoErroLinha(id, texto){
 }
 async function atualizarStatusAoVivoLista(list){
   const pendentes = (list||[])
-    .filter(r=>(r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall'))
+    .filter(r=>(r.status==='pending'||r.status==='processing'||r.status==='error') && (r.plataforma==='skribby'||r.plataforma==='recall'))
     .slice(0,12);
   await Promise.all(pendentes.map(async r=>{
     const el=document.getElementById('live-row-'+r.id);
-    if(!el) return;
     try{
       const d=await apiGet('/api/gravacoes/'+r.id+'/status');
       const s=(d.status||d.bot_status||'').trim();
-      el.className='row-live-status '+classeStatusAoVivo(s);
-      el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}<small>${esc(botStatusHint(s))}</small>`;
-      if(classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(d.erro_msg || d.stop_reason || s, s));
+      const issue = botIssueText(d);
+      if(el){
+        el.className='row-live-status '+classeStatusAoVivo(s);
+        el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}<small>${esc(issue || botStatusHint(s))}</small>`;
+      }
+      if(classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(issue || d.erro_msg || d.stop_reason || s, s));
     }catch(e){
+      if(!el) return;
       el.className='row-live-status error';
       el.innerHTML='<b>Status ao vivo do Acordito:</b> não foi possível consultar agora.';
     }
@@ -1527,6 +1628,7 @@ async function salvarIdeiaHub(){
     });
     IDEIA_DRAFT={dor:'',solucao:'',setor:'',impacto:'',autor:IDEIA_DRAFT.autor};
     IDEIA_STEP=0; renderIdeiaJourney();
+    await loadMinhasIdeias();
     contarIdeiasNovas();
     toast('Ideia compartilhada. Obrigado por colocar uma possibilidade em movimento.');
   }catch(e){ toast('Erro: '+(e.message||'não foi possível salvar')); }
@@ -2060,9 +2162,9 @@ function rowReuniao(r){
   const subtitulo = r.resumo_executivo || r.setor || 'Sem resumo disponível';
   return `<div class="row ${pend?'with-live':''}" id="row-${esc(r.id)}" onclick="goto('detalhe',{id:'${r.id}'})">
     <div class="r-main"><div class="r-title">${esc(titulo)}</div>
+    ${erroResumo?`<div class="row-error-summary" id="row-error-${esc(r.id)}"><b>Motivo:</b>&nbsp;${esc(erroResumo)}</div>`:''}
     <div class="r-sub">${esc(subtitulo)}</div>
-    ${compartilhada?`<div class="r-sub" style="color:var(--ddm-orange);margin-top:3px">${esc(compartilhada)}</div>`:''}
-    ${erroResumo?`<div class="row-error-summary" id="row-error-${esc(r.id)}"><b>Motivo:</b>&nbsp;${esc(erroResumo)}</div>`:''}</div>
+    ${compartilhada?`<div class="r-sub" style="color:var(--ddm-orange);margin-top:3px">${esc(compartilhada)}</div>`:''}</div>
     <div class="r-meta">${fmtData(r.data)}<br>${dur}</div>
     <span class="badge ${r.status}">${statusLabel(r.status)}</span>
     ${pend?`<button class="btn-sm" onclick="event.stopPropagation();processar('${r.id}')">Puxar</button>`:''}
@@ -2176,12 +2278,13 @@ async function atualizarStatusBot(id){
     const s = d.bot_status || '';
     const alerta = s === 'joining';
     const terminal = ['finished','not_admitted','failed','auth_required','invalid_credentials','invalid_api_key'].includes(s);
+    const issue = botIssueText(d);
 
     box.innerHTML = `
       <div style="margin-top:12px;padding:12px 14px;border:1px solid ${alerta?'#ffb199':'var(--border)'};background:${alerta?'#fff3ec':'var(--bg-alt)'};border-radius:10px;font-size:13px;line-height:1.5">
         <b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}
-        ${d.stop_reason?`<br><span class="t-sub">Motivo: ${esc(d.stop_reason)}</span>`:''}
-        <br><span class="t-sub">${esc(botStatusHint(s))}</span>
+        ${issue?`<br><span class="t-sub">Motivo: ${esc(issue)}</span>`:(d.stop_reason?`<br><span class="t-sub">Motivo técnico: ${esc(d.stop_reason)}</span>`:'')}
+        <br><span class="t-sub">${esc(issue ? 'Detalhe técnico: '+(d.stop_reason || s) : botStatusHint(s))}</span>
       </div>`;
 
     if(alerta && !BOT_STATUS_TOASTED[id]){

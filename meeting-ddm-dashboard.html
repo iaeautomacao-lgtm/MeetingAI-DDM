@@ -183,8 +183,11 @@ body {
 .access-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ================== HUB DE IDEIAS ================== */
-.ideas-page { min-height: 0; overflow: auto; padding-bottom: 28px; }
-.ideas-shell { min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 12px; }
+/* A página cresce com o conteúdo e quem rola é .main-area. Com linha 1fr +
+   min-height:0 na cadeia, os cards encolhiam e o excedente era cortado pelo
+   overflow:hidden do .app-container, sem barra de rolagem em lugar nenhum. */
+.ideas-page { min-height: 0; padding-bottom: 18px; flex-shrink: 0; }
+.ideas-shell { display: grid; grid-template-rows: auto auto; gap: 12px; }
 .ideas-hero {
   background: linear-gradient(120deg,#fff 0%,#fff7f1 54%,#eefdfb 100%);
   border: 1px solid var(--border);
@@ -299,6 +302,12 @@ body {
 .my-idea-meta { display:flex; gap:6px; flex-wrap:wrap; color:var(--gray); font-size:11px; line-height:1.35; }
 .my-idea-status { color:#13766f; background:#eefbf9; border-radius:999px; padding:2px 7px; font-weight:800; }
 .my-ideas-empty { color:var(--gray); font-size:12px; line-height:1.45; padding:8px 0 2px; }
+.idea-card-actions, .my-idea-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.btn-danger-soft {
+  border:1px solid #f4c7c7; background:#fff1f1; color:#9f1d1d; border-radius:9px;
+  padding:7px 10px; font-size:11px; font-weight:800; cursor:pointer;
+}
+.btn-danger-soft:hover { background:#ffe7e7; border-color:#eda4a4; }
 .idea-section h4 { font-family:var(--font-display); color:#168d86; font-size:12px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
 .idea-section p { color:var(--ink-2); font-size:13px; line-height:1.58; }
 .idea-impact-chips { display:flex; flex-wrap:wrap; gap:8px; }
@@ -1004,6 +1013,7 @@ let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', aut
 function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
 async function apiGet(path){ const r=await fetch(BASE+path); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
 async function apiPost(path, body){ const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status)); return d; }
+async function apiDelete(path){ const r=await fetch(BASE+path,{method:'DELETE'}); if(r.status===401){ window.location='/login'; throw new Error('sessão expirada'); } const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status)); return d; }
 async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); window.location='/login'; }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
 function fmtData(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
@@ -1248,6 +1258,18 @@ function statusIdeiaLabel(status){
   const mapa={nova:'Nova', visualizada:'Vista pela diretoria', em_analise:'Em análise', aprovada:'Aprovada', arquivada:'Arquivada'};
   return mapa[status] || status || 'Enviada';
 }
+async function removerMinhaIdeia(id){
+  const msg=(ACESSO_TOTAL||IS_ADMIN)
+    ? 'Excluir esta ideia do Radar? Ela será arquivada para todos.'
+    : 'Remover esta ideia da sua lista? Ela continuará disponível para a diretoria no Radar de Ideias.';
+  if(!confirm(msg)) return;
+  try{
+    await apiDelete('/api/ideias/'+id);
+    MINHAS_IDEIAS=MINHAS_IDEIAS.filter(i=>i.id!==id);
+    renderMinhasIdeias();
+    toast((ACESSO_TOTAL||IS_ADMIN) ? 'Ideia arquivada.' : 'Ideia removida da sua lista.');
+  }catch(e){ toast('Erro: '+(e.message||'não foi possível remover')); }
+}
 function renderMinhasIdeias(){
   const list=document.getElementById('minhas-ideias-list');
   const count=document.getElementById('minhas-ideias-count');
@@ -1269,6 +1291,9 @@ function renderMinhasIdeias(){
         <span>•</span>
         <span>${fmtData(i.criado_em)}</span>
         <span class="my-idea-status">${esc(statusIdeiaLabel(i.status))}</span>
+      </div>
+      <div class="my-idea-actions">
+        <button class="btn-danger-soft" onclick="event.stopPropagation();removerMinhaIdeia('${i.id}')">${ACESSO_TOTAL||IS_ADMIN?'Excluir ideia':'Remover da minha lista'}</button>
       </div>
     </div>`).join('');
 }
@@ -1868,6 +1893,18 @@ function selectIdeia(id){
   renderIdeiasList(ideiasVisiveis());
   drawIdeiasMapFrame();
 }
+async function excluirIdeiaRadar(id){
+  if(!(ACESSO_TOTAL||IS_ADMIN)){ toast('Apenas a diretoria pode excluir ideias do Radar.'); return; }
+  if(!confirm('Excluir esta ideia do Radar? Ela será arquivada e deixará de aparecer para a gestão.')) return;
+  try{
+    await apiDelete('/api/ideias/'+id);
+    IDEIAS=IDEIAS.filter(i=>i.id!==id);
+    if(IDEIA_SELECIONADA===id) IDEIA_SELECIONADA='';
+    renderIdeiasRadar();
+    contarIdeiasNovas();
+    toast('Ideia excluída do Radar.');
+  }catch(e){ toast('Erro: '+(e.message||'não foi possível excluir')); }
+}
 function focusIdeiasSector(setor){
   if(setor==='Todos'){
     IDEIA_ACTIVE_SETOR=''; IDEIAS_SETOR_FILTRO='Todos'; IDEIA_SELECIONADA=''; IDEIA_ZOOM=1; IDEIA_PAN={x:0,y:0};
@@ -1909,8 +1946,14 @@ function renderIdeiasList(vis){
         <div class="idea-card-section"><b>Desenvolvimento da IA</b><p>${esc(idea.ai_proposta || idea.ai_problema || '')}</p></div>
         <div class="idea-card-section"><b>Impactos</b><p>${asList(idea.impactos_possiveis).map(g=>esc(g)).join(' · ') || esc(idea.impacto)}</p></div>
         <div class="idea-card-section"><b>Próximo passo sugerido</b><p>${esc(idea.ai_primeiro_passo || 'Definir um piloto simples com responsável, prazo e critério de sucesso.')}</p></div>
-        <button class="btn-sm" style="margin-top:12px;background:var(--ink)" onclick="event.stopPropagation();desenvolverIdeiaSalva('${idea.id}')">Desenvolver mais</button>
-      ` : `<p class="t-sub" style="color:var(--ink-2);line-height:1.5;margin-top:7px">${esc(idea.ai_potencial || idea.solucao || '')}</p>`}
+        <div class="idea-card-actions">
+          <button class="btn-sm" style="background:var(--ink)" onclick="event.stopPropagation();desenvolverIdeiaSalva('${idea.id}')">Desenvolver mais</button>
+          ${ACESSO_TOTAL||IS_ADMIN ? `<button class="btn-danger-soft" onclick="event.stopPropagation();excluirIdeiaRadar('${idea.id}')">Excluir ideia</button>` : ''}
+        </div>
+      ` : `
+        <p class="t-sub" style="color:var(--ink-2);line-height:1.5;margin-top:7px">${esc(idea.ai_potencial || idea.solucao || '')}</p>
+        ${ACESSO_TOTAL||IS_ADMIN ? `<div class="idea-card-actions"><button class="btn-danger-soft" onclick="event.stopPropagation();excluirIdeiaRadar('${idea.id}')">Excluir ideia</button></div>` : ''}
+      `}
     </article>`}).join('');
 }
 async function desenvolverIdeiaSalva(id){

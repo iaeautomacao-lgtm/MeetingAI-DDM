@@ -678,6 +678,16 @@ def ideias_listar():
                 partes_autor.append(f"LOWER(TRIM(autor_nome)) IN ({placeholders})")
                 params.extend(autores_usuario)
             sql += " AND (" + " OR ".join(partes_autor) + ")"
+            if email_usuario:
+                sql += """
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM ideias_ocultas_usuario ocultas
+                        WHERE ocultas.ideia_id = ideias.id
+                          AND LOWER(TRIM(ocultas.usuario_email)) = %s
+                    )
+                """
+                params.append(_normalizar_texto_acesso(email_usuario))
         elif not tem_acesso_total() and not is_admin():
             setores = sessao_setores()
             if not setores:
@@ -694,6 +704,76 @@ def ideias_listar():
         current_app.logger.exception("Erro ao listar ideias no MySQL")
         return jsonify({
             "erro": "Não foi possível carregar as ideias.",
+            "detalhe": str(exc),
+        }), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.delete("/ideias/<ideia_id>")
+@require_auth
+def ideias_excluir(ideia_id: str):
+    """Diretoria arquiva a ideia; usuário apenas oculta da própria lista."""
+    email_usuario = sessao_email()
+    autores_usuario = _solicitantes_sessao()
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, autor_email, autor_nome, status
+            FROM ideias
+            WHERE id = %s AND status <> %s
+            """,
+            (ideia_id, "arquivada"),
+        )
+        ideia = cursor.fetchone()
+        if not ideia:
+            return jsonify({"erro": "ideia_nao_encontrada"}), 404
+
+        if tem_acesso_total() or is_admin():
+            cursor.execute(
+                """
+                UPDATE ideias
+                SET status = %s
+                WHERE id = %s
+                """,
+                ("arquivada", ideia_id),
+            )
+            connection.commit()
+            return jsonify({"ok": True, "modo": "arquivada"}), 200
+
+        autor_email = _normalizar_texto_acesso(ideia.get("autor_email") or "")
+        autor_nome = _normalizar_texto_acesso(ideia.get("autor_nome") or "")
+        pode_ocultar = (
+            (email_usuario and autor_email == _normalizar_texto_acesso(email_usuario))
+            or (autor_nome and autor_nome in autores_usuario)
+        )
+        if not pode_ocultar:
+            return jsonify({"erro": "acesso_restrito"}), 403
+
+        cursor.execute(
+            """
+            INSERT INTO ideias_ocultas_usuario (id, ideia_id, usuario_email)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE criado_em = criado_em
+            """,
+            (str(uuid.uuid4()), ideia_id, email_usuario or autores_usuario[0]),
+        )
+        connection.commit()
+        return jsonify({"ok": True, "modo": "ocultada"}), 200
+    except Exception as exc:
+        if connection is not None and connection.is_connected():
+            connection.rollback()
+        current_app.logger.exception("Erro ao excluir/ocultar ideia")
+        return jsonify({
+            "erro": "Não foi possível remover a ideia.",
             "detalhe": str(exc),
         }), 500
     finally:

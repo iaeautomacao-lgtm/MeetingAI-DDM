@@ -212,6 +212,28 @@ body {
 .idea-start, .idea-step { flex: 1; display: grid; align-content: center; }
 .idea-start h3, .idea-step h3 { font-family: var(--font-display); font-size: clamp(22px,2.6vw,34px); line-height: 1.13; }
 .idea-start p, .idea-step p { color: var(--gray); font-size: 13px; line-height: 1.65; margin-top: 10px; max-width: 560px; }
+.idea-inspiration-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; }
+.idea-inspiration-card {
+  border:1px solid var(--border); background:linear-gradient(145deg,#fff,#fff8f4); border-radius:var(--r-md);
+  padding:15px; text-align:left; cursor:pointer; transition:transform .16s, border-color .16s, box-shadow .16s;
+}
+.idea-inspiration-card:hover { transform:translateY(-2px); border-color:#ffd1ba; box-shadow:0 12px 26px rgba(255,87,6,.10); }
+.idea-inspiration-card b { display:block; font-family:var(--font-display); font-size:14px; margin-bottom:4px; }
+.idea-inspiration-card span { color:var(--gray); font-size:12px; line-height:1.35; }
+.idea-free-start {
+  width:100%; margin-top:14px; border:1px dashed #cfd8d7; background:#f9fbfb; border-radius:var(--r-md);
+  padding:15px; text-align:left; font-weight:700; color:var(--ink); cursor:pointer;
+}
+.idea-stepper { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
+.idea-stepper span { position:relative; color:var(--gray); font-size:11px; font-weight:800; padding-top:17px; }
+.idea-stepper span:before { content:""; position:absolute; left:0; top:0; width:11px; height:11px; border-radius:50%; background:#e7e9ed; box-shadow:22px 5px 0 -5px #e7e9ed; }
+.idea-stepper span:after { content:""; position:absolute; left:13px; right:0; top:5px; height:2px; background:#e7e9ed; }
+.idea-stepper span:last-child:after { display:none; }
+.idea-stepper span.active { color:var(--ink); }
+.idea-stepper span.active:before, .idea-stepper span.done:before, .idea-stepper span.done:after { background:linear-gradient(90deg,var(--ddm-orange),var(--teal)); }
+.idea-choice-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.idea-choice-row button { border:1px solid var(--border); background:#fff; border-radius:999px; padding:9px 12px; font-weight:800; cursor:pointer; }
+.idea-choice-row button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
 .idea-progress { display: flex; align-items: center; gap: 10px; color: var(--gray); font-size: 12px; font-weight: 700; margin-bottom: 18px; }
 .idea-progress span { flex:1; height: 7px; background: var(--bg-alt); border-radius: 999px; overflow:hidden; }
 .idea-progress i { display:block; height:100%; border-radius:inherit; background: linear-gradient(90deg,var(--ddm-orange),var(--teal)); }
@@ -227,6 +249,16 @@ body {
 .idea-preview-empty { min-height:100%; display:grid; place-items:center; text-align:center; color:var(--gray); border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:26px; }
 .idea-preview-empty b { display:block; color:var(--ink); font-family:var(--font-display); margin:12px 0 6px; }
 .idea-preview-orb { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; margin:auto; background:var(--ink); color:var(--teal); font-weight:800; font-size:22px; }
+.idea-live-map { min-height:100%; border:1px dashed #dfe9e8; border-radius:var(--r-md); padding:24px; display:grid; place-items:center; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.12),transparent 32%); }
+.idea-live-inner { position:relative; width:min(420px,100%); aspect-ratio:1.25; }
+.idea-live-node { position:absolute; transform:translate(-50%,-50%); border-radius:999px; padding:9px 12px; background:#fff; border:1px solid var(--border); box-shadow:0 10px 24px rgba(31,31,31,.07); color:var(--gray); font-size:12px; font-weight:800; }
+.idea-live-node.core { left:50%; top:50%; width:76px; height:76px; display:grid; place-items:center; padding:0; background:var(--ink); color:var(--teal); font-size:22px; }
+.idea-live-node.active { color:var(--ink); border-color:#bfeceb; box-shadow:0 0 0 6px rgba(94,196,205,.12),0 12px 28px rgba(94,196,205,.18); }
+.idea-live-line { position:absolute; height:1px; background:#d8e5e4; transform-origin:left center; opacity:.9; }
+.idea-live-copy { text-align:center; max-width:420px; margin:18px auto 0; color:var(--gray); font-size:13px; line-height:1.55; }
+.idea-developed-card { border:1px solid #dff3f1; background:linear-gradient(145deg,#fff,#f7fffe); border-radius:var(--r-md); padding:16px; margin-top:12px; }
+.idea-developed-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
+.idea-developed-metrics span { background:#f0fbfa; border-radius:14px; padding:11px; color:#12746d; font-size:12px; font-weight:800; }
 .idea-developed h3 { font-family:var(--font-display); font-size:24px; line-height:1.18; margin:10px 0 14px; }
 .idea-section { border-top:1px solid var(--border); padding-top:13px; margin-top:13px; }
 .idea-section h4 { font-family:var(--font-display); color:#168d86; font-size:12px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
@@ -411,6 +443,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .modal h3 { font-family: var(--font-display); font-size: 20px; margin-bottom: 4px; }
 .modal-sub { font-size: 12px; color: var(--gray); margin-bottom: 22px; }
 .modal-alert { margin: -8px 0 18px; padding: 11px 13px; border-radius: var(--r-md); background: var(--ddm-orange-50); border: 1px solid #FFE0CE; color: var(--ink-2); font-size: 12px; line-height: 1.45; }
+.modal-alert ul { margin:7px 0 0 18px; }
+.modal-alert li { margin:3px 0; }
+#modal .modal-alert:not(.modal-alert-full) { display:none; }
 .modal label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 6px; color: var(--ink-2); }
 .modal input, .modal select, .modal textarea { width: 100%; background: var(--bg-alt); border: 1px solid transparent; border-radius: var(--r-md); padding: 12px 14px; font-family: var(--font-body); font-size: 14px; outline: none; }
 .modal textarea { min-height: 74px; resize: vertical; line-height: 1.45; }
@@ -789,6 +824,15 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <p class="modal-sub">O assistente Acordito entra na reunião, grava e gera a ata.</p>
     <div class="modal-alert">A reunião precisa estar em andamento ou prestes a começar — se houver sala de espera, admita o Acordito.</div>
     <label>Link da reunião *</label>
+    <div class="modal-alert modal-alert-full">
+      <b>AtenÃ§Ã£o ao acesso do Acordito:</b>
+      <ul>
+        <li>Se for agora, a reuniÃ£o precisa estar em andamento ou prestes a comeÃ§ar.</li>
+        <li>Se for agendada, confira data e hora para o Acordito tentar entrar no momento certo.</li>
+        <li>Se houver sala de espera, alguÃ©m precisa admitir o Acordito.</li>
+        <li>Login obrigatÃ³rio, convidados externos bloqueados ou restriÃ§Ã£o contra bots podem impedir a entrada.</li>
+      </ul>
+    </div>
     <input type="url" id="m-url" placeholder="https://teams.microsoft.com/...">
     <label>Título da reunião</label>
     <input type="text" id="m-titulo" placeholder="Ex.: Alinhamento Comercial">
@@ -1205,6 +1249,150 @@ function renderIdeiaPreview(ai){
     <div class="idea-section"><h4>O potencial que identificamos</h4><p>${esc(ai.potencial || '')} ${esc(ai.proposta || IDEIA_DRAFT.solucao)}</p></div>
     <div class="idea-section"><h4>Impactos possíveis</h4><div class="idea-impact-chips">${asList(ai.impactos_possiveis).map(g=>`<span>${esc(g)}</span>`).join('')}</div></div>
     <div class="idea-section"><h4>Uma possibilidade de primeiro passo</h4><p>${esc(ai.primeiro_passo || '')}</p></div>`;
+}
+
+function ideiaStartOptions(){
+  return [
+    {id:'tempo', icon:'⏱', title:'Toma tempo', sub:'Algo repetitivo', placeholder:'Que atividade toma mais tempo do que deveria?'},
+    {id:'retrabalho', icon:'↻', title:'Gera retrabalho', sub:'Processo confuso', placeholder:'Onde acontece retrabalho ou vai e volta demais?'},
+    {id:'ideia', icon:'💡', title:'Tive uma ideia', sub:'Um jeito melhor', placeholder:'Qual ideia apareceu e por que ela pode ajudar?'},
+    {id:'oportunidade', icon:'↗', title:'Oportunidade', sub:'Podemos ganhar', placeholder:'Que oportunidade você percebeu para a empresa?'}
+  ];
+}
+function ideiaStartOption(id){
+  return ideiaStartOptions().find(o=>o.id===id) || {id:'livre', icon:'✦', title:'Ideia livre', sub:'Conte do seu jeito', placeholder:'Conte sua ideia do seu jeito...'};
+}
+function escolherInicioIdeia(id){
+  const opt=ideiaStartOption(id);
+  IDEIA_DRAFT.tipo=id;
+  if(!IDEIA_DRAFT.dor) IDEIA_DRAFT.dor = '';
+  IDEIA_STEP=1;
+  renderIdeiaJourney();
+}
+function ideiaStepper(){
+  const labels=['Percebi','Imaginei','Impacto','Pronto'];
+  return `<div class="idea-stepper">${labels.map((l,i)=>`<span class="${IDEIA_STEP===i+1?'active':IDEIA_STEP>i+1?'done':''}">${l}</span>`).join('')}</div>`;
+}
+function atualizarDraftCampo(campo, valor){
+  IDEIA_DRAFT[campo]=valor;
+  renderIdeiaLivePreview();
+}
+function renderIdeiaLivePreview(){
+  const el=document.getElementById('idea-preview');
+  if(!el || IDEIA_STEP===4) return;
+  const hasProblema=!!IDEIA_DRAFT.dor;
+  const hasSolucao=!!IDEIA_DRAFT.solucao;
+  const hasImpacto=!!IDEIA_DRAFT.impacto;
+  const opt=ideiaStartOption(IDEIA_DRAFT.tipo);
+  el.className='idea-live-map';
+  el.innerHTML=`
+    <div>
+      <div class="idea-live-inner">
+        <div class="idea-live-line" style="left:25%;top:32%;width:28%;transform:rotate(24deg)"></div>
+        <div class="idea-live-line" style="left:51%;top:35%;width:26%;transform:rotate(-20deg)"></div>
+        <div class="idea-live-line" style="left:31%;top:65%;width:27%;transform:rotate(-24deg)"></div>
+        <div class="idea-live-line" style="left:52%;top:61%;width:28%;transform:rotate(22deg)"></div>
+        <div class="idea-live-node ${hasProblema?'active':''}" style="left:23%;top:28%">Problema ${hasProblema?'✓':''}</div>
+        <div class="idea-live-node ${IDEIA_DRAFT.tipo?'active':''}" style="left:76%;top:27%">${esc(opt.title)}</div>
+        <div class="idea-live-node core">✦</div>
+        <div class="idea-live-node ${hasSolucao?'active':''}" style="left:25%;top:76%">Solução ${hasSolucao?'✓':''}</div>
+        <div class="idea-live-node ${hasImpacto?'active':''}" style="left:78%;top:75%">Impacto ${hasImpacto?'✓':''}</div>
+      </div>
+      <div class="idea-live-copy"><b>Sua ideia começa aqui</b><br>Conforme você escreve, a IA conecta problema, oportunidade, solução e impacto.</div>
+    </div>`;
+}
+function renderIdeiaJourney(){
+  const el=document.getElementById('idea-journey');
+  if(!el) return;
+  if(IDEIA_STEP===0){
+    el.innerHTML=`
+      <div class="idea-start">
+        <div class="ideas-eyebrow">Comece do seu jeito</div>
+        <h3>O que você percebeu que poderia ser melhor?</h3>
+        <p>Não precisa ter uma solução pronta. Escolha um ponto de partida ou conte do seu jeito.</p>
+        <div class="idea-inspiration-grid">
+          ${ideiaStartOptions().map(o=>`
+            <button class="idea-inspiration-card" onclick="escolherInicioIdeia('${o.id}')">
+              <b>${o.icon} ${o.title}</b><span>${o.sub}</span>
+            </button>`).join('')}
+        </div>
+        <button class="idea-free-start" onclick="escolherInicioIdeia('livre')">✨ Conte sua ideia do seu jeito...</button>
+      </div>`;
+    renderIdeiaLivePreview();
+    return;
+  }
+  if(IDEIA_STEP===1){
+    const opt=ideiaStartOption(IDEIA_DRAFT.tipo);
+    el.innerHTML=`${ideiaStepper()}<div class="idea-step">
+      <div class="ideas-eyebrow">Você percebeu: ${esc(opt.icon)} ${esc(opt.title)}</div>
+      <h3>Onde isso acontece?</h3>
+      <p>${esc(opt.sub)}. Conte um pouco mais para a IA começar a conectar os pontos.</p>
+      <textarea class="idea-input" id="idea-dor" oninput="atualizarDraftCampo('dor',this.value)" placeholder="${esc(opt.placeholder)}">${esc(IDEIA_DRAFT.dor)}</textarea>
+      <div class="idea-step-actions"><button class="btn-ghost" onclick="IDEIA_STEP=0;renderIdeiaJourney()">Voltar</button><button class="btn-primary" onclick="saveIdeiaStep1()">Continuar →</button></div>
+    </div>`;
+    renderIdeiaLivePreview();
+    setTimeout(()=>document.getElementById('idea-dor')?.focus(),80);
+    return;
+  }
+  if(IDEIA_STEP===2){
+    el.innerHTML=`${ideiaStepper()}<div class="idea-step">
+      <h3>E como você imagina que isso poderia ser melhor?</h3>
+      <p>Não precisa estar perfeito. Descreva uma possibilidade, um piloto ou um caminho inicial.</p>
+      <textarea class="idea-input" id="idea-solucao" oninput="atualizarDraftCampo('solucao',this.value)" placeholder="Uma possibilidade seria...">${esc(IDEIA_DRAFT.solucao)}</textarea>
+      <div class="idea-step-actions"><button class="btn-ghost" onclick="IDEIA_STEP=1;renderIdeiaJourney()">Voltar</button><button class="btn-primary" onclick="saveIdeiaStep2()">Continuar →</button></div>
+    </div>`;
+    renderIdeiaLivePreview();
+    setTimeout(()=>document.getElementById('idea-solucao')?.focus(),80);
+    return;
+  }
+  if(IDEIA_STEP===3){
+    const setores=ideiaSetoresPermitidos();
+    el.innerHTML=`${ideiaStepper()}<div class="idea-step">
+      <h3>Onde essa ideia pode gerar impacto?</h3>
+      <p>Escolha o setor mais próximo e o principal ganho esperado.</p>
+      <div class="idea-choice-row">${setores.map(s=>`<button class="${IDEIA_DRAFT.setor===s?'active':''}" onclick="IDEIA_DRAFT.setor='${esc(s)}';renderIdeiaJourney()">${esc(s)}</button>`).join('')}</div>
+      <select class="idea-select" id="idea-impacto" onchange="atualizarDraftCampo('impacto',this.value)">
+        <option value="">Impacto esperado</option>${IDEIAS_IMPACTOS.map(i=>`<option ${IDEIA_DRAFT.impacto===i?'selected':''}>${esc(i)}</option>`).join('')}
+      </select>
+      <input class="idea-select" id="idea-autor" maxlength="80" placeholder="Seu nome" value="${esc(IDEIA_DRAFT.autor || '')}">
+      <div class="idea-step-actions"><button class="btn-ghost" onclick="IDEIA_STEP=2;renderIdeiaJourney()">Voltar</button><button class="btn-primary" onclick="saveIdeiaStep3()">Montar com IA</button></div>
+    </div>`;
+    renderIdeiaLivePreview();
+    return;
+  }
+  el.innerHTML=`${ideiaStepper()}<div class="idea-step">
+    <div class="ideas-eyebrow" style="color:#168d86">IA organizou sua contribuição</div>
+    <h3>Pronto para compartilhar?</h3>
+    <p>A ideia continua sendo sua. A IA apenas ajudou a organizar título, proposta, benefícios e um primeiro passo possível.</p>
+    <div class="idea-step-actions">
+      <button class="btn-ghost" onclick="IDEIA_STEP=3;renderIdeiaJourney()">Ajustar</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn-ghost" onclick="desenvolverIdeiaDraft()">Desenvolver mais</button>
+        <button class="btn-primary" onclick="salvarIdeiaHub()">Compartilhar →</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderIdeiaPreview(ai){
+  const el=document.getElementById('idea-preview');
+  if(!el) return;
+  el.className='idea-developed';
+  const impactos=asList(ai.impactos_possiveis);
+  el.innerHTML=`
+    <div class="ideas-eyebrow" style="color:#168d86">✦ Ideia desenvolvida</div>
+    <h3>${esc(ai.titulo || ideiaTituloLocal())}</h3>
+    <div class="idea-developed-card"><b>💡 O que você percebeu</b><p class="t-sub" style="margin-top:7px;line-height:1.55">${esc(ai.problema || IDEIA_DRAFT.dor)}</p></div>
+    <div class="idea-live-copy">↓ IA conectou os pontos</div>
+    <div class="idea-developed-metrics">${(impactos.length?impactos:['Tempo menor','Risco reduzido','Processo mais ágil']).slice(0,3).map(g=>`<span>${esc(g)}</span>`).join('')}</div>
+    <div class="idea-section"><h4>Uma possibilidade</h4><p>${esc(ai.potencial || ai.proposta || IDEIA_DRAFT.solucao)}</p></div>
+    <div class="idea-section"><h4>Primeiro passo sugerido</h4><p>→ ${esc(ai.primeiro_passo || 'Testar com uma equipe durante 30 dias.')}</p></div>`;
+}
+async function saveIdeiaStep3(){
+  IDEIA_DRAFT.impacto=(document.getElementById('idea-impacto')?.value||IDEIA_DRAFT.impacto||'').trim();
+  IDEIA_DRAFT.autor=(document.getElementById('idea-autor')?.value||'').trim() || (document.getElementById('profile-name')?.textContent || 'Colaborador DDM');
+  if(!IDEIA_DRAFT.setor || !IDEIA_DRAFT.impacto){ toast('Escolha setor e impacto.'); return; }
+  await desenvolverIdeiaDraft(true);
+  IDEIA_STEP=4; renderIdeiaJourney();
 }
 async function salvarIdeiaHub(){
   if(!IDEIA_DRAFT.dor || !IDEIA_DRAFT.solucao || !IDEIA_DRAFT.setor || !IDEIA_DRAFT.impacto){ toast('Finalize as etapas antes de compartilhar.'); return; }
@@ -2350,6 +2538,19 @@ async function salvarEdicaoReuniao(){
 
 async function novaReuniao(){
   const m=document.getElementById('modal'); m.style.display='flex';
+  const aviso=m.querySelector('.modal-alert-full');
+  if(aviso) {
+    const primeiroCampo=m.querySelector('label');
+    if(primeiroCampo && aviso.nextElementSibling!==primeiroCampo) m.querySelector('.modal').insertBefore(aviso, primeiroCampo);
+    aviso.innerHTML = `
+    <b>Aten&ccedil;&atilde;o ao acesso do Acordito:</b>
+    <ul>
+      <li>Se for agora, a reuni&atilde;o precisa estar em andamento ou prestes a come&ccedil;ar.</li>
+      <li>Se for agendada, confira data e hora para o Acordito tentar entrar no momento certo.</li>
+      <li>Se houver sala de espera, algu&eacute;m precisa admitir o Acordito.</li>
+      <li>Login obrigat&oacute;rio, convidados externos bloqueados ou restri&ccedil;&atilde;o contra bots podem impedir a entrada.</li>
+    </ul>`;
+  }
   const sel=document.getElementById('m-setor');
   if(sel.options.length<=1){
     try{ const setores=await apiGet('/api/setores'); (setores||[]).forEach(s=>{const o=document.createElement('option');o.value=s.nome;o.textContent=s.nome;sel.appendChild(o);}); }catch(e){}

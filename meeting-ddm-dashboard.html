@@ -219,10 +219,31 @@ body {
   display:grid; place-items:center; background:linear-gradient(145deg,#e9fffd,#bdf3ef); color:#13746d;
   box-shadow:0 0 0 8px rgba(94,196,205,.14),0 14px 34px rgba(94,196,205,.24);
 }
-.access-panel { max-height: none; }
-.access-approved-panel { min-height: 420px; max-height: calc(100vh - 310px); }
-.access-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
-.access-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.access-page.active { display:flex; flex-direction:column; gap:14px; height:100%; min-height:0; overflow:hidden; }
+.access-summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; flex-shrink:0; }
+.access-summary-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r-md); padding:14px 16px; box-shadow:0 4px 14px rgba(31,31,31,.03); }
+.access-summary-card b { display:block; font-family:var(--font-display); font-size:24px; line-height:1; margin-bottom:5px; }
+.access-summary-card span { color:var(--gray); font-size:11px; font-weight:700; }
+.access-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-shrink:0; }
+.access-search { flex:1; min-width:220px; background:var(--bg-alt); border:1px solid transparent; border-radius:var(--r-md); padding:10px 13px; font:12px var(--font-body); outline:none; }
+.access-search:focus { background:#fff; border-color:var(--ddm-orange); }
+.access-filter { border:0; border-radius:999px; background:var(--bg-alt); color:var(--gray); padding:8px 12px; font-size:11px; font-weight:800; cursor:pointer; }
+.access-filter.active { background:var(--ink); color:#fff; }
+.access-board { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; min-height:0; flex:1; display:flex; flex-direction:column; }
+.access-board-head { display:grid; grid-template-columns:minmax(220px,1.2fr) minmax(180px,.8fr) minmax(130px,.55fr) minmax(130px,.6fr) minmax(300px,1fr); gap:12px; padding:12px 14px; background:#fbfaf9; border-bottom:1px solid var(--border); color:var(--gray); font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+.access-table { overflow:auto; min-height:0; }
+.access-user-row { display:grid; grid-template-columns:minmax(220px,1.2fr) minmax(180px,.8fr) minmax(130px,.55fr) minmax(130px,.6fr) minmax(300px,1fr); gap:12px; align-items:center; padding:11px 14px; border-bottom:1px dashed var(--border); }
+.access-user-row:last-child { border-bottom:0; }
+.access-user-main b { display:block; font-size:12px; line-height:1.25; }
+.access-user-main span { color:var(--gray); font-size:11px; }
+.access-tags { display:flex; gap:5px; flex-wrap:wrap; }
+.access-tag { background:var(--bg-alt); color:var(--gray); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; }
+.access-tag.blue { background:#eef2ff; color:#3730a3; }
+.access-tag.orange { background:#fff3e0; color:#b45309; }
+.access-tag.info { background:#e8f3ff; color:#1d4ed8; }
+.access-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.access-actions .btn-sm { padding:7px 10px; font-size:10px; }
+.access-empty { padding:28px; text-align:center; color:var(--gray); font-size:12px; }
 
 /* ================== HUB DE IDEIAS ================== */
 /* A página cresce com o conteúdo e quem rola é .main-area. Com linha 1fr +
@@ -948,14 +969,27 @@ body.detalhe-aberto .right-sidebar { display: none; }
     </section>
 
     <!-- ===== PAGE: ACESSOS (admin) ===== -->
-    <section class="page" id="page-acessos">
-      <div class="panel access-panel" style="margin-bottom:16px">
-        <h3>Pedidos de acesso pendentes</h3>
-        <div id="acessos-pendentes"><div class="t-sub">Carregando…</div></div>
+    <section class="page access-page" id="page-acessos">
+      <div class="access-summary-grid" id="access-summary">
+        <div class="access-summary-card"><b>—</b><span>Usuários ativos</span></div>
+        <div class="access-summary-card"><b>—</b><span>Gestores</span></div>
+        <div class="access-summary-card"><b>—</b><span>Diretores</span></div>
+        <div class="access-summary-card"><b>—</b><span>Pendentes</span></div>
       </div>
-      <div class="panel access-panel access-approved-panel">
-        <h3>Acessos aprovados</h3>
-        <div id="acessos-aprovados"><div class="t-sub">Carregando…</div></div>
+      <div class="access-toolbar">
+        <input class="access-search" id="access-search" placeholder="Buscar usuário, e-mail ou setor..." oninput="ACESSOS_BUSCA=this.value;renderAcessos()">
+        <button class="access-filter active" data-access-filter="todos" onclick="setAcessosFiltro('todos')">Todos</button>
+        <button class="access-filter" data-access-filter="pendentes" onclick="setAcessosFiltro('pendentes')">Pendentes</button>
+        <button class="access-filter" data-access-filter="usuarios" onclick="setAcessosFiltro('usuarios')">Usuários</button>
+        <button class="access-filter" data-access-filter="gestores" onclick="setAcessosFiltro('gestores')">Gestores</button>
+        <button class="access-filter" data-access-filter="diretores" onclick="setAcessosFiltro('diretores')">Diretores</button>
+        <button class="access-filter" data-access-filter="sem_setor" onclick="setAcessosFiltro('sem_setor')">Sem setor</button>
+      </div>
+      <div class="access-board">
+        <div class="access-board-head">
+          <span>Usuário</span><span>Setores</span><span>Perfil atual</span><span>Solicitou</span><span>Ações</span>
+        </div>
+        <div class="access-table" id="acessos-list"><div class="access-empty">Carregando usuários...</div></div>
       </div>
     </section>
 
@@ -1205,6 +1239,7 @@ function goBack(){ goto(prevPage); }
 
 /* ---------- ACESSOS (admin) ---------- */
 let ACESSO_TOTAL=true, MEU_SETOR='', MEUS_SETORES=[], MEU_EMAIL='', IS_ADMIN=false, GESTOR_SETOR=false;
+let ACESSOS_LISTA=[], ACESSOS_FILTRO='todos', ACESSOS_BUSCA='';
 async function checkAdmin(){
   try{
     const s = await apiGet('/api/auth/status');
@@ -2079,46 +2114,102 @@ async function atualizarBadgeAcessos(){
   }catch(e){}
 }
 async function loadAcessos(){
-  const pDiv=document.getElementById('acessos-pendentes');
-  const aDiv=document.getElementById('acessos-aprovados');
-  pDiv.innerHTML='<div class="t-sub">Carregando…</div>'; aDiv.innerHTML='';
+  const list=document.getElementById('acessos-list');
+  if(list) list.innerHTML='<div class="access-empty">Carregando usuários...</div>';
   try{
-    const lista = await apiGet('/api/acessos');
-    const pend = (lista||[]).filter(a=>!a.aprovado);
-    const apr  = (lista||[]).filter(a=>a.aprovado);
-    const setoresAcesso = a => {
-      const setores = asList(a.setores).length ? asList(a.setores) : (a.setor ? [a.setor] : []);
-      return setores.slice(0,2);
-    };
-    const setorTag = a => {
-      const setores = setoresAcesso(a);
-      return setores.length
-        ? setores.map(s=>`<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">${esc(s)}</span>`).join(' ')
-        : `<span class="t-sub" style="background:var(--bg-alt);padding:2px 8px;border-radius:10px">sem setor</span>`;
-    };
-    const perfilLabel = a => ({usuario:'usuário normal',gestor:'gestor do setor',diretor:'diretor'}[a.perfil_solicitado] || 'usuário normal');
-    const pedidoTag = a => `<span class="t-sub" style="background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:10px">solicitou: ${esc(perfilLabel(a))}</span>`;
-    pDiv.innerHTML = pend.length ? pend.map(a=>`
-      <div class="li access-row">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${pedidoTag(a)}</span>
-        <span class="access-actions">
-          <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
-          <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
-        </span>
-      </div>`).join('') : '<div class="t-sub">Nenhum pedido pendente.</div>';
-    const adminTag = a => a.is_admin ? '<span class="t-sub" style="background:#fff3e0;color:#b45309;padding:2px 8px;border-radius:10px">diretor</span>' : '';
-    const gestorTag = a => a.is_gestor ? '<span class="t-sub" style="background:#e8f3ff;color:#1d4ed8;padding:2px 8px;border-radius:10px">gestor</span>' : '';
-    aDiv.innerHTML = apr.length ? apr.map(a=>`
-      <div class="li access-row">
-        <span><b>${esc(a.nome||'—')}</b> · ${esc(a.email)} &nbsp;${setorTag(a)} ${gestorTag(a)} ${adminTag(a)} ${pedidoTag(a)}</span>
-        <span class="access-actions">
-          <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${esc(setoresAcesso(a).join(', '))}')">Trocar setores</button>
+    ACESSOS_LISTA = await apiGet('/api/acessos') || [];
+    renderAcessos();
+  }catch(e){
+    if(list) list.innerHTML='<div class="access-empty">Erro ao carregar usuários.</div>';
+  }
+}
+function setoresAcesso(a){
+  return asList(a.setores).length ? asList(a.setores) : (a.setor ? [a.setor] : []);
+}
+function perfilSolicitadoLabel(a){
+  return ({usuario:'usuário normal',gestor:'gestor do setor',diretor:'diretor'}[a.perfil_solicitado] || 'usuário normal');
+}
+function perfilAtualLabel(a){
+  if(!a.aprovado) return 'Pendente';
+  if(a.is_admin) return 'Diretor';
+  if(a.is_gestor) return 'Gestor';
+  return 'Usuário';
+}
+function setAcessosFiltro(filtro){
+  ACESSOS_FILTRO=filtro;
+  document.querySelectorAll('.access-filter').forEach(b=>b.classList.toggle('active', b.dataset.accessFilter===filtro));
+  renderAcessos();
+}
+function acessosFiltrados(){
+  const busca=_normalizarBusca(ACESSOS_BUSCA);
+  return ACESSOS_LISTA.filter(a=>{
+    const setores=setoresAcesso(a);
+    const passaFiltro =
+      ACESSOS_FILTRO==='todos' ||
+      (ACESSOS_FILTRO==='pendentes' && !a.aprovado) ||
+      (ACESSOS_FILTRO==='usuarios' && a.aprovado && !a.is_gestor && !a.is_admin) ||
+      (ACESSOS_FILTRO==='gestores' && a.aprovado && a.is_gestor) ||
+      (ACESSOS_FILTRO==='diretores' && a.aprovado && a.is_admin) ||
+      (ACESSOS_FILTRO==='sem_setor' && !setores.length);
+    if(!passaFiltro) return false;
+    if(!busca) return true;
+    const texto=_normalizarBusca([a.nome,a.email,setores.join(' '),perfilAtualLabel(a),perfilSolicitadoLabel(a)].join(' '));
+    return texto.includes(busca);
+  });
+}
+function _normalizarBusca(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function renderAccessSummary(){
+  const box=document.getElementById('access-summary');
+  if(!box) return;
+  const aprovados=ACESSOS_LISTA.filter(a=>a.aprovado);
+  const gestores=aprovados.filter(a=>a.is_gestor).length;
+  const diretores=aprovados.filter(a=>a.is_admin).length;
+  const pendentes=ACESSOS_LISTA.filter(a=>!a.aprovado).length;
+  box.innerHTML=[
+    ['Usuários ativos', aprovados.length],
+    ['Gestores', gestores],
+    ['Diretores', diretores],
+    ['Pendentes', pendentes],
+  ].map(([label,val])=>`<div class="access-summary-card"><b>${val}</b><span>${label}</span></div>`).join('');
+}
+function renderAcessos(){
+  renderAccessSummary();
+  const list=document.getElementById('acessos-list');
+  if(!list) return;
+  const rows=acessosFiltrados();
+  if(!rows.length){
+    list.innerHTML='<div class="access-empty">Nenhum usuário encontrado neste filtro.</div>';
+    return;
+  }
+  list.innerHTML=rows.map(a=>{
+    const setores=setoresAcesso(a);
+    const setoresHtml=setores.length
+      ? setores.map(s=>`<span class="access-tag">${esc(s)}</span>`).join('')
+      : '<span class="access-tag">sem setor</span>';
+    const perfilAtual=perfilAtualLabel(a);
+    const perfilClass=a.is_admin?'orange':a.is_gestor?'info':!a.aprovado?'blue':'';
+    const solicitado=perfilSolicitadoLabel(a);
+    const atualArg=esc(setores.join(', '));
+    return `<div class="access-user-row">
+      <div class="access-user-main"><b>${esc(a.nome||'—')}</b><span>${esc(a.email)}</span></div>
+      <div class="access-tags">${setoresHtml}</div>
+      <div><span class="access-tag ${perfilClass}">${esc(perfilAtual)}</span></div>
+      <div><span class="access-tag blue">${esc(solicitado)}</span></div>
+      <div class="access-actions">
+        ${a.aprovado ? `
+          <button class="btn-sm" style="background:var(--ink)" onclick="trocarSetor('${esc(a.email)}','${atualArg}')">Setores</button>
           <button class="btn-sm" style="background:${a.is_gestor?'var(--gray)':'#1d4ed8'}" onclick="tornarGestor('${esc(a.email)}',${a.is_gestor?'false':'true'})">${a.is_gestor?'Remover gestor':'Tornar gestor'}</button>
           <button class="btn-sm" style="background:${a.is_admin?'var(--gray)':'#b45309'}" onclick="tornarAdmin('${esc(a.email)}',${a.is_admin?'false':'true'})">${a.is_admin?'Remover diretor':'Tornar diretor'}</button>
           <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Remover</button>
-        </span>
-      </div>`).join('') : '<div class="t-sub">Nenhum acesso aprovado.</div>';
-  }catch(e){ pDiv.innerHTML='<div class="t-sub">Erro ao carregar.</div>'; }
+        ` : `
+          <button class="btn-sm" onclick="aprovar('${esc(a.email)}')">Aprovar</button>
+          <button class="btn-sm" style="background:var(--danger)" onclick="rejeitar('${esc(a.email)}')">Rejeitar</button>
+        `}
+      </div>
+    </div>`;
+  }).join('');
 }
 async function tornarAdmin(email, virar){
   const acao = virar ? 'tornar DIRETOR' : 'remover o diretor de';

@@ -536,12 +536,6 @@ body {
 .row-live-status.ok { border-color: #CFEFDD; background: #F0FBF5; }
 .row-live-status.warn { border-color: #FFE0CE; background: var(--ddm-orange-50); }
 .row-live-status.error { border-color: #F6C9C9; background: #FDECEC; }
-.row-live-status small { display: block; color: var(--gray); margin-top: 3px; }
-.row-error-summary {
-  display:inline-flex; align-items:center; max-width:100%; margin-top:6px; padding:5px 8px; border-radius:8px;
-  border:1px solid #F6C9C9; background:#FFF1F1; color:#8f1f19; font-size:11px; line-height:1.35;
-}
-.row-error-summary b { color:#7f1d1d; }
 
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
@@ -1311,11 +1305,6 @@ function erroAmigavel(msg){
   if(['error','failed','falhou'].includes(m.trim())) return 'Falha ao entrar ou processar a reunião. Abra o detalhe para acompanhar o status do Acordito.';
   return msg || 'Erro não especificado.';
 }
-function erroResumoReuniao(msg, status=''){
-  const base = erroAmigavel(msg || status || '');
-  if(!base || base.includes('Erro n')) return '';
-  return base.length > 170 ? base.slice(0,167)+'...' : base;
-}
 function speakerLabel(v){
   return (!v || v==='?') ? 'Locutor não identificado' : v;
 }
@@ -1620,31 +1609,19 @@ function classeStatusAoVivo(s){
   if(['not_admitted','failed','auth_required','invalid_credentials','invalid_api_key','bot_detected'].includes(s)) return 'error';
   return 'warn';
 }
-function atualizarResumoErroLinha(id, texto){
-  if(!texto) return;
-  const row=document.getElementById('row-'+id);
-  if(!row) return;
-  let box=document.getElementById('row-error-'+id);
-  if(!box){
-    (row.querySelector('.r-main') || row).insertAdjacentHTML('beforeend', `<div class="row-error-summary" id="row-error-${esc(id)}"></div>`);
-    box=document.getElementById('row-error-'+id);
-  }
-  if(box) box.innerHTML=`<b>Motivo:</b> ${esc(texto)}`;
-}
 async function atualizarStatusAoVivoLista(list){
   const pendentes = (list||[])
-    .filter(r=>(r.status==='pending'||r.status==='processing'||r.status==='error') && (r.plataforma==='skribby'||r.plataforma==='recall'))
+    .filter(r=>(r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall'))
     .slice(0,12);
   await Promise.all(pendentes.map(async r=>{
     const el=document.getElementById('live-row-'+r.id);
     try{
       const d=await apiGet('/api/gravacoes/'+r.id+'/status');
       const s=(d.status||d.bot_status||'').trim();
-      const issue = botIssueText(d);
       const erroProcessamento=s==='finished' && d.reuniao_status==='error';
       if(el){
         el.className='row-live-status '+(erroProcessamento?'error':classeStatusAoVivo(s));
-        el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(erroProcessamento?'Erro no processamento':botStatusLabel(s))}<small>${esc(erroProcessamento?(d.erro_msg||'Não foi possível processar a transcrição.'):issue || botStatusHint(s))}</small>`;
+        el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(erroProcessamento?'Erro no processamento':botStatusLabel(s))}`;
       }
       if(s==='finished' && d.reuniao_status!=='error'){
         const badge=document.getElementById('row-'+r.id)?.querySelector('.badge');
@@ -1654,7 +1631,6 @@ async function atualizarStatusAoVivoLista(list){
           badge.textContent=statusLabel(estado);
         }
       }
-      if(erroProcessamento || classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(issue || d.erro_msg || d.stop_reason || s, s));
     }catch(e){
       if(!el) return;
       el.className='row-live-status error';
@@ -2534,12 +2510,10 @@ function rowReuniao(r){
   const pend = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall');
   const agendada = reuniaoAgendada(r);
   const compartilhada = compartilhamentoResumo(r);
-  const erroResumo = r.status==='error' ? erroResumoReuniao(r.erro_msg || r.resumo_executivo || 'error', 'error') : '';
   const titulo = (r.titulo || '').trim() || `Reunião sem título - ${r.setor || 'Sem setor'}`;
   const subtitulo = r.resumo_executivo || r.setor || 'Sem resumo disponível';
   return `<div class="row ${pend?'with-live':''}" id="row-${esc(r.id)}" onclick="goto('detalhe',{id:'${r.id}'})">
     <div class="r-main"><div class="r-title">${esc(titulo)}</div>
-    ${erroResumo?`<div class="row-error-summary" id="row-error-${esc(r.id)}"><b>Motivo:</b>&nbsp;${esc(erroResumo)}</div>`:''}
     <div class="r-sub">${esc(subtitulo)}</div>
     ${compartilhada?`<div class="r-sub" style="color:var(--ddm-orange);margin-top:3px">${esc(compartilhada)}</div>`:''}</div>
     <div class="r-meta">${fmtData(r.data)}<br>${dur}</div>

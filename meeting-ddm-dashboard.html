@@ -365,6 +365,40 @@ body {
 .idea-live-node.active { color:var(--ink); border-color:#bfeceb; box-shadow:0 0 0 6px rgba(94,196,205,.12),0 12px 28px rgba(94,196,205,.18); }
 .idea-live-line { position:absolute; height:1px; background:#d8e5e4; transform-origin:left center; opacity:.9; }
 .idea-live-copy { text-align:center; max-width:420px; margin:10px auto 0; color:var(--gray); font-size:12px; line-height:1.45; }
+.ideas-page { height:calc(100vh - 118px); overflow:hidden; padding-bottom:0; }
+.ideas-shell { height:100%; grid-template-rows:90px minmax(0,1fr); gap:12px; }
+.ideas-hero { min-height:90px; padding:10px 18px; }
+.ideas-hero h2 { font-size:22px; }
+.ideas-hero p { margin-top:3px; }
+.ideas-mini-map { flex-basis:250px; min-width:220px; height:76px; }
+.ideas-mini-flow { inset:2px 4px; }
+.mini-flow-node { padding:6px 9px; }
+.mini-flow-node.ai { width:40px; height:40px; font-size:15px; }
+.ideas-workspace { grid-template-columns:minmax(280px,.72fr) minmax(390px,1.28fr); height:100%; }
+.idea-journey { padding:16px 18px; }
+.idea-start h3, .idea-step h3 { font-size:24px; }
+.idea-start p, .idea-step p { margin-top:5px; }
+.idea-inspiration-grid { gap:8px; margin-top:14px; }
+.idea-inspiration-card { padding:11px 12px; }
+.idea-inspiration-card b { font-size:13px; margin-bottom:0; }
+.idea-inspiration-card span { display:none; }
+.idea-free-start { margin-top:10px; padding:11px 12px; }
+.my-ideas-panel.inline { margin-top:auto; padding:11px 0 0; max-height:none; border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; }
+.my-ideas-panel.inline .ideas-eyebrow { display:none; }
+.my-ideas-panel.inline .my-ideas-head { align-items:center; margin-bottom:4px; }
+.my-ideas-panel.inline .my-ideas-head h3 { font-size:13px; }
+.my-ideas-panel.inline .my-ideas-count { font-size:11px; }
+.my-ideas-panel.inline .my-idea-card { display:none; }
+.idea-ai-preview { padding:16px 18px; }
+.idea-ai-preview > .ideas-eyebrow { display:none; }
+.idea-ai-preview > h2 { font-size:17px !important; margin-bottom:8px !important; }
+.idea-preview-empty { padding:18px; }
+.idea-preview-empty p { display:none; }
+.idea-live-map { height:100%; min-height:0; border:0; background:radial-gradient(circle at 50% 44%,rgba(94,196,205,.10),transparent 32%); }
+.idea-ai-preview { display:flex; flex-direction:column; }
+.idea-preview-empty, .idea-live-map { flex:1; }
+.idea-live-node.core small { display:block; font-size:8px; letter-spacing:.04em; color:#fff; }
+.idea-live-copy { margin-top:5px; }
 .idea-developed-card { border:1px solid #dff3f1; background:linear-gradient(145deg,#fff,#f7fffe); border-radius:var(--r-md); padding:16px; margin-top:12px; }
 .idea-developed-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
 .idea-developed-metrics span { background:#f0fbfa; border-radius:14px; padding:11px; color:#12746d; font-size:12px; font-weight:800; }
@@ -561,6 +595,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .rs-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .btn-icon { background: var(--white); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: var(--ink); }
 
+.sidebar-section { flex: 1 1 50%; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.sidebar-section + .sidebar-section { border-top: 1px solid var(--border); padding-top: 18px; }
+.sidebar-section-title { font-family: var(--font-display); font-size: 14px; margin-bottom: 14px; }
 .timeline-day { margin-bottom: 18px; }
 .tl-date { font-size: 10px; color: var(--gray); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
 .tl-item { display: flex; gap: 10px; margin-bottom: 14px; cursor: pointer; }
@@ -814,8 +851,8 @@ body.detalhe-aberto .right-sidebar { display: none; }
         <div class="ideas-hero">
           <div>
             <div class="ideas-eyebrow">Hub de Ideias</div>
-            <h2>Compartilhe algo que pode fazer a diferença.</h2>
-            <p>Não precisa estar pronto. Conte o que você percebeu e a IA ajuda a transformar isso em uma ideia mais clara.</p>
+            <h2>Tem algo que poderia funcionar melhor?</h2>
+            <p>Compartilhe do seu jeito. A IA ajuda a desenvolver.</p>
           </div>
           <div class="ideas-mini-map">
             <div class="ideas-mini-flow">
@@ -839,13 +876,11 @@ body.detalhe-aberto .right-sidebar { display: none; }
             </section>
           </div>
           <aside class="idea-ai-preview">
-            <div class="ideas-eyebrow" style="color:#168d86">Copiloto de Ideias</div>
-            <h2 style="font-family:var(--font-display);font-size:18px;margin-bottom:12px">IA desenvolve junto</h2>
+            <h2 style="font-family:var(--font-display);font-size:18px;margin-bottom:12px">✦ Desenvolva sua ideia com IA</h2>
             <div id="idea-preview" class="idea-preview-empty">
               <div>
                 <div class="idea-preview-orb">+</div>
-                <b>Sua ideia vai ganhar forma aqui.</b>
-                <p>Ao avançar na jornada, a IA organiza título, problema, proposta, impactos e um primeiro passo possível.</p>
+                <b>Comece escolhendo um ponto ao lado.</b>
               </div>
             </div>
           </aside>
@@ -1020,13 +1055,24 @@ body.detalhe-aberto .right-sidebar { display: none; }
 
   <!-- RIGHT SIDEBAR -->
   <aside class="right-sidebar">
-    <div class="rs-header">
-      <h2 class="rs-title">Histórico</h2>
+    <div class="sidebar-section">
+      <div class="rs-header">
+        <h2 class="rs-title">Agendadas</h2>
+        <button class="btn-icon" onclick="agendaFiltro='agendadas';setorFiltro='todos';goto('reunioes')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </button>
+      </div>
+      <div id="scheduled-timeline"><div class="skel"></div></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="rs-header">
+        <h2 class="rs-title">Histórico</h2>
       <button class="btn-icon" onclick="goto('reunioes')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
       </button>
+      </div>
+      <div id="timeline"><div class="skel"></div><div class="skel"></div></div>
     </div>
-    <div id="timeline"><div class="skel"></div><div class="skel"></div></div>
   </aside>
 </div>
 
@@ -1054,6 +1100,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <label>Setores envolvidos *</label>
     <div class="setor-multi" id="m-setores"></div>
     <div class="t-sub" style="margin-top:6px">Marque todos os setores envolvidos. O primeiro marcado vira o setor principal e a reunião aparece para os demais também.</div>
+    <label>Compartilhar com usuários cadastrados</label>
+    <div class="setor-multi" id="m-share-users"></div>
+    <div class="t-sub" style="margin-top:4px">Selecione as pessoas que poderão abrir esta reunião no painel.</div>
     <label>Formato da reunião</label>
     <select id="m-modalidade">
       <option value="online">Online</option>
@@ -1105,8 +1154,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
     </select>
     <label>Cliente envolvido</label>
     <input type="text" id="e-cliente" placeholder="Nome do cliente, se houver">
-    <label>Compartilhar com e-mails específicos</label>
-    <textarea id="e-share-emails" placeholder="Ex.: alessa@grupoddm.com.br"></textarea>
+    <label>Compartilhar com usuários cadastrados</label>
+    <div class="setor-multi" id="e-share-users"></div>
+    <div class="t-sub" style="margin-top:4px">Selecione as pessoas que poderão abrir esta reunião no painel.</div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="fecharEditarReuniao()">Cancelar</button>
       <button class="btn-primary" id="e-btn" onclick="salvarEdicaoReuniao()">Salvar alterações</button>
@@ -1403,28 +1453,15 @@ function renderMinhasIdeias(){
   const list=document.getElementById('minhas-ideias-list');
   const count=document.getElementById('minhas-ideias-count');
   if(!list) return;
-  if(count) count.textContent = MINHAS_IDEIAS.length ? `${MINHAS_IDEIAS.length} enviada${MINHAS_IDEIAS.length===1?'':'s'}` : 'Nenhuma enviada';
+  const analise=MINHAS_IDEIAS.filter(i=>['nova','visualizada','em_analise'].includes(i.status)).length;
+  if(count) count.textContent = MINHAS_IDEIAS.length ? `${MINHAS_IDEIAS.length} compartilhada${MINHAS_IDEIAS.length===1?'':'s'}` : 'Nenhuma enviada';
   if(!MINHAS_IDEIAS.length){
     list.className='my-ideas-empty';
-    list.innerHTML='Quando você compartilhar uma ideia, ela aparecerá aqui com o status de acompanhamento.';
+    list.innerHTML='Nenhuma ideia enviada ainda.';
     return;
   }
-  list.className='';
-  list.innerHTML=MINHAS_IDEIAS.slice(0,5).map(i=>`
-    <div class="my-idea-card">
-      <div class="my-idea-title">${esc(i.ai_titulo || i.titulo)}</div>
-      <div class="my-idea-meta">
-        <span>${esc(i.setor)}</span>
-        <span>•</span>
-        <span>${esc(i.impacto)}</span>
-        <span>•</span>
-        <span>${fmtData(i.criado_em)}</span>
-        <span class="my-idea-status">${esc(statusIdeiaLabel(i.status))}</span>
-      </div>
-      <div class="my-idea-actions">
-        <button class="btn-danger-soft" onclick="event.stopPropagation();removerMinhaIdeia('${i.id}')">${ACESSO_TOTAL||IS_ADMIN?'Excluir ideia':'Remover da minha lista'}</button>
-      </div>
-    </div>`).join('');
+  list.className='my-ideas-empty';
+  list.innerHTML=`${MINHAS_IDEIAS.length} ideia${MINHAS_IDEIAS.length===1?'':'s'} compartilhada${MINHAS_IDEIAS.length===1?'':'s'} · ${analise} em análise`;
 }
 async function loadMinhasIdeias(){
   const list=document.getElementById('minhas-ideias-list');
@@ -1657,11 +1694,11 @@ function renderIdeiaLivePreview(){
         <div class="idea-live-line" style="left:52%;top:61%;width:28%;transform:rotate(22deg)"></div>
         <div class="idea-live-node ${hasProblema?'active':''}" style="left:23%;top:28%">Problema ${hasProblema?'✓':''}</div>
         <div class="idea-live-node ${IDEIA_DRAFT.tipo?'active':''}" style="left:76%;top:27%">${esc(opt.title)}</div>
-        <div class="idea-live-node core">✦</div>
+        <div class="idea-live-node core"><span>✦</span><small>SUA IDEIA</small></div>
         <div class="idea-live-node ${hasSolucao?'active':''}" style="left:25%;top:76%">Solução ${hasSolucao?'✓':''}</div>
         <div class="idea-live-node ${hasImpacto?'active':''}" style="left:78%;top:75%">Impacto ${hasImpacto?'✓':''}</div>
       </div>
-      <div class="idea-live-copy"><b>Sua ideia começa aqui</b><br>Conforme você escreve, a IA conecta problema, oportunidade, solução e impacto.</div>
+      <div class="idea-live-copy"><b>Comece escolhendo um ponto ao lado.</b></div>
     </div>`;
 }
 function renderIdeiaJourney(){
@@ -1670,22 +1707,18 @@ function renderIdeiaJourney(){
   if(IDEIA_STEP===0){
     el.innerHTML=`
       <div class="idea-start">
-        <div class="ideas-eyebrow">Comece do seu jeito</div>
-        <h3>O que você percebeu que poderia ser melhor?</h3>
-        <p>Não precisa ter uma solução pronta. Escolha um ponto de partida ou conte do seu jeito.</p>
+        <h3>O que você percebeu?</h3>
+        <p>Escolha um ponto de partida ou conte do seu jeito.</p>
         <div class="idea-inspiration-grid">
           ${ideiaStartOptions().map(o=>`
             <button class="idea-inspiration-card" onclick="escolherInicioIdeia('${o.id}')">
-              <b>${o.icon} ${o.title}</b><span>${o.sub}</span>
+              <b>${o.icon} ${o.title}</b>
             </button>`).join('')}
         </div>
         <button class="idea-free-start" onclick="escolherInicioIdeia('livre')">✨ Conte sua ideia do seu jeito...</button>
         <section class="my-ideas-panel inline" aria-label="Minhas ideias enviadas">
           <div class="my-ideas-head">
-            <div>
-              <div class="ideas-eyebrow">Seu histórico</div>
-              <h3>Minhas ideias enviadas</h3>
-            </div>
+            <h3>Minhas ideias</h3>
             <span class="my-ideas-count" id="minhas-ideias-count">Carregando</span>
           </div>
           <div id="minhas-ideias-list" class="my-ideas-empty">Carregando suas ideias...</div>
@@ -2314,8 +2347,15 @@ async function loadDashboard(){
 async function loadTimeline(){
   try {
     const data = await apiGet('/api/reunioes');
+    const agendadas = (data||[]).filter(reuniaoAgendada);
+    document.getElementById('scheduled-timeline').innerHTML = agendadas.length ? agendadas.slice(0,8).map((r,i)=>`
+      <div class="tl-item" onclick="goto('detalhe',{id:'${r.id}'})">
+        <div class="tl-time">${fmtHora(r.data)}</div>
+        <div class="tl-content ${tlColor(i)}"><div class="tl-title">${esc(setoresDaReuniao(r).join(' · ')||'Reunião')}</div><div class="tl-desc">${esc(r.titulo||'Reunião agendada')}</div></div>
+      </div>`).join('') : '<div class="empty">Nenhuma reunião agendada.</div>';
+    const historico = (data||[]).filter(r=>!reuniaoAgendada(r));
     const byDay = {};
-    (data||[]).slice(0,15).forEach(r=>{
+    historico.slice(0,15).forEach(r=>{
       const k = r.data ? new Date(r.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : 'Sem data';
       (byDay[k]=byDay[k]||[]).push(r);
     });
@@ -2327,7 +2367,10 @@ async function loadTimeline(){
           <div class="tl-time">${fmtHora(r.data)}</div>
           <div class="tl-content ${tlColor(i)}"><div class="tl-title">${esc(r.setor||'Reunião')}</div><div class="tl-desc">${esc(r.titulo||'—')}</div></div>
         </div>`).join('')}</div>`).join('') : '<div class="empty">Sem reuniões na agenda.</div>';
-  } catch(e){ document.getElementById('timeline').innerHTML='<div class="empty">—</div>'; }
+  } catch(e){
+    document.getElementById('scheduled-timeline').innerHTML='<div class="empty">Não foi possível carregar.</div>';
+    document.getElementById('timeline').innerHTML='<div class="empty">—</div>';
+  }
 }
 
 /* ---------- REUNIÕES ---------- */
@@ -2531,8 +2574,8 @@ async function atualizarStatusBot(id){
     box.innerHTML = `
       <div style="margin-top:12px;padding:12px 14px;border:1px solid ${alerta?'#ffb199':'var(--border)'};background:${alerta?'#fff3ec':'var(--bg-alt)'};border-radius:10px;font-size:13px;line-height:1.5">
         <b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}
-        ${issue?`<br><span class="t-sub">Motivo: ${esc(issue)}</span>`:(d.stop_reason?`<br><span class="t-sub">Motivo técnico: ${esc(d.stop_reason)}</span>`:'')}
-        <br><span class="t-sub">${esc(issue ? 'Detalhe técnico: '+(d.stop_reason || s) : botStatusHint(s))}</span>
+        ${issue?`<br><span class="t-sub">${d.classificacao?.categoria==='agendado'?'Informação':'Motivo'}: ${esc(issue)}</span>`:(d.stop_reason?`<br><span class="t-sub">Motivo técnico: ${esc(d.stop_reason)}</span>`:'')}
+        ${d.classificacao?.categoria==='agendado'?'':`<br><span class="t-sub">${esc(issue ? 'Detalhe técnico: '+(d.stop_reason || s) : botStatusHint(s))}</span>`}
       </div>`;
 
     if(alerta && !BOT_STATUS_TOASTED[id]){
@@ -2976,6 +3019,32 @@ function valorDatetimeLocal(iso){
 /* ---------- seleção de múltiplos setores (nova reunião / edição) ---------- */
 const SETORES_SELECAO = {};
 let _SETORES_CACHE = null;
+let USUARIOS_COMPARTILHAMENTO = [];
+let USUARIOS_COMPARTILHADOS = [];
+
+async function carregarUsuariosCompartilhamento(){
+  try { USUARIOS_COMPARTILHAMENTO = await apiGet('/api/reunioes/compartilhamento/usuarios') || []; }
+  catch(e) { USUARIOS_COMPARTILHAMENTO = []; }
+  renderUsuariosCompartilhamento();
+}
+
+function renderUsuariosCompartilhamento(){
+  const boxes=[document.getElementById('m-share-users'),document.getElementById('e-share-users')].filter(Boolean);
+  if(!boxes.length) return;
+  const html=USUARIOS_COMPARTILHAMENTO.length ? USUARIOS_COMPARTILHAMENTO.map((u,i)=>{
+    const ativo=USUARIOS_COMPARTILHADOS.includes(u.email);
+    return `<button type="button" class="setor-chip ${ativo?'active':''}" onclick="toggleUsuarioCompartilhamento(${i})"><span>${esc(u.nome)}</span><small>${esc(u.setor||u.email)}</small></button>`;
+  }).join('') : '<span class="t-sub">Nenhum outro usuário aprovado disponível.</span>';
+  boxes.forEach(box=>{ box.innerHTML=html; });
+}
+
+function toggleUsuarioCompartilhamento(index){
+  const usuario=USUARIOS_COMPARTILHAMENTO[index];
+  if(!usuario) return;
+  const pos=USUARIOS_COMPARTILHADOS.indexOf(usuario.email);
+  if(pos>=0) USUARIOS_COMPARTILHADOS.splice(pos,1); else USUARIOS_COMPARTILHADOS.push(usuario.email);
+  renderUsuariosCompartilhamento();
+}
 
 async function setoresDisponiveis(){
   if(_SETORES_CACHE) return _SETORES_CACHE;
@@ -3039,7 +3108,8 @@ async function abrirEditarReuniao(){
   document.getElementById('e-modalidade').value = r.modalidade || 'online';
   document.getElementById('e-local').value = r.local_reuniao || 'Online';
   document.getElementById('e-cliente').value = r.cliente || '';
-  document.getElementById('e-share-emails').value = listaTexto(r.compartilhado_emails).join(', ');
+  USUARIOS_COMPARTILHADOS = listaTexto(r.compartilhado_emails).map(e=>e.toLowerCase());
+  await carregarUsuariosCompartilhamento();
   await preencherSetoresMulti('e-setores', [r.setor || '', ...listaTexto(r.compartilhado_setores)]);
   document.getElementById('modal-edit').style.display='flex';
 }
@@ -3064,7 +3134,7 @@ async function salvarEdicaoReuniao(){
     local_reuniao: document.getElementById('e-local').value,
     cliente: document.getElementById('e-cliente').value.trim(),
     compartilhado_setores: setores.slice(1),
-    compartilhado_emails: parseListaCampo(document.getElementById('e-share-emails').value).map(e=>e.toLowerCase())
+    compartilhado_emails: USUARIOS_COMPARTILHADOS.slice()
   };
   if(!titulo){ toast('Informe o título da reunião.'); return; }
   if(!body.setor){ toast('Marque ao menos um setor.'); return; }
@@ -3085,6 +3155,8 @@ async function salvarEdicaoReuniao(){
 
 async function novaReuniao(){
   const m=document.getElementById('modal'); m.style.display='flex';
+  USUARIOS_COMPARTILHADOS=[];
+  await carregarUsuariosCompartilhamento();
   const aviso=m.querySelector('.modal-alert-full');
   if(aviso) {
     const primeiroCampo=m.querySelector('label');
@@ -3114,9 +3186,10 @@ async function enviarReuniao(){
   if(!url){ toast('Cole o link da reunião.'); return; }
   if(!setor){ toast('Marque ao menos um setor.'); return; }
   const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
-  try { const resp = await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,setores,modalidade,local_reuniao,cliente});
+  try { const resp = await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,setores,compartilhado_emails:USUARIOS_COMPARTILHADOS.slice(),modalidade,local_reuniao,cliente});
     fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value=''; document.getElementById('m-data').value=''; document.getElementById('m-cliente').value='';
     SETORES_SELECAO['m-setores']=[]; renderSetoresMulti('m-setores');
+    USUARIOS_COMPARTILHADOS=[]; renderUsuariosCompartilhamento();
     toast(resp.scheduled_start_time ? 'Acordito agendado. Ele entrará no horário da reunião.' : 'Acordito a caminho! A reunião aparecerá ao terminar.',5000);
     if(curPage==='reunioes') loadReunioes(); else goto('reunioes');
   } catch(e){ toast('Erro: '+e.message,4000); }

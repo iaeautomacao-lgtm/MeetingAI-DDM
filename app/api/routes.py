@@ -146,8 +146,11 @@ def _scheduled_start_timestamp(valor: str) -> int | None:
     data = _parse_datetime_reuniao(valor)
     if not data:
         return None
-    # Janela de tolerancia: se estiver muito perto, entra agora.
-    if data <= datetime.now(timezone.utc) + timedelta(minutes=1):
+    # O campo datetime-local trabalha com precisão de minuto. Quando o
+    # usuário escolhe "agora", a requisição pode chegar alguns minutos depois
+    # do horário informado. Nesse caso, o bot deve entrar imediatamente, não
+    # ser criado como uma reunião agendada.
+    if data <= datetime.now(timezone.utc) + timedelta(minutes=5):
         return None
     return int(data.timestamp())
 
@@ -2596,6 +2599,11 @@ def criar_gravacao():
         s for s in setores_informados
         if s and s.lower() != setor.lower()
     ]
+    emails_compartilhados = [
+        email.lower()
+        for email in _normalizar_lista_texto(body.get("compartilhado_emails"))
+        if "@" in email
+    ]
 
     vocabulario_reuniao = [
         body.get("cliente"),
@@ -2611,6 +2619,11 @@ def criar_gravacao():
         or datetime.now(timezone.utc).isoformat()
     )
     scheduled_start_time = _scheduled_start_timestamp(data_reuniao)
+    current_app.logger.info(
+        "Reunião Skribby: data=%s modo=%s",
+        data_reuniao,
+        "agendado" if scheduled_start_time else "entrada imediata",
+    )
 
     # Solicita ao Skribby a criação do bot.
     try:
@@ -2691,6 +2704,12 @@ def criar_gravacao():
             colunas.append("compartilhado_setores")
             valores_insert.append(
                 json.dumps(setores_extras, ensure_ascii=False)
+            )
+
+        if emails_compartilhados and _tem_coluna_reunioes("compartilhado_emails"):
+            colunas.append("compartilhado_emails")
+            valores_insert.append(
+                json.dumps(emails_compartilhados, ensure_ascii=False)
             )
 
         cursor.execute(
@@ -3235,6 +3254,28 @@ def listar_interacoes():
 
         if connection is not None and connection.is_connected():
             connection.close()
+
+
+@bp.get("/reunioes/compartilhamento/usuarios")
+@require_auth
+def listar_usuarios_compartilhamento():
+    """Lista usuários aprovados que podem receber uma reunião compartilhada."""
+    email_atual = (sessao_email() or "").strip().lower()
+    usuarios = []
+    for acesso in listar_acessos():
+        email = (acesso.get("email") or "").strip().lower()
+        if not email or email == email_atual:
+            continue
+        if not acesso.get("ativo") or not acesso.get("aprovado"):
+            continue
+        usuarios.append({
+            "email": email,
+            "nome": acesso.get("nome") or email.split("@")[0],
+            "setor": acesso.get("setor") or "",
+            "setores": acesso.get("setores") or [],
+        })
+    usuarios.sort(key=lambda item: (item["nome"].lower(), item["email"]))
+    return jsonify(usuarios), 200
 
 
 # ── Sync manual ───────────────────────────────────────────────────────────────

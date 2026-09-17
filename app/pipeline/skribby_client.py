@@ -233,6 +233,19 @@ def classify_bot_issue(
         "tecnico": " ".join(x for x in (status, stop_reason, detail) if x),
     }
 
+    if status == "scheduled":
+        issue.update({
+            "categoria": "agendado",
+            "titulo": "Agendado",
+            "mensagem": (
+                "O Acordito foi agendado e tentará entrar automaticamente "
+                "no horário da reunião."
+            ),
+            "acao": "",
+            "tecnico": "",
+        })
+        return issue
+
     if status == "not_admitted":
         issue.update({
             "categoria": "nao_admitido",

@@ -1252,7 +1252,7 @@ function botStatusHint(s){
   if(s==='joining') return 'O Acordito está tentando entrar. Verifique a janela da reunião e aceite a entrada dele se aparecer na sala de espera.';
   if(s==='recording') return 'O Acordito está dentro da reunião e gravando.';
   if(s==='processing'||s==='transcribing'||s==='leaving') return 'A reunião terminou ou está finalizando. Em breve a transcrição poderá ser puxada.';
-  if(s==='finished') return 'A transcrição já deve estar disponível. Clique em Puxar transcrição agora se ela ainda não apareceu.';
+  if(s==='finished') return 'A gravação terminou. A transcrição pode ainda estar em processamento.';
   if(s==='not_admitted') return 'O Acordito não foi admitido. Confira se alguém negou a entrada ou se o tempo de espera acabou.';
   return 'Status consultado diretamente no Skribby.';
 }
@@ -1641,11 +1641,20 @@ async function atualizarStatusAoVivoLista(list){
       const d=await apiGet('/api/gravacoes/'+r.id+'/status');
       const s=(d.status||d.bot_status||'').trim();
       const issue = botIssueText(d);
+      const erroProcessamento=s==='finished' && d.reuniao_status==='error';
       if(el){
-        el.className='row-live-status '+classeStatusAoVivo(s);
-        el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}<small>${esc(issue || botStatusHint(s))}</small>`;
+        el.className='row-live-status '+(erroProcessamento?'error':classeStatusAoVivo(s));
+        el.innerHTML=`<b>Status ao vivo do Acordito:</b> ${esc(erroProcessamento?'Erro no processamento':botStatusLabel(s))}<small>${esc(erroProcessamento?(d.erro_msg||'Não foi possível processar a transcrição.'):issue || botStatusHint(s))}</small>`;
       }
-      if(classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(issue || d.erro_msg || d.stop_reason || s, s));
+      if(s==='finished' && d.reuniao_status!=='error'){
+        const badge=document.getElementById('row-'+r.id)?.querySelector('.badge');
+        if(badge){
+          const estado=d.reuniao_status==='completed'?'completed':'processing';
+          badge.className='badge '+estado;
+          badge.textContent=statusLabel(estado);
+        }
+      }
+      if(erroProcessamento || classeStatusAoVivo(s)==='error') atualizarResumoErroLinha(r.id, erroResumoReuniao(issue || d.erro_msg || d.stop_reason || s, s));
     }catch(e){
       if(!el) return;
       el.className='row-live-status error';
@@ -2645,14 +2654,24 @@ async function atualizarStatusBot(id){
     const d = await apiGet('/api/gravacoes/'+id+'/status');
     const s = d.bot_status || '';
     const alerta = s === 'joining';
-    const terminal = ['finished','not_admitted','failed','auth_required','invalid_credentials','invalid_api_key'].includes(s);
+    const terminal = ['not_admitted','failed','auth_required','invalid_credentials','invalid_api_key'].includes(s) || ['completed','error'].includes(d.reuniao_status);
     const issue = botIssueText(d);
+    const erroProcessamento=s==='finished' && d.reuniao_status==='error';
+
+    if(s==='finished' && !erroProcessamento){
+      const badge=document.querySelector('#detalhe-content .det-head .badge');
+      if(badge){
+        const estado=d.reuniao_status==='completed'?'completed':'processing';
+        badge.className='badge '+estado;
+        badge.textContent=statusLabel(estado);
+      }
+    }
 
     box.innerHTML = `
       <div style="margin-top:12px;padding:12px 14px;border:1px solid ${alerta?'#ffb199':'var(--border)'};background:${alerta?'#fff3ec':'var(--bg-alt)'};border-radius:10px;font-size:13px;line-height:1.5">
-        <b>Status ao vivo do Acordito:</b> ${esc(botStatusLabel(s))}
-        ${issue?`<br><span class="t-sub">${d.classificacao?.categoria==='agendado'?'Informação':'Motivo'}: ${esc(issue)}</span>`:(d.stop_reason?`<br><span class="t-sub">Motivo técnico: ${esc(d.stop_reason)}</span>`:'')}
-        ${d.classificacao?.categoria==='agendado'?'':`<br><span class="t-sub">${esc(issue ? 'Detalhe técnico: '+(d.stop_reason || s) : botStatusHint(s))}</span>`}
+        <b>Status ao vivo do Acordito:</b> ${esc(erroProcessamento?'Erro no processamento':botStatusLabel(s))}
+        ${erroProcessamento?`<br><span class="t-sub">${esc(d.erro_msg||'Não foi possível processar a transcrição.')}</span>`:(issue?`<br><span class="t-sub">${d.classificacao?.categoria==='agendado'?'Informação':'Motivo'}: ${esc(issue)}</span>`:(classeStatusAoVivo(s)==='error' && d.stop_reason?`<br><span class="t-sub">Motivo técnico: ${esc(d.stop_reason)}</span>`:''))}
+        ${erroProcessamento || d.classificacao?.categoria==='agendado'?'':`<br><span class="t-sub">${esc(issue ? 'Detalhe técnico: '+(d.stop_reason || s) : botStatusHint(s))}</span>`}
       </div>`;
 
     if(alerta && !BOT_STATUS_TOASTED[id]){

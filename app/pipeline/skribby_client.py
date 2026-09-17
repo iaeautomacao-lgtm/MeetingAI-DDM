@@ -255,6 +255,7 @@ def classify_bot_issue(
         "leaving",
         "processing",
         "transcribing",
+        "finished",
     }:
         # Estados de operação não são falhas. O frontend usa o próprio status
         # para mostrar a orientação adequada ao usuário.

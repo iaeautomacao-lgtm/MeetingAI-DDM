@@ -641,6 +641,19 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--ddm-orange); }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 26px; }
 .btn-ghost { background: var(--bg-alt); color: var(--ink); border: none; padding: 10px 20px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+.btn-share { display:inline-flex; align-items:center; gap:7px; }
+.btn-share svg { width:15px; height:15px; }
+.share-search { position:relative; margin-top:16px; }
+.share-search svg { position:absolute; left:13px; top:13px; width:16px; height:16px; color:var(--gray); pointer-events:none; }
+.modal .share-search input { padding-left:40px; }
+.share-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0 8px; }
+.share-count { color:var(--gray); font-size:11px; font-weight:700; }
+.share-select-visible { border:0; background:transparent; color:var(--ddm-orange); font:700 11px var(--font-body); cursor:pointer; padding:4px 0; }
+.share-users-list { display:flex; flex-wrap:wrap; align-content:flex-start; gap:8px; max-height:300px; overflow:auto; padding:4px 2px 8px; }
+.share-users-list .setor-chip { text-align:left; }
+.share-users-list .setor-chip small { color:var(--gray); font-size:10px; }
+.share-users-list .setor-chip.active small { color:rgba(255,255,255,.75); }
+.share-empty { width:100%; padding:28px 12px; text-align:center; color:var(--gray); font-size:12px; }
 .logout-item { color: var(--danger) !important; }
 .logout-item:hover { background: #FDECEC !important; }
 
@@ -1184,6 +1197,27 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <div class="modal-actions">
       <button class="btn-ghost" onclick="fecharEditarReuniao()">Cancelar</button>
       <button class="btn-primary" id="e-btn" onclick="salvarEdicaoReuniao()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPARTILHAR REUNIAO -->
+<div id="modal-share" class="modal-overlay">
+  <div class="modal" style="max-width:680px">
+    <h3>Compartilhar reuni&atilde;o</h3>
+    <p class="modal-sub">Selecione os usu&aacute;rios cadastrados que poder&atilde;o abrir esta reuni&atilde;o no painel.</p>
+    <div class="share-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.8-3.8"></path></svg>
+      <input type="search" id="share-user-search" placeholder="Buscar por nome, e-mail ou setor" oninput="filtrarUsuariosCompartilhamento(this.value)">
+    </div>
+    <div class="share-toolbar">
+      <span class="share-count" id="share-user-count">Carregando usu&aacute;rios...</span>
+      <button type="button" class="share-select-visible" id="share-select-visible" onclick="alternarUsuariosCompartilhamentoVisiveis()">Selecionar resultados</button>
+    </div>
+    <div class="share-users-list" id="s-share-users"><div class="share-empty">Carregando usu&aacute;rios...</div></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="fecharCompartilharReuniao()">Cancelar</button>
+      <button class="btn-primary" id="s-share-btn" onclick="salvarCompartilhamentoReuniao()">Salvar compartilhamento</button>
     </div>
   </div>
 </div>
@@ -2667,6 +2701,10 @@ async function loadDetalhe(id){
         ${botLive}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn-sm" onclick="abrirEditarReuniao()">Editar dados</button>
+          <button class="btn-sm btn-share" style="background:var(--ink)" onclick="abrirCompartilharReuniao()" title="Compartilhar reuni&atilde;o com usu&aacute;rios cadastrados">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4"></path><path d="m8.6 13.5 6.8 4"></path></svg>
+            Compartilhar
+          </button>
           ${utt.length?`<button class="btn-sm" style="background:var(--ink)" onclick="exportarReuniaoPdf()">Exportar PDF</button>`:''}
           ${IS_ADMIN?`<button class="btn-sm" style="background:#a12626" onclick="excluirReuniao('${r.id}')">Excluir</button>`:''}
         </div>
@@ -3064,11 +3102,13 @@ const SETORES_SELECAO = {};
 let _SETORES_CACHE = null;
 let USUARIOS_COMPARTILHAMENTO = [];
 let USUARIOS_COMPARTILHADOS = [];
+let USUARIOS_COMPARTILHAMENTO_FILTRO = '';
 
 async function carregarUsuariosCompartilhamento(){
   try { USUARIOS_COMPARTILHAMENTO = await apiGet('/api/reunioes/compartilhamento/usuarios') || []; }
   catch(e) { USUARIOS_COMPARTILHAMENTO = []; }
   renderUsuariosCompartilhamento();
+  renderUsuariosCompartilhamentoRapido();
 }
 
 function renderUsuariosCompartilhamento(){
@@ -3087,6 +3127,57 @@ function toggleUsuarioCompartilhamento(index){
   const pos=USUARIOS_COMPARTILHADOS.indexOf(usuario.email);
   if(pos>=0) USUARIOS_COMPARTILHADOS.splice(pos,1); else USUARIOS_COMPARTILHADOS.push(usuario.email);
   renderUsuariosCompartilhamento();
+  renderUsuariosCompartilhamentoRapido();
+}
+
+function textoBuscaCompartilhamento(valor){
+  return String(valor||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+function indicesUsuariosCompartilhamentoVisiveis(){
+  const filtro=textoBuscaCompartilhamento(USUARIOS_COMPARTILHAMENTO_FILTRO);
+  return USUARIOS_COMPARTILHAMENTO.map((u,index)=>({u,index})).filter(({u})=>{
+    if(!filtro) return true;
+    const setores=Array.isArray(u.setores)?u.setores.join(' '):'';
+    return textoBuscaCompartilhamento(`${u.nome||''} ${u.email||''} ${u.setor||''} ${setores}`).includes(filtro);
+  });
+}
+
+function renderUsuariosCompartilhamentoRapido(){
+  const box=document.getElementById('s-share-users');
+  if(!box) return;
+  const visiveis=indicesUsuariosCompartilhamentoVisiveis();
+  const selecionados=USUARIOS_COMPARTILHADOS.length;
+  const count=document.getElementById('share-user-count');
+  const toggle=document.getElementById('share-select-visible');
+  if(count) count.textContent=`${selecionados} selecionado${selecionados===1?'':'s'} · ${visiveis.length} usuário${visiveis.length===1?'':'s'} exibido${visiveis.length===1?'':'s'}`;
+  const todosVisiveisSelecionados=!!visiveis.length && visiveis.every(({u})=>USUARIOS_COMPARTILHADOS.includes(u.email));
+  if(toggle){
+    toggle.disabled=!visiveis.length;
+    toggle.textContent=todosVisiveisSelecionados?'Remover resultados':'Selecionar resultados';
+  }
+  box.innerHTML=visiveis.length ? visiveis.map(({u,index})=>{
+    const ativo=USUARIOS_COMPARTILHADOS.includes(u.email);
+    return `<button type="button" class="setor-chip ${ativo?'active':''}" onclick="toggleUsuarioCompartilhamento(${index})" aria-pressed="${ativo}"><span>${esc(u.nome)}</span><small>${esc(u.setor||u.email)}</small></button>`;
+  }).join('') : '<div class="share-empty">Nenhum usuário encontrado para este filtro.</div>';
+}
+
+function filtrarUsuariosCompartilhamento(valor){
+  USUARIOS_COMPARTILHAMENTO_FILTRO=valor||'';
+  renderUsuariosCompartilhamentoRapido();
+}
+
+function alternarUsuariosCompartilhamentoVisiveis(){
+  const visiveis=indicesUsuariosCompartilhamentoVisiveis();
+  if(!visiveis.length) return;
+  const remover=visiveis.every(({u})=>USUARIOS_COMPARTILHADOS.includes(u.email));
+  visiveis.forEach(({u})=>{
+    const pos=USUARIOS_COMPARTILHADOS.indexOf(u.email);
+    if(remover && pos>=0) USUARIOS_COMPARTILHADOS.splice(pos,1);
+    if(!remover && pos<0) USUARIOS_COMPARTILHADOS.push(u.email);
+  });
+  renderUsuariosCompartilhamento();
+  renderUsuariosCompartilhamentoRapido();
 }
 
 async function setoresDisponiveis(){
@@ -3155,6 +3246,43 @@ async function abrirEditarReuniao(){
   await carregarUsuariosCompartilhamento();
   await preencherSetoresMulti('e-setores', [r.setor || '', ...listaTexto(r.compartilhado_setores)]);
   document.getElementById('modal-edit').style.display='flex';
+}
+
+async function abrirCompartilharReuniao(){
+  const r=_reuniaoAtual;
+  if(!r){ toast('Abra uma reunião primeiro.'); return; }
+  USUARIOS_COMPARTILHADOS=listaTexto(r.compartilhado_emails).map(e=>e.toLowerCase());
+  USUARIOS_COMPARTILHAMENTO_FILTRO='';
+  const busca=document.getElementById('share-user-search');
+  if(busca) busca.value='';
+  document.getElementById('modal-share').style.display='flex';
+  await carregarUsuariosCompartilhamento();
+  setTimeout(()=>busca?.focus(),50);
+}
+
+function fecharCompartilharReuniao(){
+  document.getElementById('modal-share').style.display='none';
+  USUARIOS_COMPARTILHAMENTO_FILTRO='';
+}
+
+async function salvarCompartilhamentoReuniao(){
+  const r=_reuniaoAtual;
+  if(!r) return;
+  const btn=document.getElementById('s-share-btn');
+  btn.disabled=true;
+  btn.textContent='Salvando...';
+  try{
+    await apiPost('/api/reunioes/'+r.id+'/metadados', {compartilhado_emails:USUARIOS_COMPARTILHADOS.slice()});
+    fecharCompartilharReuniao();
+    toast(USUARIOS_COMPARTILHADOS.length ? 'Reunião compartilhada com sucesso.' : 'Compartilhamentos removidos.');
+    await loadDetalhe(r.id);
+    loadReunioes();
+  }catch(e){
+    toast('Erro: '+(e.message||'não foi possível compartilhar a reunião'));
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Salvar compartilhamento';
+  }
 }
 
 function fecharEditarReuniao(){

@@ -416,6 +416,8 @@ body {
   box-shadow:0 6px 18px rgba(31,31,31,.04); padding:14px 16px; max-height:184px; overflow:auto;
 }
 .my-ideas-panel.inline { margin-top:12px; padding:12px; max-height:128px; border-radius:var(--r-md); box-shadow:none; background:#fbfdfd; }
+.my-ideas-panel.inline.expanded { max-height:min(42vh,360px); }
+.my-ideas-panel.inline.expanded .my-idea-card { display:block; }
 .my-ideas-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }
 .my-ideas-head h3 { font-family:var(--font-display); font-size:16px; line-height:1.2; }
 .my-ideas-count { color:var(--gray); font-size:11px; font-weight:800; white-space:nowrap; }
@@ -649,6 +651,23 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40; }
 .sidebar-backdrop.open { display: block; }
 
+/* Fill the desktop workspace while allowing the form to grow on shorter screens. */
+#page-ideias-enviar.active { display:flex; flex:1 0 auto; min-height:700px; padding-bottom:0; }
+#page-ideias-enviar .ideas-shell { flex:1; min-width:0; grid-template-rows:auto minmax(0,1fr); }
+#page-ideias-enviar .ideas-workspace { min-height:0; height:auto; }
+#page-ideias-enviar .idea-left-stack,
+#page-ideias-enviar .idea-journey,
+#page-ideias-enviar .idea-ai-preview { height:100%; }
+#page-ideias-enviar #idea-journey,
+#page-ideias-enviar .idea-start { height:100%; }
+#page-ideias-enviar .idea-start { display:flex; flex-direction:column; }
+#page-ideias-enviar .idea-inspiration-grid { flex:1 1 auto; grid-template-rows:repeat(2,minmax(76px,1fr)); max-height:310px; }
+#page-ideias-enviar .idea-inspiration-card { height:100%; display:flex; flex-direction:column; justify-content:center; }
+#page-ideias-enviar .my-ideas-panel.inline { margin-top:auto; }
+#page-ideias-enviar .idea-ai-preview { display:flex; flex-direction:column; }
+#page-ideias-enviar .idea-live-map { flex:1 1 auto; height:auto; min-height:300px; }
+#page-ideias-enviar .idea-live-inner { width:min(470px,82%); }
+
 @media (max-width: 1100px) { .right-sidebar { display: none; } }
 
 @media (max-width: 1260px) {
@@ -660,6 +679,12 @@ body.detalhe-aberto .right-sidebar { display: none; }
 
 /* Telas médias / zoom: afrouxa a largura fixa e reduz padding */
 @media (max-width: 900px) {
+  #page-ideias-enviar.active { min-height:0; }
+  #page-ideias-enviar .ideas-shell { display:flex; }
+  #page-ideias-enviar .idea-journey,
+  #page-ideias-enviar .idea-ai-preview { height:auto; }
+  #page-ideias-enviar .idea-inspiration-grid { max-height:none; }
+  #page-ideias-enviar .idea-live-map { height:320px; }
   body { padding: 16px; align-items: flex-start; }
   .app-container { height: auto; min-height: 100vh; }
   .main-area { padding: 24px; }
@@ -1173,7 +1198,7 @@ let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
 let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [], IDEIAS_MOSTRAR_SETORES = false;
-let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null, MINHAS_IDEIAS = [];
+let IDEIA_STEP = 0, IDEIA_DRAFT = {dor:'', solucao:'', setor:'', impacto:'', autor:''}, IDEIAS_MAP_RAF = null, MINHAS_IDEIAS = [], MINHAS_IDEIAS_EXPANDIDAS = false;
 
 /* ---------- utils ---------- */
 function toast(msg, dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',dur); }
@@ -1452,15 +1477,29 @@ function renderMinhasIdeias(){
   const list=document.getElementById('minhas-ideias-list');
   const count=document.getElementById('minhas-ideias-count');
   if(!list) return;
+  const panel=list.closest('.my-ideas-panel');
+  const seeAll=document.getElementById('minhas-ideias-see-all');
   const analise=MINHAS_IDEIAS.filter(i=>['nova','visualizada','em_analise'].includes(i.status)).length;
   if(count) count.textContent = MINHAS_IDEIAS.length ? `${MINHAS_IDEIAS.length} compartilhada${MINHAS_IDEIAS.length===1?'':'s'}` : 'Nenhuma enviada';
+  if(panel) panel.classList.toggle('expanded', MINHAS_IDEIAS_EXPANDIDAS && !!MINHAS_IDEIAS.length);
+  if(seeAll){
+    seeAll.hidden=!MINHAS_IDEIAS.length;
+    seeAll.textContent=MINHAS_IDEIAS_EXPANDIDAS?'Recolher ↑':'Ver todas →';
+    seeAll.setAttribute('aria-expanded', String(MINHAS_IDEIAS_EXPANDIDAS));
+  }
   if(!MINHAS_IDEIAS.length){
     list.className='my-ideas-empty';
-    list.innerHTML='Nenhuma ideia enviada ainda. <button class="my-ideas-see-all" onclick="document.getElementById(\'minhas-ideias-list\')?.focus()">Ver todas →</button>';
+    list.textContent='Nenhuma ideia enviada ainda.';
     return;
   }
   list.className='my-ideas-empty';
-  list.innerHTML=`${MINHAS_IDEIAS.length} ideia${MINHAS_IDEIAS.length===1?'':'s'} compartilhada${MINHAS_IDEIAS.length===1?'':'s'} · ${analise} em análise`;
+  list.innerHTML=MINHAS_IDEIAS_EXPANDIDAS
+    ? MINHAS_IDEIAS.map(i=>`<div class="my-idea-card"><div class="my-idea-title">${esc(i.titulo)}</div><div class="my-idea-meta"><span>${esc(i.setor)}</span><span class="my-idea-status">${esc(statusIdeiaLabel(i.status))}</span></div></div>`).join('')
+    : `${MINHAS_IDEIAS.length} ideia${MINHAS_IDEIAS.length===1?'':'s'} compartilhada${MINHAS_IDEIAS.length===1?'':'s'} · ${analise} em análise`;
+}
+function alternarMinhasIdeias(){
+  MINHAS_IDEIAS_EXPANDIDAS=!MINHAS_IDEIAS_EXPANDIDAS;
+  renderMinhasIdeias();
 }
 async function loadMinhasIdeias(){
   const list=document.getElementById('minhas-ideias-list');
@@ -1721,7 +1760,7 @@ function renderIdeiaJourney(){
           <div class="my-ideas-head">
             <h3>Minhas ideias enviadas</h3>
             <span class="my-ideas-count" id="minhas-ideias-count">Carregando</span>
-            <button class="my-ideas-see-all" onclick="document.getElementById('minhas-ideias-list')?.focus()">Ver todas →</button>
+            <button class="my-ideas-see-all" id="minhas-ideias-see-all" onclick="alternarMinhasIdeias()" aria-expanded="false">Ver todas →</button>
           </div>
           <div id="minhas-ideias-list" class="my-ideas-empty">Carregando suas ideias...</div>
         </section>

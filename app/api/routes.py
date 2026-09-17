@@ -1451,8 +1451,12 @@ def listar_reunioes():
 
         setor = request.args.get("setor")
         if setor and tem_acesso_total():
-            sql += " AND setor = %s"
-            params.append(setor)
+            if _tem_coluna_reunioes("compartilhado_setores"):
+                sql += " AND (setor = %s OR COALESCE(compartilhado_setores, '') LIKE %s)"
+                params.extend([setor, _json_like_param(setor)])
+            else:
+                sql += " AND setor = %s"
+                params.append(setor)
 
         status = request.args.get("status")
         if status:
@@ -2566,10 +2570,38 @@ def criar_gravacao():
             ),
         }), 500
 
+    setores_informados = _normalizar_lista_texto(
+        body.get("setores") or body.get("compartilhado_setores")
+    )
+    setor = (body.get("setor") or "").strip()
+    if not setor and setores_informados:
+        setor = setores_informados[0]
+
+    if is_authed() and not tem_acesso_total():
+        setores_sessao = sessao_setores()
+        if setores_sessao and setor not in setores_sessao:
+            permitido = next(
+                (s for s in setores_informados if s in setores_sessao),
+                "",
+            )
+            setor = permitido or setores_sessao[0]
+
+    if not setor:
+        return jsonify({
+            "erro": "setor_obrigatorio",
+            "msg": "Marque ao menos um setor envolvido.",
+        }), 400
+
+    setores_extras = [
+        s for s in setores_informados
+        if s and s.lower() != setor.lower()
+    ]
+
     vocabulario_reuniao = [
         body.get("cliente"),
         body.get("titulo"),
-        body.get("setor"),
+        setor,
+        *setores_extras,
         "Grupo DDM",
         "DDM",
         "Acordito",
@@ -2617,25 +2649,6 @@ def criar_gravacao():
     if is_authed() and sessao_email():
         solicitante = sessao_email()
 
-    # A reunião pode envolver vários setores: o primeiro vira o setor principal
-    # e os demais entram em compartilhado_setores (aparecem para esses setores).
-    setores_informados = _normalizar_lista_texto(
-        body.get("setores") or body.get("compartilhado_setores")
-    )
-    setor = (body.get("setor") or "").strip()
-    if not setor and setores_informados:
-        setor = setores_informados[0]
-
-    if is_authed() and not tem_acesso_total():
-        setores_sessao = sessao_setores()
-        if setores_sessao and setor not in setores_sessao:
-            permitido = next(
-                (s for s in setores_informados if s in setores_sessao),
-                "",
-            )
-            setor = permitido or setores_sessao[0]
-
-    setores_extras = [s for s in setores_informados if s and s != setor]
     modalidade = (body.get("modalidade") or "online").strip()
     local_reuniao = (body.get("local_reuniao") or "").strip()
     cliente = (body.get("cliente") or "").strip()

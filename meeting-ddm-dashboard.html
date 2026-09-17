@@ -1119,7 +1119,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
 <script>
 const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
-let allReunioes = [], allEmails = [], setorFiltro = 'todos', emailFiltro = 'relevantes';
+let allReunioes = [], allEmails = [], setorFiltro = 'todos', agendaFiltro = 'todos', emailFiltro = 'relevantes';
 let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {};
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
@@ -2335,23 +2335,39 @@ async function loadReunioes(){
   try {
     allReunioes = await apiGet('/api/reunioes') || [];
     const tabs = document.getElementById('setor-tabs');
-    if(!ACESSO_TOTAL && !(GESTOR_SETOR && MEUS_SETORES.length > 1)){
-      // usuário comum: só o próprio setor — sem abas de outros setores
-      tabs.style.display='none';
-    } else {
-      let setores = [];
+    let setores = [];
+    if(ACESSO_TOTAL || (GESTOR_SETOR && MEUS_SETORES.length > 1)){
       if(GESTOR_SETOR && !ACESSO_TOTAL) setores = MEUS_SETORES.slice();
       else try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
       allReunioes.forEach(r=>{ setoresDaReuniao(r).forEach(s=>{ if(!setores.includes(s)) setores.push(s); }); });
-      tabs.style.display='';
-      tabs.innerHTML =
-        `<button class="tab-btn ${setorFiltro==='todos'?'active':''}" onclick="filterSetor('todos',this)">Todos</button>` +
-        setores.map(s=>`<button class="tab-btn ${setorFiltro===s?'active':''}" onclick="filterSetor('${esc(s)}',this)">${esc(s)}</button>`).join('');
     }
+    tabs.style.display='';
+    const agendadas=contarAgendadas();
+    tabs.innerHTML =
+      `<button class="tab-btn ${agendaFiltro==='todos' && setorFiltro==='todos'?'active':''}" onclick="filterReunioes('todos',this)">Todos</button>` +
+      `<button class="tab-btn ${agendaFiltro==='agendadas'?'active':''}" onclick="filterReunioes('agendadas',this)">Agendadas${agendadas ? ` (${agendadas})` : ''}</button>` +
+      setores.map(s=>`<button class="tab-btn ${agendaFiltro==='todos' && setorFiltro===s?'active':''}" onclick="filterSetor('${esc(s)}',this)">${esc(s)}</button>`).join('');
     renderReunioes();
   } catch(e){ document.getElementById('reunioes-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
 }
-function filterSetor(s, btn){ setorFiltro=s; document.querySelectorAll('#setor-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderReunioes(); }
+function reuniaoAgendada(r){
+  return r && r.status==='pending' && r.data && new Date(r.data).getTime()>Date.now();
+}
+function contarAgendadas(){ return allReunioes.filter(reuniaoAgendada).length; }
+function filterReunioes(filtro, btn){
+  agendaFiltro=filtro;
+  setorFiltro='todos';
+  document.querySelectorAll('#setor-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderReunioes();
+}
+function filterSetor(s, btn){
+  agendaFiltro='todos';
+  setorFiltro=s;
+  document.querySelectorAll('#setor-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderReunioes();
+}
 function compartilhamentoResumo(r){
   const setores = listaTexto(r.compartilhado_setores);
   const emails = listaTexto(r.compartilhado_emails);
@@ -2361,7 +2377,8 @@ function compartilhamentoResumo(r){
   return partes.join(' · ');
 }
 function renderReunioes(){
-  let list = setorFiltro==='todos' ? allReunioes : allReunioes.filter(r=>setoresDaReuniao(r).some(s=>setoresIguais(s,setorFiltro)));
+  let list = agendaFiltro==='agendadas' ? allReunioes.filter(reuniaoAgendada) : allReunioes;
+  if(agendaFiltro==='todos' && setorFiltro!=='todos') list = list.filter(r=>setoresDaReuniao(r).some(s=>setoresIguais(s,setorFiltro)));
   const q = (document.getElementById('search').value||'').toLowerCase();
   if(q) list = list.filter(r=>(r.titulo||'').toLowerCase().includes(q));
   setTimeout(()=>atualizarStatusAoVivoLista(list),0);
@@ -2386,6 +2403,7 @@ function rowReuniao(r){
 function rowReuniao(r){
   const dur = r.duracao_minutos!=null ? r.duracao_minutos+' min' : '-';
   const pend = (r.status==='pending'||r.status==='processing') && (r.plataforma==='skribby'||r.plataforma==='recall');
+  const agendada = reuniaoAgendada(r);
   const compartilhada = compartilhamentoResumo(r);
   const erroResumo = r.status==='error' ? erroResumoReuniao(r.erro_msg || r.resumo_executivo || 'error', 'error') : '';
   const titulo = (r.titulo || '').trim() || `Reunião sem título - ${r.setor || 'Sem setor'}`;
@@ -2396,7 +2414,7 @@ function rowReuniao(r){
     <div class="r-sub">${esc(subtitulo)}</div>
     ${compartilhada?`<div class="r-sub" style="color:var(--ddm-orange);margin-top:3px">${esc(compartilhada)}</div>`:''}</div>
     <div class="r-meta">${fmtData(r.data)}<br>${dur}</div>
-    <span class="badge ${r.status}">${statusLabel(r.status)}</span>
+    <span class="badge ${r.status}">${agendada?'Agendada':statusLabel(r.status)}</span>
     ${pend?`<button class="btn-sm" onclick="event.stopPropagation();processar('${r.id}')">Puxar</button>`:''}
     ${pend?`<div class="row-live-status" id="live-row-${esc(r.id)}"><b>Status ao vivo do Acordito:</b> consultando...</div>`:''}
   </div>`;

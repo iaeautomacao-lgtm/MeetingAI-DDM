@@ -37,6 +37,18 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
 .foot{margin-top:14px;text-align:center;font-size:12px;color:var(--gray);}
 .foot a{color:var(--ddm-orange);text-decoration:none;font-weight:600;}
 .hint{background:var(--cream);border-radius:var(--r-md);padding:11px 14px;font-size:12px;color:var(--ink-2);line-height:1.45;margin-bottom:16px;}
+.hint strong{color:var(--ink);}
+.hint ul{margin:8px 0 0 18px;display:grid;gap:4px;}
+.sector-picker{display:flex;flex-wrap:wrap;gap:8px;min-height:42px;}
+.sector-chip{border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px;color:var(--ink-2);font:600 12px var(--font-body);cursor:pointer;transition:.15s;}
+.sector-chip:hover{border-color:var(--ddm-orange);}
+.sector-chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.sector-chip.primary{background:var(--ddm-orange);border-color:var(--ddm-orange);}
+.sector-chip small{font-size:9px;text-transform:uppercase;margin-left:5px;opacity:.8;}
+.sector-help{margin-top:6px;font-size:11px;color:var(--gray);line-height:1.4;}
+.panel-link{margin-top:16px;border:1px solid #ffd2bd;background:var(--ddm-orange-50);border-radius:var(--r-md);padding:13px 16px;text-align:center;}
+.panel-link a{display:inline-flex;align-items:center;gap:7px;color:var(--ddm-orange);font-size:13px;font-weight:700;text-decoration:none;}
+.panel-link a:hover{text-decoration:underline;}
 @media (max-width:720px){body{align-items:flex-start;padding:12px}.card{padding:28px 22px;border-radius:24px}form{grid-template-columns:1fr}.field-row{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -50,7 +62,15 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
   <h1>Registrar Reunião</h1>
   <p class="sub">Cole o link da reunião. O <b>Acordito</b> entra, grava e gera a ata automaticamente.</p>
 
-  <div class="hint">A reunião precisa estar <b>em andamento</b> ou prestes a começar. Se houver sala de espera, admita o <b>Acordito</b>.</div>
+  <div class="hint">
+    <strong>Atenção ao acesso do Acordito</strong>
+    <ul>
+      <li>Se for agora, a reunião precisa estar em andamento ou prestes a começar.</li>
+      <li>Se for agendada, confira a data e o horário para ele entrar no momento certo.</li>
+      <li>Se houver sala de espera, alguém precisa admitir o Acordito.</li>
+      <li>Login obrigatório, convidados externos bloqueados ou restrições contra bots podem impedir a entrada.</li>
+    </ul>
+  </div>
 
   <form id="form" onsubmit="enviar(event)">
     <div class="field full">
@@ -69,9 +89,10 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
       <label for="solicitante">Seu nome (quem está cadastrando) *</label>
       <input type="text" id="solicitante" placeholder="Ex.: Gisele Oliveira" required>
     </div>
-    <div class="field">
-      <label for="setor">Setor</label>
-      <select id="setor"><option value="">Selecione o setor...</option></select>
+    <div class="field full">
+      <label>Setores envolvidos *</label>
+      <div class="sector-picker" id="setores"></div>
+      <div class="sector-help">Marque todos os setores envolvidos. O primeiro marcado será o setor principal e os demais também verão a reunião.</div>
     </div>
     <div class="field">
       <label for="modalidade">Formato da reunião</label>
@@ -99,19 +120,35 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
 
   <div class="msg" id="msg"></div>
 
-  <div class="foot">É diretor? <a href="/login">Acessar painel executivo</a></div>
+  <div class="panel-link"><a href="/login">Acessar painel executivo <span aria-hidden="true">→</span></a></div>
 </div>
 
 <script>
 const BASE='';
+let setoresSelecionados=[];
 async function carregarSetores(){
   try{
     const r=await fetch(BASE+'/api/setores'); const setores=await r.json();
-    const sel=document.getElementById('setor');
-    (setores||[]).forEach(s=>{ const o=document.createElement('option'); o.value=s.nome; o.textContent=s.nome; sel.appendChild(o); });
+    const nomes=(setores||[]).map(s=>s.nome).filter(Boolean);
+    const box=document.getElementById('setores');
+    box.innerHTML=nomes.map((nome,i)=>`<button type="button" class="sector-chip" onclick="alternarSetor(${i})">${esc(nome)}</button>`).join('');
+    box.dataset.nomes=JSON.stringify(nomes);
   }catch(e){ /* deixa dropdown com opção vazia */ }
 }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
+function alternarSetor(index){
+  const box=document.getElementById('setores');
+  const nomes=JSON.parse(box.dataset.nomes||'[]');
+  const nome=nomes[index];
+  const pos=setoresSelecionados.indexOf(nome);
+  if(pos>=0) setoresSelecionados.splice(pos,1); else setoresSelecionados.push(nome);
+  box.querySelectorAll('.sector-chip').forEach((chip,i)=>{
+    const ativo=setoresSelecionados.includes(nomes[i]);
+    chip.classList.toggle('active',ativo);
+    chip.classList.toggle('primary',ativo && setoresSelecionados[0]===nomes[i]);
+    chip.innerHTML=esc(nomes[i])+(ativo && setoresSelecionados[0]===nomes[i]?' <small>principal</small>':'');
+  });
+}
 function showMsg(txt,ok){ const m=document.getElementById('msg'); m.className='msg '+(ok?'ok':'err'); m.innerHTML=txt; }
 async function enviar(ev){
   ev.preventDefault();
@@ -120,20 +157,26 @@ async function enviar(ev){
   const dataInput=document.getElementById('data_reuniao').value;
   const data=dataInput ? new Date(dataInput).toISOString() : '';
   const solicitante=document.getElementById('solicitante').value.trim();
-  const setor=document.getElementById('setor').value;
+  const setor=setoresSelecionados[0]||'';
   const modalidade=document.getElementById('modalidade').value;
   const local_reuniao=document.getElementById('local_reuniao').value;
   const cliente=document.getElementById('cliente').value.trim();
   if(!url) return;
   if(!solicitante){ showMsg('Informe seu nome.',false); return; }
+  if(!setor){ showMsg('Marque ao menos um setor envolvido.',false); return; }
   const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Enviando...';
   try{
-    const body={meeting_url:url,titulo,data,solicitante,setor,modalidade,local_reuniao,cliente};
+    const body={meeting_url:url,titulo,data,solicitante,setor,setores:setoresSelecionados,modalidade,local_reuniao,cliente};
     const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status));
-    showMsg('O <b>Acordito</b> está a caminho da reunião. A ata ficará disponível para a diretoria ao final.',true);
+    const mensagem = d.scheduled_start_time
+      ? 'Reunião agendada. O <b>Acordito</b> tentará entrar automaticamente no horário informado. Confira a aba <b>Agendadas</b> no painel.'
+      : 'O <b>Acordito</b> está a caminho da reunião. A ata ficará disponível para a diretoria ao final.';
+    showMsg(mensagem,true);
     document.getElementById('form').reset();
+    setoresSelecionados=[];
+    document.querySelectorAll('.sector-chip').forEach(chip=>chip.classList.remove('active','primary'));
   }catch(e){ showMsg('Não foi possível registrar: '+esc(e.message),false); }
   finally{ btn.disabled=false; btn.textContent='Enviar Acordito'; }
 }

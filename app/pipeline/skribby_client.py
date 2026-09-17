@@ -246,6 +246,27 @@ def classify_bot_issue(
         })
         return issue
 
+    if status in {
+        "pending",
+        "booting",
+        "joining",
+        "waiting_to_record",
+        "recording",
+        "leaving",
+        "processing",
+        "transcribing",
+    }:
+        # Estados de operação não são falhas. O frontend usa o próprio status
+        # para mostrar a orientação adequada ao usuário.
+        issue.update({
+            "categoria": "informativo",
+            "titulo": "",
+            "mensagem": "",
+            "acao": "",
+            "tecnico": "",
+        })
+        return issue
+
     if status == "not_admitted":
         issue.update({
             "categoria": "nao_admitido",

@@ -2947,7 +2947,10 @@ def status_gravacao(reuniao_id: str):
             "bot_status": status,
             "stop_reason": stop_reason,
             "classificacao": classificacao,
-            "status": reuniao.get("status"),
+            # Neste endpoint, `status` precisa ser o estado real do bot.
+            # O estado interno da reunião pode continuar como `pending`.
+            "status": status,
+            "reuniao_status": reuniao.get("status"),
             "erro_msg": reuniao.get("erro_msg") or "",
         }), 200
 

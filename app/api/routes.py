@@ -2617,11 +2617,25 @@ def criar_gravacao():
     if is_authed() and sessao_email():
         solicitante = sessao_email()
 
+    # A reunião pode envolver vários setores: o primeiro vira o setor principal
+    # e os demais entram em compartilhado_setores (aparecem para esses setores).
+    setores_informados = _normalizar_lista_texto(
+        body.get("setores") or body.get("compartilhado_setores")
+    )
     setor = (body.get("setor") or "").strip()
+    if not setor and setores_informados:
+        setor = setores_informados[0]
+
     if is_authed() and not tem_acesso_total():
         setores_sessao = sessao_setores()
-        if setores_sessao:
-            setor = setor if setor in setores_sessao else setores_sessao[0]
+        if setores_sessao and setor not in setores_sessao:
+            permitido = next(
+                (s for s in setores_informados if s in setores_sessao),
+                "",
+            )
+            setor = permitido or setores_sessao[0]
+
+    setores_extras = [s for s in setores_informados if s and s != setor]
     modalidade = (body.get("modalidade") or "online").strip()
     local_reuniao = (body.get("local_reuniao") or "").strip()
     cliente = (body.get("cliente") or "").strip()
@@ -2633,48 +2647,45 @@ def criar_gravacao():
         connection = get_mysql_connection()
         cursor = connection.cursor()
 
+        colunas = [
+            "id",
+            "titulo",
+            "solicitante",
+            "setor",
+            "data",
+            "plataforma",
+            "status",
+            "recall_bot_id",
+            "modalidade",
+            "local_reuniao",
+            "cliente",
+        ]
+        valores_insert = [
+            reuniao_id,
+            titulo,
+            solicitante,
+            setor,
+            data_reuniao,
+            "skribby",
+            "pending",
+            bot_id,
+            modalidade,
+            local_reuniao,
+            cliente,
+        ]
+
+        if setores_extras and _tem_coluna_reunioes("compartilhado_setores"):
+            colunas.append("compartilhado_setores")
+            valores_insert.append(
+                json.dumps(setores_extras, ensure_ascii=False)
+            )
+
         cursor.execute(
-            """
-            INSERT INTO reunioes (
-                id,
-                titulo,
-                solicitante,
-                setor,
-                data,
-                plataforma,
-                status,
-                recall_bot_id,
-                modalidade,
-                local_reuniao,
-                cliente
-            )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
+            f"""
+            INSERT INTO reunioes ({", ".join(colunas)})
+            VALUES ({", ".join(["%s"] * len(colunas))})
             """,
-            (
-                reuniao_id,
-                titulo,
-                solicitante,
-                setor,
-                data_reuniao,
-                "skribby",
-                "pending",
-                bot_id,
-                modalidade,
-                local_reuniao,
-                cliente,
-            ),
+            tuple(valores_insert),
         )
 
         connection.commit()

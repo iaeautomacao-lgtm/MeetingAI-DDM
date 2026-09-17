@@ -586,6 +586,12 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .modal label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 6px; color: var(--ink-2); }
 .modal input, .modal select, .modal textarea { width: 100%; background: var(--bg-alt); border: 1px solid transparent; border-radius: var(--r-md); padding: 12px 14px; font-family: var(--font-body); font-size: 14px; outline: none; }
 .modal textarea { min-height: 74px; resize: vertical; line-height: 1.45; }
+.setor-multi { display: flex; flex-wrap: wrap; gap: 8px; }
+.setor-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 8px 13px; font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--ink-2); cursor: pointer; transition: .15s; }
+.setor-chip:hover { border-color: var(--ddm-orange); color: var(--ink); }
+.setor-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.setor-chip.principal { background: var(--ddm-orange); border-color: var(--ddm-orange); }
+.setor-chip-tag { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; background: rgba(255,255,255,.25); border-radius: 999px; padding: 2px 6px; }
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--ddm-orange); }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 26px; }
 .btn-ghost { background: var(--bg-alt); color: var(--ink); border: none; padding: 10px 20px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
@@ -1045,8 +1051,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <input type="text" id="m-titulo" placeholder="Ex.: Alinhamento Comercial">
     <label>Data e hora da reunião</label>
     <input type="datetime-local" id="m-data">
-    <label>Setor</label>
-    <select id="m-setor"><option value="">Selecione…</option></select>
+    <label>Setores envolvidos *</label>
+    <div class="setor-multi" id="m-setores"></div>
+    <div class="t-sub" style="margin-top:6px">Marque todos os setores envolvidos. O primeiro marcado vira o setor principal e a reunião aparece para os demais também.</div>
     <label>Formato da reunião</label>
     <select id="m-modalidade">
       <option value="online">Online</option>
@@ -1078,8 +1085,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <input type="text" id="e-titulo" placeholder="Ex.: Alinhamento Comercial">
     <label>Data e hora da reunião</label>
     <input type="datetime-local" id="e-data">
-    <label>Setor</label>
-    <select id="e-setor"><option value="">Selecione...</option></select>
+    <label>Setores envolvidos *</label>
+    <div class="setor-multi" id="e-setores"></div>
+    <div class="t-sub" style="margin-top:6px">O primeiro marcado é o setor principal. Os demais também enxergam a reunião.</div>
     <label>Solicitante / cadastrado por</label>
     <input type="text" id="e-solicitante" placeholder="Nome de quem cadastrou">
     <label>Formato da reunião</label>
@@ -1097,9 +1105,6 @@ body.detalhe-aberto .right-sidebar { display: none; }
     </select>
     <label>Cliente envolvido</label>
     <input type="text" id="e-cliente" placeholder="Nome do cliente, se houver">
-    <label>Compartilhar com setores</label>
-    <textarea id="e-share-setores" placeholder="Ex.: Operação, Jurídico"></textarea>
-    <div class="t-sub" style="margin-top:4px">A reunião também aparecerá para usuários/gestores desses setores.</div>
     <label>Compartilhar com e-mails específicos</label>
     <textarea id="e-share-emails" placeholder="Ex.: alessa@grupoddm.com.br"></textarea>
     <div class="modal-actions">
@@ -1164,6 +1169,15 @@ function asList(v){
 }
 function listaTexto(v){
   return asList(v).map(x=>String(x||'').trim()).filter(Boolean);
+}
+/* setor principal + setores envolvidos, sem repetir */
+function setoresDaReuniao(r){
+  const out=[];
+  [r && r.setor, ...listaTexto(r && r.compartilhado_setores)].forEach(s=>{
+    const v=String(s||'').trim();
+    if(v && !out.some(x=>x.toLowerCase()===v.toLowerCase())) out.push(v);
+  });
+  return out;
 }
 function parseListaCampo(valor){
   return String(valor||'')
@@ -2328,7 +2342,7 @@ async function loadReunioes(){
       let setores = [];
       if(GESTOR_SETOR && !ACESSO_TOTAL) setores = MEUS_SETORES.slice();
       else try { setores = (await apiGet('/api/setores')||[]).map(s=>s.nome); } catch(e){}
-      allReunioes.forEach(r=>{ if(r.setor && !setores.includes(r.setor)) setores.push(r.setor); });
+      allReunioes.forEach(r=>{ setoresDaReuniao(r).forEach(s=>{ if(!setores.includes(s)) setores.push(s); }); });
       tabs.style.display='';
       tabs.innerHTML =
         `<button class="tab-btn ${setorFiltro==='todos'?'active':''}" onclick="filterSetor('todos',this)">Todos</button>` +
@@ -2342,12 +2356,12 @@ function compartilhamentoResumo(r){
   const setores = listaTexto(r.compartilhado_setores);
   const emails = listaTexto(r.compartilhado_emails);
   const partes = [];
-  if(setores.length) partes.push('setores: '+setores.join(', '));
-  if(emails.length) partes.push('e-mails: '+emails.join(', '));
-  return partes.length ? 'Compartilhada com '+partes.join(' · ') : '';
+  if(setores.length) partes.push('Também envolve: '+setores.join(', '));
+  if(emails.length) partes.push('Compartilhada com: '+emails.join(', '));
+  return partes.join(' · ');
 }
 function renderReunioes(){
-  let list = setorFiltro==='todos' ? allReunioes : allReunioes.filter(r=>r.setor===setorFiltro);
+  let list = setorFiltro==='todos' ? allReunioes : allReunioes.filter(r=>setoresDaReuniao(r).some(s=>setoresIguais(s,setorFiltro)));
   const q = (document.getElementById('search').value||'').toLowerCase();
   if(q) list = list.filter(r=>(r.titulo||'').toLowerCase().includes(q));
   setTimeout(()=>atualizarStatusAoVivoLista(list),0);
@@ -2427,7 +2441,7 @@ function _transcricaoTexto(r){
 
 function _metaReuniao(r){
   return [
-    r.setor||'—',
+    setoresDaReuniao(r).join(' · ')||'—',
     fmtData(r.data),
     r.duracao_minutos!=null?r.duracao_minutos+' min':'—',
     r.modalidade?('Formato: '+r.modalidade):'',
@@ -2541,7 +2555,7 @@ async function loadDetalhe(id){
     el.innerHTML = `
       <div class="detail-head det-head">
         <h2>${esc(r.titulo||'Reunião')}</h2>
-        <div class="welcome-date">${esc(r.setor||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span> ${climaBadge(r.clima)}</div>
+        <div class="welcome-date">${esc(setoresDaReuniao(r).join(' · ')||'—')} · ${fmtData(r.data)} · ${r.duracao_minutos!=null?r.duracao_minutos+' min':'—'} <span class="badge ${r.status}">${statusLabel(r.status)}</span> ${climaBadge(r.clima)}</div>
         <div class="welcome-date" style="margin-top:4px">${esc(_metaReuniao(r))}${r.solicitante?' · cadastrado por <b>'+esc(r.solicitante)+'</b>':''}</div>
         ${compartilhada?`<div class="welcome-date" style="margin-top:4px;color:var(--ddm-orange)">${esc(compartilhada)}</div>`:''}
         ${r.status==='error'?`<div style="margin-top:14px;padding:12px 14px;background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;color:#a3271e;font-size:13px;line-height:1.5"><b>⚠ O que houve:</b> ${esc(erroAmigavel(r.erro_msg))}${r.erro_msg?`<br><span style="opacity:.7;font-size:12px">Detalhe técnico: ${esc(r.erro_msg)}</span>`:''}</div>`:''}
@@ -2941,25 +2955,60 @@ function valorDatetimeLocal(iso){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-async function preencherSetoresSelect(sel, atual){
-  if(!sel) return;
-  if(sel.options.length<=1){
-    try{
-      const setores=await apiGet('/api/setores');
-      (setores||[]).forEach(s=>{
-        const nome=s.nome||s;
-        if(![...sel.options].some(o=>o.value===nome)){
-          const o=document.createElement('option');
-          o.value=nome; o.textContent=nome; sel.appendChild(o);
-        }
-      });
-    }catch(e){}
-  }
-  if(atual && ![...sel.options].some(o=>o.value===atual)){
-    const o=document.createElement('option');
-    o.value=atual; o.textContent=atual; sel.appendChild(o);
-  }
-  sel.value=atual||'';
+/* ---------- seleção de múltiplos setores (nova reunião / edição) ---------- */
+const SETORES_SELECAO = {};
+let _SETORES_CACHE = null;
+
+async function setoresDisponiveis(){
+  if(_SETORES_CACHE) return _SETORES_CACHE;
+  let lista=[];
+  try{ lista=(await apiGet('/api/setores')||[]).map(s=>s.nome||s); }catch(e){}
+  lista=lista.map(s=>String(s||'').trim()).filter(Boolean);
+  _SETORES_CACHE = lista.length ? lista : IDEIAS_SETORES_RADAR.slice();
+  return _SETORES_CACHE;
+}
+
+async function preencherSetoresMulti(containerId, selecionados){
+  const box=document.getElementById(containerId);
+  if(!box) return;
+  const disponiveis=await setoresDisponiveis();
+  const atuais=[];
+  listaTexto(selecionados).forEach(s=>{ if(!atuais.some(x=>setoresIguais(x,s))) atuais.push(s); });
+  const opcoes=disponiveis.slice();
+  atuais.forEach(s=>{ if(!opcoes.some(o=>setoresIguais(o,s))) opcoes.push(s); });
+  box.dataset.opcoes=JSON.stringify(opcoes);
+  SETORES_SELECAO[containerId]=atuais;
+  renderSetoresMulti(containerId);
+}
+
+function renderSetoresMulti(containerId){
+  const box=document.getElementById(containerId);
+  if(!box) return;
+  let opcoes=[]; try{ opcoes=JSON.parse(box.dataset.opcoes||'[]'); }catch(e){}
+  const sel=SETORES_SELECAO[containerId]||[];
+  box.innerHTML=opcoes.map((s,idx)=>{
+    const pos=sel.findIndex(x=>setoresIguais(x,s));
+    const cls='setor-chip'+(pos>=0?' active':'')+(pos===0?' principal':'');
+    const tag=pos===0?'<span class="setor-chip-tag">principal</span>':'';
+    return `<button type="button" class="${cls}" onclick="toggleSetorMulti('${containerId}',${idx})">${esc(s)}${tag}</button>`;
+  }).join('');
+}
+
+function toggleSetorMulti(containerId, idx){
+  const box=document.getElementById(containerId);
+  if(!box) return;
+  let opcoes=[]; try{ opcoes=JSON.parse(box.dataset.opcoes||'[]'); }catch(e){}
+  const setor=opcoes[idx];
+  if(!setor) return;
+  const sel=SETORES_SELECAO[containerId]||[];
+  const pos=sel.findIndex(x=>setoresIguais(x,setor));
+  if(pos>=0) sel.splice(pos,1); else sel.push(setor);
+  SETORES_SELECAO[containerId]=sel;
+  renderSetoresMulti(containerId);
+}
+
+function setoresSelecionados(containerId){
+  return (SETORES_SELECAO[containerId]||[]).slice();
 }
 
 async function abrirEditarReuniao(){
@@ -2972,9 +3021,8 @@ async function abrirEditarReuniao(){
   document.getElementById('e-modalidade').value = r.modalidade || 'online';
   document.getElementById('e-local').value = r.local_reuniao || 'Online';
   document.getElementById('e-cliente').value = r.cliente || '';
-  document.getElementById('e-share-setores').value = listaTexto(r.compartilhado_setores).join(', ');
   document.getElementById('e-share-emails').value = listaTexto(r.compartilhado_emails).join(', ');
-  await preencherSetoresSelect(document.getElementById('e-setor'), r.setor || '');
+  await preencherSetoresMulti('e-setores', [r.setor || '', ...listaTexto(r.compartilhado_setores)]);
   document.getElementById('modal-edit').style.display='flex';
 }
 
@@ -2988,19 +3036,20 @@ async function salvarEdicaoReuniao(){
   if(!id) return;
   const titulo=document.getElementById('e-titulo').value.trim();
   const dataInput=document.getElementById('e-data').value;
+  const setores=setoresSelecionados('e-setores');
   const body={
     titulo,
     data: dataInput ? new Date(dataInput).toISOString() : '',
-    setor: document.getElementById('e-setor').value,
+    setor: setores[0]||'',
     solicitante: document.getElementById('e-solicitante').value.trim(),
     modalidade: document.getElementById('e-modalidade').value,
     local_reuniao: document.getElementById('e-local').value,
     cliente: document.getElementById('e-cliente').value.trim(),
-    compartilhado_setores: parseListaCampo(document.getElementById('e-share-setores').value),
+    compartilhado_setores: setores.slice(1),
     compartilhado_emails: parseListaCampo(document.getElementById('e-share-emails').value).map(e=>e.toLowerCase())
   };
   if(!titulo){ toast('Informe o título da reunião.'); return; }
-  if(!body.setor){ toast('Informe o setor.'); return; }
+  if(!body.setor){ toast('Marque ao menos um setor.'); return; }
   const btn=document.getElementById('e-btn');
   btn.disabled=true; btn.textContent='Salvando...';
   try{
@@ -3031,10 +3080,7 @@ async function novaReuniao(){
       <li>Login obrigat&oacute;rio, convidados externos bloqueados ou restri&ccedil;&atilde;o contra bots podem impedir a entrada.</li>
     </ul>`;
   }
-  const sel=document.getElementById('m-setor');
-  if(sel.options.length<=1){
-    try{ const setores=await apiGet('/api/setores'); (setores||[]).forEach(s=>{const o=document.createElement('option');o.value=s.nome;o.textContent=s.nome;sel.appendChild(o);}); }catch(e){}
-  }
+  await preencherSetoresMulti('m-setores', setoresSelecionados('m-setores'));
 }
 function fecharModal(){ document.getElementById('modal').style.display='none'; }
 async function enviarReuniao(){
@@ -3042,14 +3088,17 @@ async function enviarReuniao(){
   const titulo=document.getElementById('m-titulo').value.trim();
   const dataInput=document.getElementById('m-data').value;
   const data=dataInput ? new Date(dataInput).toISOString() : '';
-  const setor=document.getElementById('m-setor').value;
+  const setores=setoresSelecionados('m-setores');
+  const setor=setores[0]||'';
   const modalidade=document.getElementById('m-modalidade').value;
   const local_reuniao=document.getElementById('m-local').value;
   const cliente=document.getElementById('m-cliente').value.trim();
   if(!url){ toast('Cole o link da reunião.'); return; }
+  if(!setor){ toast('Marque ao menos um setor.'); return; }
   const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
-  try { const resp = await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,modalidade,local_reuniao,cliente});
+  try { const resp = await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,setores,modalidade,local_reuniao,cliente});
     fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value=''; document.getElementById('m-data').value=''; document.getElementById('m-cliente').value='';
+    SETORES_SELECAO['m-setores']=[]; renderSetoresMulti('m-setores');
     toast(resp.scheduled_start_time ? 'Acordito agendado. Ele entrará no horário da reunião.' : 'Acordito a caminho! A reunião aparecerá ao terminar.',5000);
     if(curPage==='reunioes') loadReunioes(); else goto('reunioes');
   } catch(e){ toast('Erro: '+e.message,4000); }

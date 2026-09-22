@@ -540,14 +540,18 @@ body {
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
 .tab-btn.active { background: var(--ink); color: #fff; }
-.meeting-filters { display:grid; grid-template-columns:minmax(118px,.75fr) minmax(118px,.75fr) minmax(150px,1fr) minmax(150px,1fr) minmax(135px,.85fr) auto; gap:8px; align-items:end; margin:-8px 0 16px; padding:10px 12px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); }
+.meeting-filters { display:grid; grid-template-columns:minmax(118px,.75fr) minmax(118px,.75fr) minmax(150px,1fr) minmax(150px,1fr) minmax(135px,.85fr) auto auto; gap:8px; align-items:end; margin:0 0 10px; padding:10px 12px 12px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); }
+.meeting-filter-title { grid-column:1/-1; display:flex; align-items:center; gap:7px; color:var(--ink); font:700 12px var(--font-display); }
+.meeting-filter-title svg { width:15px; height:15px; color:var(--ddm-orange); }
 .meeting-filter-field { min-width:0; }
 .meeting-filter-field label { display:block; margin:0 0 4px; color:var(--gray); font-size:9px; font-weight:700; text-transform:uppercase; }
 .meeting-filter-field input, .meeting-filter-field select { width:100%; height:34px; border:1px solid transparent; border-radius:8px; background:#fff; color:var(--ink); padding:6px 9px; font:500 11px var(--font-body); outline:none; }
 .meeting-filter-field input:focus, .meeting-filter-field select:focus { border-color:var(--ddm-orange); }
 .meeting-filter-clear { height:34px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--ink-2); padding:0 12px; font:600 11px var(--font-body); cursor:pointer; }
 .meeting-filter-clear:hover { border-color:var(--ddm-orange); color:var(--ddm-orange); }
-@media(max-width:1100px){.meeting-filters{grid-template-columns:repeat(3,minmax(130px,1fr));}.meeting-filter-clear{width:100%;}}
+.meeting-filter-apply { height:34px; border:0; border-radius:8px; background:var(--ink); color:#fff; padding:0 16px; font:700 11px var(--font-body); cursor:pointer; }
+.meeting-filter-apply:hover { background:var(--ddm-orange); }
+@media(max-width:1100px){.meeting-filters{grid-template-columns:repeat(3,minmax(130px,1fr));}.meeting-filter-clear,.meeting-filter-apply{width:100%;}}
 @media(max-width:700px){.meeting-filters{grid-template-columns:1fr 1fr;}.meeting-filter-user,.meeting-filter-client,.meeting-filter-local{grid-column:1/-1;}}
 .cfg-label { display:block; font-size:12px; font-weight:600; color:var(--gray); margin-bottom:5px; }
 .cfg-input { width:100%; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); padding:11px 13px; font-family:var(--font-body); font-size:14px; outline:none; }
@@ -896,15 +900,17 @@ body.detalhe-aberto .right-sidebar { display: none; }
 
     <!-- ===== PAGE: REUNIÕES ===== -->
     <section class="page" id="page-reunioes">
-      <div class="tabs" id="setor-tabs"></div>
-      <div class="meeting-filters" aria-label="Filtros de reuniões">
-        <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><input type="date" id="reuniao-filtro-de" onchange="atualizarFiltroReunioes('de',this.value)"></div>
-        <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><input type="date" id="reuniao-filtro-ate" onchange="atualizarFiltroReunioes('ate',this.value)"></div>
-        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><input type="search" id="reuniao-filtro-usuario" placeholder="Nome ou e-mail" oninput="atualizarFiltroReunioes('usuario',this.value,true)"></div>
-        <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" placeholder="Nome do cliente" oninput="atualizarFiltroReunioes('cliente',this.value,true)"></div>
-        <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local" onchange="atualizarFiltroReunioes('local',this.value)"><option value="">Todos</option><option value="Online">Online</option><option value="Sede RJ">Sede RJ</option><option value="Sede SP">Sede SP</option><option value="Cliente">Cliente</option><option value="Outro">Outro</option></select></div>
+      <form class="meeting-filters" aria-label="Filtros de reuniões" onsubmit="aplicarFiltrosReunioes();return false">
+        <div class="meeting-filter-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filtrar reuniões</div>
+        <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><select id="reuniao-filtro-de"><option value="">Qualquer data</option></select></div>
+        <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><select id="reuniao-filtro-ate"><option value="">Qualquer data</option></select></div>
+        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><input type="search" id="reuniao-filtro-usuario" list="reuniao-usuarios-opcoes" placeholder="Todos os usuários"><datalist id="reuniao-usuarios-opcoes"></datalist></div>
+        <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" list="reuniao-clientes-opcoes" placeholder="Todos os clientes"><datalist id="reuniao-clientes-opcoes"></datalist></div>
+        <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local"><option value="">Todos os locais</option></select></div>
+        <button type="submit" class="meeting-filter-apply">Filtrar</button>
         <button type="button" class="meeting-filter-clear" onclick="limparFiltrosReunioes()">Limpar</button>
-      </div>
+      </form>
+      <div class="tabs" id="setor-tabs"></div>
       <div class="list" id="reunioes-list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </section>
 
@@ -1270,8 +1276,8 @@ const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', agendaFiltro = 'todos', emailFiltro = 'relevantes';
 let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {}, REUNIOES_TIMER = null, STATUS_BOT_CARREGANDO = false, REUNIOES_CARREGANDO = false, REUNIOES_RECARREGAR = false;
-let REUNIOES_FILTRO_TIMER = null;
 const REUNIOES_FILTROS = {de:'',ate:'',usuario:'',cliente:'',local:''};
+let REUNIOES_OPCOES_FILTRO_CARREGADAS = false, REUNIOES_OPCOES_FILTRO_PROMISE = null;
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
 let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [], IDEIAS_MOSTRAR_SETORES = false;
@@ -2495,6 +2501,7 @@ async function loadReunioes(){
   if(REUNIOES_CARREGANDO){ REUNIOES_RECARREGAR=true; return; }
   REUNIOES_CARREGANDO=true;
   try {
+    if(!REUNIOES_OPCOES_FILTRO_CARREGADAS) carregarOpcoesFiltrosReunioes();
     const params=new URLSearchParams();
     Object.entries(REUNIOES_FILTROS).forEach(([chave,valor])=>{ if(valor) params.set(chave,valor); });
     allReunioes = await apiGet('/api/reunioes'+(params.toString()?'?'+params.toString():'')) || [];
@@ -2535,11 +2542,53 @@ async function loadReunioes(){
     }
   }
 }
-function atualizarFiltroReunioes(campo,valor,aguardar=false){
-  if(!(campo in REUNIOES_FILTROS)) return;
-  REUNIOES_FILTROS[campo]=(valor||'').trim();
-  clearTimeout(REUNIOES_FILTRO_TIMER);
-  REUNIOES_FILTRO_TIMER=setTimeout(loadReunioes,aguardar?350:0);
+function rotuloDataFiltro(valor){
+  if(!valor) return '';
+  const partes=valor.split('-');
+  return partes.length===3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : valor;
+}
+async function carregarOpcoesFiltrosReunioes(){
+  if(REUNIOES_OPCOES_FILTRO_PROMISE) return REUNIOES_OPCOES_FILTRO_PROMISE;
+  REUNIOES_OPCOES_FILTRO_PROMISE=(async()=>{
+    try{
+      const opcoes=await apiGet('/api/reunioes/filtros');
+      ['de','ate'].forEach(campo=>{
+        const select=document.getElementById('reuniao-filtro-'+campo);
+        if(!select) return;
+        const atual=select.value;
+        select.innerHTML='<option value="">Qualquer data</option>'+asList(opcoes.datas).map(data=>`<option value="${esc(data)}">${esc(rotuloDataFiltro(data))}</option>`).join('');
+        select.value=atual;
+      });
+      const usuarios=document.getElementById('reuniao-usuarios-opcoes');
+      if(usuarios) usuarios.innerHTML=asList(opcoes.usuarios).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
+      const clientes=document.getElementById('reuniao-clientes-opcoes');
+      if(clientes) clientes.innerHTML=asList(opcoes.clientes).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
+      const locais=document.getElementById('reuniao-filtro-local');
+      if(locais){
+        const atual=locais.value;
+        locais.innerHTML='<option value="">Todos os locais</option>'+asList(opcoes.locais).map(valor=>`<option value="${esc(valor)}">${esc(valor)}</option>`).join('');
+        locais.value=atual;
+      }
+      REUNIOES_OPCOES_FILTRO_CARREGADAS=true;
+    }catch(e){
+      console.warn('Não foi possível carregar opções dos filtros de reuniões',e);
+    }finally{
+      REUNIOES_OPCOES_FILTRO_PROMISE=null;
+    }
+  })();
+  return REUNIOES_OPCOES_FILTRO_PROMISE;
+}
+function aplicarFiltrosReunioes(){
+  const novos={};
+  Object.keys(REUNIOES_FILTROS).forEach(campo=>{
+    novos[campo]=(document.getElementById('reuniao-filtro-'+campo)?.value||'').trim();
+  });
+  if(novos.de && novos.ate && novos.de>novos.ate){
+    toast('A data inicial não pode ser posterior à data final.');
+    return;
+  }
+  Object.assign(REUNIOES_FILTROS,novos);
+  loadReunioes();
 }
 function limparFiltrosReunioes(){
   Object.keys(REUNIOES_FILTROS).forEach(campo=>{ REUNIOES_FILTROS[campo]=''; });
@@ -2547,7 +2596,6 @@ function limparFiltrosReunioes(){
     const el=document.getElementById('reuniao-filtro-'+campo);
     if(el) el.value='';
   });
-  clearTimeout(REUNIOES_FILTRO_TIMER);
   loadReunioes();
 }
 function reuniaoAgendada(r){
@@ -3418,6 +3466,7 @@ async function salvarEdicaoReuniao(){
   try{
     await apiPost('/api/reunioes/'+id+'/metadados', body);
     fecharEditarReuniao();
+    REUNIOES_OPCOES_FILTRO_CARREGADAS=false;
     toast('Dados da reunião atualizados.');
     loadDetalhe(id);
     loadReunioes();
@@ -3468,6 +3517,7 @@ async function enviarReuniao(){
   const btn=document.getElementById('m-btn'); btn.disabled=true; btn.textContent='Enviando…';
   try { const resp = await apiPost('/api/gravacoes',{meeting_url:url,titulo,data,setor,setores,visibilidade_setor,compartilhado_emails:USUARIOS_COMPARTILHADOS.slice(),modalidade,local_reuniao,cliente});
     fecharModal(); document.getElementById('m-url').value=''; document.getElementById('m-titulo').value=''; document.getElementById('m-data').value=''; document.getElementById('m-cliente').value='';
+    REUNIOES_OPCOES_FILTRO_CARREGADAS=false;
     SETORES_SELECAO['m-setores']=[]; renderSetoresMulti('m-setores');
     USUARIOS_COMPARTILHADOS=[]; renderUsuariosCompartilhamento();
     toast(resp.scheduled_start_time ? 'Acordito agendado. Ele entrará no horário da reunião.' : 'Acordito a caminho! A reunião aparecerá ao terminar.',5000);

@@ -1559,6 +1559,86 @@ def listar_reunioes():
             connection.close()
 
 
+@bp.get("/reunioes/filtros")
+@require_auth
+def opcoes_filtros_reunioes():
+    """Valores existentes no banco para preencher os filtros de reuniões."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        sql = """
+        SELECT data, solicitante, cliente, local_reuniao,
+               compartilhado_emails, participantes
+        FROM reunioes
+        WHERE excluida_em IS NULL
+        """
+        params = []
+        escopo_sql, escopo_params = _escopo_reunioes_sql()
+        sql += escopo_sql
+        params.extend(escopo_params)
+        sql += " ORDER BY data DESC"
+        cursor.execute(sql, params)
+        linhas = cursor.fetchall()
+
+        datas = set()
+        usuarios = set()
+        clientes = set()
+        locais = set()
+        for linha in linhas:
+            data = linha.get("data")
+            if data:
+                if hasattr(data, "strftime"):
+                    datas.add(data.strftime("%Y-%m-%d"))
+                else:
+                    datas.add(str(data)[:10])
+
+            solicitante = str(linha.get("solicitante") or "").strip()
+            if solicitante:
+                usuarios.add(solicitante)
+            usuarios.update(
+                valor for valor in _normalizar_lista_texto(
+                    linha.get("compartilhado_emails")
+                ) if valor
+            )
+            for participante in _normalizar_json_lista(linha.get("participantes")):
+                if isinstance(participante, dict):
+                    nome = (
+                        participante.get("nome")
+                        or participante.get("name")
+                        or participante.get("email")
+                        or ""
+                    )
+                else:
+                    nome = participante
+                nome = str(nome or "").strip()
+                if nome:
+                    usuarios.add(nome)
+
+            cliente = str(linha.get("cliente") or "").strip()
+            if cliente:
+                clientes.add(cliente)
+            local = str(linha.get("local_reuniao") or "").strip()
+            if local:
+                locais.add(local)
+
+        return jsonify({
+            "datas": sorted(datas, reverse=True),
+            "usuarios": sorted(usuarios, key=str.casefold),
+            "clientes": sorted(clientes, key=str.casefold),
+            "locais": sorted(locais, key=str.casefold),
+        }), 200
+    except Exception as exc:
+        current_app.logger.exception("Erro ao carregar opções dos filtros de reuniões")
+        return jsonify({"erro": "falha_ao_carregar_filtros", "msg": str(exc)}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
 @bp.get("/reunioes/erros")
 @require_admin
 def listar_erros_reunioes():

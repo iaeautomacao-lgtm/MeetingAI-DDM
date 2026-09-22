@@ -1612,30 +1612,9 @@ def opcoes_filtros_reunioes():
             if local:
                 locais.add(local)
 
-        cursor.execute(
-            """
-            SELECT nome, email
-            FROM usuarios
-            WHERE ativo = 1
-            ORDER BY nome, email
-            """
-        )
-        usuarios = []
-        vistos = set()
-        for usuario in cursor.fetchall():
-            nome = str(usuario.get("nome") or "").strip()
-            email = str(usuario.get("email") or "").strip()
-            rotulo = nome or email
-            if nome and email:
-                rotulo = f"{nome} ({email})"
-            chave = (rotulo or "").casefold()
-            if rotulo and chave not in vistos:
-                usuarios.append(rotulo)
-                vistos.add(chave)
-
         return jsonify({
             "datas": sorted(datas, reverse=True),
-            "usuarios": usuarios,
+            "usuarios": [],
             "clientes": sorted(clientes, key=str.casefold),
             "locais": sorted(locais, key=str.casefold),
         }), 200

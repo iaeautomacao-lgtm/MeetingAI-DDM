@@ -74,24 +74,18 @@ class FiltrosReunioesTest(unittest.TestCase):
 
     @patch("app.api.routes._escopo_reunioes_sql", return_value=(" AND setor = %s", ["IA"]))
     def test_opcoes_de_filtro_vem_do_banco_respeitando_escopo(self, _escopo):
-        connection = ConnectionFiltrosFake(fetches=[
-            [
-                {
-                    "data": datetime(2026, 9, 22, 9, 15),
-                    "cliente": "Cliente A",
-                    "local_reuniao": "Sede RJ",
-                },
-                {
-                    "data": "2026-09-21 14:30:00",
-                    "cliente": "Cliente B",
-                    "local_reuniao": "Online",
-                },
-            ],
-            [
-                {"nome": "Gisele Oliveira", "email": "gisele.oliveira@ddm.adv.br"},
-                {"nome": "Alessa Lima", "email": "alessa.lima@ddm.adv.br"},
-            ],
-        ])
+        connection = ConnectionFiltrosFake(fetches=[[
+            {
+                "data": datetime(2026, 9, 22, 9, 15),
+                "cliente": "Cliente A",
+                "local_reuniao": "Sede RJ",
+            },
+            {
+                "data": "2026-09-21 14:30:00",
+                "cliente": "Cliente B",
+                "local_reuniao": "Online",
+            },
+        ]])
         with patch("app.api.routes.get_mysql_connection", return_value=connection):
             client = self.app.test_client()
             with client.session_transaction() as sessao:
@@ -103,15 +97,11 @@ class FiltrosReunioesTest(unittest.TestCase):
         self.assertEqual(resposta.status_code, 200)
         payload = resposta.get_json()
         self.assertEqual(payload["datas"], ["2026-09-22", "2026-09-21"])
-        self.assertEqual(payload["usuarios"], [
-            "Gisele Oliveira (gisele.oliveira@ddm.adv.br)",
-            "Alessa Lima (alessa.lima@ddm.adv.br)",
-        ])
+        self.assertEqual(payload["usuarios"], [])
         self.assertEqual(payload["clientes"], ["Cliente A", "Cliente B"])
         self.assertEqual(payload["locais"], ["Online", "Sede RJ"])
         self.assertIn("AND setor = %s", connection.cursor_fake.executions[0][0])
         self.assertEqual(connection.cursor_fake.executions[0][1], ["IA"])
-        self.assertIn("FROM usuarios", connection.cursor_fake.executions[1][0])
 
 
 if __name__ == "__main__":

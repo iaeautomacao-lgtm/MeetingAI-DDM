@@ -902,8 +902,8 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <section class="page" id="page-reunioes">
       <form class="meeting-filters" aria-label="Filtros de reuniões" onsubmit="aplicarFiltrosReunioes();return false">
         <div class="meeting-filter-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filtrar reuniões</div>
-        <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><select id="reuniao-filtro-de"><option value="">Qualquer data</option></select></div>
-        <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><select id="reuniao-filtro-ate"><option value="">Qualquer data</option></select></div>
+        <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><input type="date" id="reuniao-filtro-de"></div>
+        <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><input type="date" id="reuniao-filtro-ate"></div>
         <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><input type="search" id="reuniao-filtro-usuario" list="reuniao-usuarios-opcoes" placeholder="Todos os usuários"><datalist id="reuniao-usuarios-opcoes"></datalist></div>
         <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" list="reuniao-clientes-opcoes" placeholder="Todos os clientes"><datalist id="reuniao-clientes-opcoes"></datalist></div>
         <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local"><option value="">Todos os locais</option></select></div>
@@ -2542,23 +2542,11 @@ async function loadReunioes(){
     }
   }
 }
-function rotuloDataFiltro(valor){
-  if(!valor) return '';
-  const partes=valor.split('-');
-  return partes.length===3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : valor;
-}
 async function carregarOpcoesFiltrosReunioes(){
   if(REUNIOES_OPCOES_FILTRO_PROMISE) return REUNIOES_OPCOES_FILTRO_PROMISE;
   REUNIOES_OPCOES_FILTRO_PROMISE=(async()=>{
     try{
       const opcoes=await apiGet('/api/reunioes/filtros');
-      ['de','ate'].forEach(campo=>{
-        const select=document.getElementById('reuniao-filtro-'+campo);
-        if(!select) return;
-        const atual=select.value;
-        select.innerHTML='<option value="">Qualquer data</option>'+asList(opcoes.datas).map(data=>`<option value="${esc(data)}">${esc(rotuloDataFiltro(data))}</option>`).join('');
-        select.value=atual;
-      });
       const usuarios=document.getElementById('reuniao-usuarios-opcoes');
       if(usuarios) usuarios.innerHTML=asList(opcoes.usuarios).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
       const clientes=document.getElementById('reuniao-clientes-opcoes');

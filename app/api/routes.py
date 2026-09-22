@@ -1512,15 +1512,28 @@ def listar_reunioes():
 
         usuario = (request.args.get("usuario") or "").strip().lower()
         if usuario:
-            busca_usuario = f"%{usuario}%"
+            termos_usuario = [usuario]
+            if usuario.endswith(")") and "(" in usuario:
+                nome_usuario, email_usuario = usuario.rsplit("(", 1)
+                nome_usuario = nome_usuario.strip()
+                email_usuario = email_usuario[:-1].strip()
+                termos_usuario = [termo for termo in (nome_usuario, email_usuario) if termo]
+            condicoes_usuario = []
+            params_usuario = []
+            for termo in termos_usuario:
+                busca_usuario = f"%{termo}%"
+                condicoes_usuario.extend([
+                    "LOWER(COALESCE(solicitante, '')) LIKE %s",
+                    "LOWER(COALESCE(compartilhado_emails, '')) LIKE %s",
+                    "LOWER(COALESCE(participantes, '')) LIKE %s",
+                ])
+                params_usuario.extend([busca_usuario, busca_usuario, busca_usuario])
             sql += """
              AND (
-               LOWER(COALESCE(solicitante, '')) LIKE %s
-               OR LOWER(COALESCE(compartilhado_emails, '')) LIKE %s
-               OR LOWER(COALESCE(participantes, '')) LIKE %s
+               {condicoes}
              )
-            """
-            params.extend([busca_usuario, busca_usuario, busca_usuario])
+            """.format(condicoes=" OR ".join(condicoes_usuario))
+            params.extend(params_usuario)
 
         cliente = (request.args.get("cliente") or "").strip().lower()
         if cliente:
@@ -1569,8 +1582,7 @@ def opcoes_filtros_reunioes():
         connection = get_mysql_connection()
         cursor = connection.cursor(dictionary=True)
         sql = """
-        SELECT data, solicitante, cliente, local_reuniao,
-               compartilhado_emails, participantes
+        SELECT data, cliente, local_reuniao
         FROM reunioes
         WHERE excluida_em IS NULL
         """
@@ -1583,7 +1595,6 @@ def opcoes_filtros_reunioes():
         linhas = cursor.fetchall()
 
         datas = set()
-        usuarios = set()
         clientes = set()
         locais = set()
         for linha in linhas:
@@ -1594,28 +1605,6 @@ def opcoes_filtros_reunioes():
                 else:
                     datas.add(str(data)[:10])
 
-            solicitante = str(linha.get("solicitante") or "").strip()
-            if solicitante:
-                usuarios.add(solicitante)
-            usuarios.update(
-                valor for valor in _normalizar_lista_texto(
-                    linha.get("compartilhado_emails")
-                ) if valor
-            )
-            for participante in _normalizar_json_lista(linha.get("participantes")):
-                if isinstance(participante, dict):
-                    nome = (
-                        participante.get("nome")
-                        or participante.get("name")
-                        or participante.get("email")
-                        or ""
-                    )
-                else:
-                    nome = participante
-                nome = str(nome or "").strip()
-                if nome:
-                    usuarios.add(nome)
-
             cliente = str(linha.get("cliente") or "").strip()
             if cliente:
                 clientes.add(cliente)
@@ -1623,9 +1612,30 @@ def opcoes_filtros_reunioes():
             if local:
                 locais.add(local)
 
+        cursor.execute(
+            """
+            SELECT nome, email
+            FROM usuarios
+            WHERE ativo = 1
+            ORDER BY nome, email
+            """
+        )
+        usuarios = []
+        vistos = set()
+        for usuario in cursor.fetchall():
+            nome = str(usuario.get("nome") or "").strip()
+            email = str(usuario.get("email") or "").strip()
+            rotulo = nome or email
+            if nome and email:
+                rotulo = f"{nome} ({email})"
+            chave = (rotulo or "").casefold()
+            if rotulo and chave not in vistos:
+                usuarios.append(rotulo)
+                vistos.add(chave)
+
         return jsonify({
             "datas": sorted(datas, reverse=True),
-            "usuarios": sorted(usuarios, key=str.casefold),
+            "usuarios": usuarios,
             "clientes": sorted(clientes, key=str.casefold),
             "locais": sorted(locais, key=str.casefold),
         }), 200

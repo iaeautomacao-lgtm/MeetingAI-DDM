@@ -540,7 +540,7 @@ body {
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
 .tab-btn.active { background: var(--ink); color: #fff; }
-.meeting-filters { display:grid; grid-template-columns:minmax(118px,.75fr) minmax(118px,.75fr) minmax(150px,1fr) minmax(150px,1fr) minmax(135px,.85fr) auto auto; gap:8px; align-items:end; margin:0 0 10px; padding:10px 12px 12px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); }
+.meeting-filters { display:grid; grid-template-columns:minmax(118px,.75fr) minmax(118px,.75fr) minmax(170px,1fr) minmax(135px,.85fr) auto auto; gap:8px; align-items:end; margin:0 0 10px; padding:10px 12px 12px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); }
 .meeting-filter-title { grid-column:1/-1; display:flex; align-items:center; gap:7px; color:var(--ink); font:700 12px var(--font-display); }
 .meeting-filter-title svg { width:15px; height:15px; color:var(--ddm-orange); }
 .meeting-filter-field { min-width:0; }
@@ -552,7 +552,7 @@ body {
 .meeting-filter-apply { height:34px; border:0; border-radius:8px; background:var(--ink); color:#fff; padding:0 16px; font:700 11px var(--font-body); cursor:pointer; }
 .meeting-filter-apply:hover { background:var(--ddm-orange); }
 @media(max-width:1100px){.meeting-filters{grid-template-columns:repeat(3,minmax(130px,1fr));}.meeting-filter-clear,.meeting-filter-apply{width:100%;}}
-@media(max-width:700px){.meeting-filters{grid-template-columns:1fr 1fr;}.meeting-filter-user,.meeting-filter-client,.meeting-filter-local{grid-column:1/-1;}}
+@media(max-width:700px){.meeting-filters{grid-template-columns:1fr 1fr;}.meeting-filter-client,.meeting-filter-local{grid-column:1/-1;}}
 .cfg-label { display:block; font-size:12px; font-weight:600; color:var(--gray); margin-bottom:5px; }
 .cfg-input { width:100%; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); padding:11px 13px; font-family:var(--font-body); font-size:14px; outline:none; }
 .cfg-input:focus { border-color:var(--ddm-orange); }
@@ -904,7 +904,6 @@ body.detalhe-aberto .right-sidebar { display: none; }
         <div class="meeting-filter-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filtrar reuniões</div>
         <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><input type="date" id="reuniao-filtro-de"></div>
         <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><input type="date" id="reuniao-filtro-ate"></div>
-        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><select id="reuniao-filtro-usuario"><option value="">Todos os usuários</option></select></div>
         <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" list="reuniao-clientes-opcoes" placeholder="Todos os clientes"><datalist id="reuniao-clientes-opcoes"></datalist></div>
         <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local"><option value="">Todos os locais</option></select></div>
         <button type="submit" class="meeting-filter-apply">Filtrar</button>
@@ -1276,7 +1275,7 @@ const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', agendaFiltro = 'todos', emailFiltro = 'relevantes';
 let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {}, REUNIOES_TIMER = null, STATUS_BOT_CARREGANDO = false, REUNIOES_CARREGANDO = false, REUNIOES_RECARREGAR = false;
-const REUNIOES_FILTROS = {de:'',ate:'',usuario:'',cliente:'',local:''};
+const REUNIOES_FILTROS = {de:'',ate:'',cliente:'',local:''};
 let REUNIOES_OPCOES_FILTRO_CARREGADAS = false, REUNIOES_OPCOES_FILTRO_PROMISE = null;
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
@@ -2547,7 +2546,6 @@ async function carregarOpcoesFiltrosReunioes(){
   REUNIOES_OPCOES_FILTRO_PROMISE=(async()=>{
     try{
       const opcoes=await apiGet('/api/reunioes/filtros');
-      await carregarUsuariosFiltroReunioes(opcoes.usuarios);
       const clientes=document.getElementById('reuniao-clientes-opcoes');
       if(clientes) clientes.innerHTML=asList(opcoes.clientes).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
       const locais=document.getElementById('reuniao-filtro-local');
@@ -2564,24 +2562,6 @@ async function carregarOpcoesFiltrosReunioes(){
     }
   })();
   return REUNIOES_OPCOES_FILTRO_PROMISE;
-}
-async function carregarUsuariosFiltroReunioes(fallback=[]){
-  const select=document.getElementById('reuniao-filtro-usuario');
-  if(!select) return;
-  const atual=select.value;
-  let opcoes=asList(fallback);
-  try{
-    const usuarios=await apiGet('/api/usuarios');
-    opcoes=asList(usuarios).map(usuario=>{
-      const nome=(usuario?.nome||'').trim();
-      const email=(usuario?.email||'').trim();
-      return nome && email ? `${nome} (${email})` : (nome || email);
-    }).filter(Boolean);
-  }catch(e){
-    console.warn('Não foi possível carregar usuários cadastrados para o filtro',e);
-  }
-  select.innerHTML='<option value="">Todos os usuários</option>'+opcoes.map(valor=>`<option value="${esc(valor)}">${esc(valor)}</option>`).join('');
-  select.value=opcoes.includes(atual) ? atual : '';
 }
 function aplicarFiltrosReunioes(){
   const novos={};

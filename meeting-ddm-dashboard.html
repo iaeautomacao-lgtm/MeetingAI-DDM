@@ -540,6 +540,15 @@ body {
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .tab-btn { background: var(--bg-alt); border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; }
 .tab-btn.active { background: var(--ink); color: #fff; }
+.meeting-filters { display:grid; grid-template-columns:minmax(118px,.75fr) minmax(118px,.75fr) minmax(150px,1fr) minmax(150px,1fr) minmax(135px,.85fr) auto; gap:8px; align-items:end; margin:-8px 0 16px; padding:10px 12px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); }
+.meeting-filter-field { min-width:0; }
+.meeting-filter-field label { display:block; margin:0 0 4px; color:var(--gray); font-size:9px; font-weight:700; text-transform:uppercase; }
+.meeting-filter-field input, .meeting-filter-field select { width:100%; height:34px; border:1px solid transparent; border-radius:8px; background:#fff; color:var(--ink); padding:6px 9px; font:500 11px var(--font-body); outline:none; }
+.meeting-filter-field input:focus, .meeting-filter-field select:focus { border-color:var(--ddm-orange); }
+.meeting-filter-clear { height:34px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--ink-2); padding:0 12px; font:600 11px var(--font-body); cursor:pointer; }
+.meeting-filter-clear:hover { border-color:var(--ddm-orange); color:var(--ddm-orange); }
+@media(max-width:1100px){.meeting-filters{grid-template-columns:repeat(3,minmax(130px,1fr));}.meeting-filter-clear{width:100%;}}
+@media(max-width:700px){.meeting-filters{grid-template-columns:1fr 1fr;}.meeting-filter-user,.meeting-filter-client,.meeting-filter-local{grid-column:1/-1;}}
 .cfg-label { display:block; font-size:12px; font-weight:600; color:var(--gray); margin-bottom:5px; }
 .cfg-input { width:100%; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-md); padding:11px 13px; font-family:var(--font-body); font-size:14px; outline:none; }
 .cfg-input:focus { border-color:var(--ddm-orange); }
@@ -888,6 +897,14 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <!-- ===== PAGE: REUNIÕES ===== -->
     <section class="page" id="page-reunioes">
       <div class="tabs" id="setor-tabs"></div>
+      <div class="meeting-filters" aria-label="Filtros de reuniões">
+        <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><input type="date" id="reuniao-filtro-de" onchange="atualizarFiltroReunioes('de',this.value)"></div>
+        <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><input type="date" id="reuniao-filtro-ate" onchange="atualizarFiltroReunioes('ate',this.value)"></div>
+        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><input type="search" id="reuniao-filtro-usuario" placeholder="Nome ou e-mail" oninput="atualizarFiltroReunioes('usuario',this.value,true)"></div>
+        <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" placeholder="Nome do cliente" oninput="atualizarFiltroReunioes('cliente',this.value,true)"></div>
+        <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local" onchange="atualizarFiltroReunioes('local',this.value)"><option value="">Todos</option><option value="Online">Online</option><option value="Sede RJ">Sede RJ</option><option value="Sede SP">Sede SP</option><option value="Cliente">Cliente</option><option value="Outro">Outro</option></select></div>
+        <button type="button" class="meeting-filter-clear" onclick="limparFiltrosReunioes()">Limpar</button>
+      </div>
       <div class="list" id="reunioes-list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </section>
 
@@ -1252,7 +1269,9 @@ body.detalhe-aberto .right-sidebar { display: none; }
 const BASE = '';
 let curPage = 'dashboard', prevPage = 'dashboard';
 let allReunioes = [], allEmails = [], setorFiltro = 'todos', agendaFiltro = 'todos', emailFiltro = 'relevantes';
-let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {}, REUNIOES_TIMER = null, STATUS_BOT_CARREGANDO = false, REUNIOES_CARREGANDO = false;
+let BOT_STATUS_TIMER = null, BOT_STATUS_TOASTED = {}, REUNIOES_TIMER = null, STATUS_BOT_CARREGANDO = false, REUNIOES_CARREGANDO = false, REUNIOES_RECARREGAR = false;
+let REUNIOES_FILTRO_TIMER = null;
+const REUNIOES_FILTROS = {de:'',ate:'',usuario:'',cliente:'',local:''};
 let IDEIAS_NOTIF_TIMER = null;
 let IDEIAS = [], IDEIAS_SETOR_FILTRO = 'Todos', IDEIAS_IMPACTO_FILTRO = 'Todos', IDEIA_ORDEM_FILTRO = 'recentes', IDEIA_SELECIONADA = '';
 let IDEIA_HOVER = '', IDEIA_HOVER_SETOR = '', IDEIA_ACTIVE_SETOR = '', IDEIA_ZOOM = 1, IDEIA_PAN = {x:0,y:0}, IDEIAS_MAP_NODES = [], IDEIAS_MAP_EDGES = [], IDEIAS_MOSTRAR_SETORES = false;
@@ -2473,10 +2492,12 @@ async function loadTimeline(){
 
 /* ---------- REUNIÕES ---------- */
 async function loadReunioes(){
-  if(REUNIOES_CARREGANDO) return;
+  if(REUNIOES_CARREGANDO){ REUNIOES_RECARREGAR=true; return; }
   REUNIOES_CARREGANDO=true;
   try {
-    allReunioes = await apiGet('/api/reunioes') || [];
+    const params=new URLSearchParams();
+    Object.entries(REUNIOES_FILTROS).forEach(([chave,valor])=>{ if(valor) params.set(chave,valor); });
+    allReunioes = await apiGet('/api/reunioes'+(params.toString()?'?'+params.toString():'')) || [];
     const tabs = document.getElementById('setor-tabs');
     let setores = [];
     if(ACESSO_TOTAL || (GESTOR_SETOR && MEUS_SETORES.length > 1)){
@@ -2505,7 +2526,29 @@ async function loadReunioes(){
       if(agendaFiltro==='ao-vivo' || agendaFiltro==='agendadas') renderReunioes();
     }
   } catch(e){ document.getElementById('reunioes-list').innerHTML='<div class="empty">Erro: '+esc(e.message)+'</div>'; }
-  finally { REUNIOES_CARREGANDO=false; STATUS_BOT_CARREGANDO=false; }
+  finally {
+    REUNIOES_CARREGANDO=false;
+    STATUS_BOT_CARREGANDO=false;
+    if(REUNIOES_RECARREGAR && curPage==='reunioes'){
+      REUNIOES_RECARREGAR=false;
+      setTimeout(loadReunioes,0);
+    }
+  }
+}
+function atualizarFiltroReunioes(campo,valor,aguardar=false){
+  if(!(campo in REUNIOES_FILTROS)) return;
+  REUNIOES_FILTROS[campo]=(valor||'').trim();
+  clearTimeout(REUNIOES_FILTRO_TIMER);
+  REUNIOES_FILTRO_TIMER=setTimeout(loadReunioes,aguardar?350:0);
+}
+function limparFiltrosReunioes(){
+  Object.keys(REUNIOES_FILTROS).forEach(campo=>{ REUNIOES_FILTROS[campo]=''; });
+  ['de','ate','usuario','cliente','local'].forEach(campo=>{
+    const el=document.getElementById('reuniao-filtro-'+campo);
+    if(el) el.value='';
+  });
+  clearTimeout(REUNIOES_FILTRO_TIMER);
+  loadReunioes();
 }
 function reuniaoAgendada(r){
   return r && r.status==='pending' && !reuniaoAoVivo(r) && !['finished','failed','not_admitted'].includes(r.bot_status) && r.data && new Date(r.data).getTime()>Date.now();

@@ -1464,6 +1464,10 @@ def listar_reunioes():
         erro_msg,
         status,
         plataforma,
+        solicitante,
+        cliente,
+        modalidade,
+        local_reuniao,
         visibilidade_setor,
         compartilhado_setores,
         compartilhado_emails
@@ -1500,9 +1504,36 @@ def listar_reunioes():
         data_fim = request.args.get("ate")
         if data_fim:
             sql += " AND data <= %s"
-            params.append(data_fim)
+            params.append(
+                f"{data_fim} 23:59:59"
+                if len(data_fim) == 10
+                else data_fim
+            )
 
-        sql += " ORDER BY data DESC LIMIT 50"
+        usuario = (request.args.get("usuario") or "").strip().lower()
+        if usuario:
+            busca_usuario = f"%{usuario}%"
+            sql += """
+             AND (
+               LOWER(COALESCE(solicitante, '')) LIKE %s
+               OR LOWER(COALESCE(compartilhado_emails, '')) LIKE %s
+               OR LOWER(COALESCE(participantes, '')) LIKE %s
+             )
+            """
+            params.extend([busca_usuario, busca_usuario, busca_usuario])
+
+        cliente = (request.args.get("cliente") or "").strip().lower()
+        if cliente:
+            sql += " AND LOWER(COALESCE(cliente, '')) LIKE %s"
+            params.append(f"%{cliente}%")
+
+        local = (request.args.get("local") or "").strip()
+        if local:
+            sql += " AND local_reuniao = %s"
+            params.append(local)
+
+        tem_filtro_avancado = any((data_inicio, data_fim, usuario, cliente, local))
+        sql += f" ORDER BY data DESC LIMIT {200 if tem_filtro_avancado else 50}"
 
         cursor.execute(sql, params)
         reunioes = [

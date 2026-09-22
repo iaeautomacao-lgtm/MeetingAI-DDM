@@ -6,6 +6,8 @@ from __future__ import annotations
 import os
 import json
 import uuid
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from flask import request, jsonify, current_app
 from werkzeug.utils import secure_filename
@@ -179,6 +181,7 @@ def _escopo_reunioes_sql() -> tuple[str, list]:
 
     tem_share_setores = _tem_coluna_reunioes("compartilhado_setores")
     tem_share_emails = _tem_coluna_reunioes("compartilhado_emails")
+    tem_visibilidade = _tem_coluna_reunioes("visibilidade_setor")
     email = sessao_email()
 
     if is_gestor_setor():
@@ -207,12 +210,22 @@ def _escopo_reunioes_sql() -> tuple[str, list]:
         placeholders = ", ".join(["%s"] * len(solicitantes))
         partes.append(f"LOWER(TRIM(COALESCE(solicitante, ''))) IN ({placeholders})")
         params.extend(solicitantes)
-    if tem_share_emails and email:
-        partes.append("COALESCE(compartilhado_emails, '') LIKE %s")
-        params.append(_json_like_param(email))
-    if tem_share_setores and setores:
-        partes.extend(["COALESCE(compartilhado_setores, '') LIKE %s"] * len(setores))
-        params.extend(_json_like_param(setor) for setor in setores)
+    if tem_visibilidade:
+        visiveis = []
+        visiveis_params = []
+        if setores:
+            placeholders = ", ".join(["%s"] * len(setores))
+            visiveis.append(f"setor IN ({placeholders})")
+            visiveis_params.extend(setores)
+            if tem_share_setores:
+                visiveis.extend(["COALESCE(compartilhado_setores, '') LIKE %s"] * len(setores))
+                visiveis_params.extend(_json_like_param(setor) for setor in setores)
+        if tem_share_emails and email:
+            visiveis.append("COALESCE(compartilhado_emails, '') LIKE %s")
+            visiveis_params.append(_json_like_param(email))
+        if visiveis:
+            partes.append("(visibilidade_setor = 'todos' AND (" + " OR ".join(visiveis) + "))")
+            params.extend(visiveis_params)
 
     return " AND (" + " OR ".join(partes) + ")", params
 
@@ -238,11 +251,22 @@ def _pode_acessar_reuniao(reuniao: dict) -> bool:
 
     solicitante = _normalizar_texto_acesso(reuniao.get("solicitante") or "")
     setores = sessao_setores()
+    if solicitante and solicitante in _solicitantes_sessao():
+        return True
+    if reuniao.get("visibilidade_setor") != "todos":
+        return False
     return bool(
-        (solicitante and solicitante in _solicitantes_sessao())
-        or (email and email in compartilhado_emails)
+        (email and email in compartilhado_emails)
+        or reuniao.get("setor") in setores
         or any(setor in compartilhado_setores for setor in setores)
     )
+
+
+def _pode_editar_reuniao(reuniao: dict) -> bool:
+    if tem_acesso_total() or is_gestor_setor() and _pode_acessar_reuniao(reuniao):
+        return True
+    solicitante = _normalizar_texto_acesso(reuniao.get("solicitante") or "")
+    return bool(solicitante and solicitante in _solicitantes_sessao())
 
 
 def _normalizar_json_reuniao(reuniao: dict) -> dict:
@@ -291,6 +315,7 @@ def _normalizar_json_reuniao(reuniao: dict) -> dict:
     reuniao["compartilhado_emails"] = _normalizar_lista_texto(
         reuniao.get("compartilhado_emails")
     )
+    reuniao["visibilidade_setor"] = reuniao.get("visibilidade_setor") or "gestores"
 
     return reuniao
 
@@ -1439,6 +1464,7 @@ def listar_reunioes():
         erro_msg,
         status,
         plataforma,
+        visibilidade_setor,
         compartilhado_setores,
         compartilhado_emails
         FROM reunioes
@@ -1633,6 +1659,7 @@ def atualizar_metadados_reuniao(reuniao_id: str):
         "cliente",
         "compartilhado_setores",
         "compartilhado_emails",
+        "visibilidade_setor",
     }
 
     valores = {}
@@ -1658,6 +1685,9 @@ def atualizar_metadados_reuniao(reuniao_id: str):
             "erro": "setor_obrigatorio",
             "msg": "Informe o setor da reunião.",
         }), 400
+
+    if "visibilidade_setor" in valores and valores["visibilidade_setor"] not in {"todos", "gestores"}:
+        return jsonify({"erro": "visibilidade_invalida"}), 400
 
     if "modalidade" in valores:
         modalidade = valores["modalidade"] or "online"
@@ -1699,7 +1729,7 @@ def atualizar_metadados_reuniao(reuniao_id: str):
         if not reuniao:
             return jsonify({"erro": "não encontrado"}), 404
 
-        if not _pode_acessar_reuniao(reuniao):
+        if not _pode_editar_reuniao(reuniao):
             return jsonify({"erro": "não encontrado"}), 404
 
         atribuicoes = [f"`{campo}` = %s" for campo in valores]
@@ -2532,6 +2562,97 @@ def upload_audio():
 
 # ── Gravações Skribby (bot "Acordito" entra na reunião) ──────────────────────
 
+@bp.get("/bots/capacidade")
+@require_auth
+def capacidade_bots():
+    """Ocupação observada dos bots Skribby vinculados ao Meeting DDM."""
+    if not tem_acesso_total() and not is_admin():
+        return jsonify({"erro": "acesso_negado"}), 403
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, titulo, setor, data, recall_bot_id
+            FROM reunioes
+            WHERE excluida_em IS NULL
+              AND status IN ('pending', 'processing')
+              AND recall_bot_id IS NOT NULL
+              AND recall_bot_id <> ''
+            ORDER BY data DESC
+            LIMIT 100
+            """
+        )
+        candidatas = cursor.fetchall()
+    except Exception as exc:
+        current_app.logger.exception("Erro ao carregar bots para cálculo de capacidade")
+        return jsonify({"erro": "falha_banco", "msg": str(exc)}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+    from app.pipeline.skribby_client import (
+        ACTIVE_BOT_STATUSES,
+        concurrent_bot_limit,
+        get_bot,
+    )
+
+    bots = []
+    falhas = 0
+    with ThreadPoolExecutor(max_workers=min(8, max(1, len(candidatas)))) as executor:
+        futuros = {
+            executor.submit(get_bot, reuniao["recall_bot_id"]): reuniao
+            for reuniao in candidatas
+        }
+        for futuro in as_completed(futuros):
+            reuniao = futuros[futuro]
+            try:
+                bot = futuro.result()
+                estado = (bot.get("status") or "").strip()
+            except Exception:
+                falhas += 1
+                current_app.logger.warning(
+                    "Não foi possível consultar o bot %s para capacidade",
+                    reuniao["recall_bot_id"],
+                    exc_info=True,
+                )
+                continue
+            bots.append({
+                "reuniao_id": reuniao["id"],
+                "titulo": reuniao.get("titulo") or "Reunião",
+                "setor": reuniao.get("setor") or "",
+                "data": reuniao.get("data"),
+                "bot_id": reuniao["recall_bot_id"],
+                "status": estado,
+                "consome_vaga": estado in ACTIVE_BOT_STATUSES,
+            })
+
+    limite = concurrent_bot_limit()
+    ativos = sum(1 for bot in bots if bot["consome_vaga"])
+    agendados = sum(1 for bot in bots if bot["status"] == "scheduled")
+    bots.sort(key=lambda bot: (not bot["consome_vaga"], str(bot["data"])), reverse=False)
+    return jsonify({
+        "plano": "pay_as_you_go",
+        "limite_simultaneo": limite,
+        "ativos": ativos,
+        "vagas_disponiveis": max(0, limite - ativos),
+        "agendados": agendados,
+        "consultados": len(bots),
+        "falhas_consulta": falhas,
+        "status_que_consumem_vaga": sorted(ACTIVE_BOT_STATUSES),
+        "bots": bots,
+        "observacao": (
+            "Contagem dos bots vinculados ao Meeting DDM. Bots scheduled não "
+            "consomem vaga; o limite é compartilhado por toda a organização Skribby."
+        ),
+    }), 200
+
+
 @bp.post("/gravacoes")
 def criar_gravacao():
     """
@@ -2542,6 +2663,15 @@ def criar_gravacao():
     """
 
     body = request.get_json(silent=True) or {}
+
+    visibilidade_setor = (body.get("visibilidade_setor") or "gestores").strip()
+    if visibilidade_setor not in {"todos", "gestores"}:
+        return jsonify({"erro": "visibilidade_invalida"}), 400
+    if not _tem_coluna_reunioes("visibilidade_setor"):
+        return jsonify({
+            "erro": "migracao_pendente",
+            "msg": "Aplique a migração de visibilidade das reuniões antes de registrar novas reuniões.",
+        }), 503
 
     meeting_url = (body.get("meeting_url") or "").strip()
 
@@ -2627,10 +2757,16 @@ def criar_gravacao():
 
     # Solicita ao Skribby a criação do bot.
     try:
+        inicio_criacao_bot = time.monotonic()
         bot = create_bot(
             meeting_url,
             custom_vocabulary=vocabulario_reuniao,
             scheduled_start_time=scheduled_start_time,
+        )
+        current_app.logger.info(
+            "Skribby create_bot concluído em %.2fs; modo=%s",
+            time.monotonic() - inicio_criacao_bot,
+            "agendado" if scheduled_start_time else "imediato",
         )
 
     except Exception as exc:
@@ -2681,6 +2817,7 @@ def criar_gravacao():
             "data",
             "plataforma",
             "status",
+            "visibilidade_setor",
             "recall_bot_id",
             "modalidade",
             "local_reuniao",
@@ -2694,6 +2831,7 @@ def criar_gravacao():
             data_reuniao,
             "skribby",
             "pending",
+            visibilidade_setor,
             bot_id,
             modalidade,
             local_reuniao,
@@ -3167,6 +3305,43 @@ def listar_setores():
 
 
 # ── Usuários ──────────────────────────────────────────────────────────────────
+
+@bp.get("/extensao/usuario")
+def usuario_da_extensao():
+    """Preenche nome e setor na extensão a partir de um e-mail exato aprovado."""
+    email = (request.args.get("email") or "").strip().lower()
+    if not email or not dominio_permitido(email):
+        return jsonify({"erro": "email_invalido"}), 400
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT nome, setor
+            FROM painel_acessos
+            WHERE LOWER(email) = %s AND ativo = 1 AND aprovado = 1
+            LIMIT 1
+            """,
+            (email,),
+        )
+        usuario = cursor.fetchone()
+        if not usuario:
+            return jsonify({"erro": "usuario_nao_encontrado"}), 404
+        return jsonify({
+            "nome": usuario.get("nome") or email.split("@")[0],
+            "setor": usuario.get("setor") or "",
+        }), 200
+    except Exception:
+        current_app.logger.exception("Erro ao consultar usuario da extensao")
+        return jsonify({"erro": "falha_ao_consultar_usuario"}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 @bp.get("/usuarios")
 @require_auth

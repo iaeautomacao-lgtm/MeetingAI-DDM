@@ -73,6 +73,7 @@ class Config:
     SKRIBBY_MODEL = os.getenv("SKRIBBY_MODEL", "soniox/stt-async-v5")
     SKRIBBY_LANG = os.getenv("SKRIBBY_LANG", "pt")
     SKRIBBY_BOT_NAME = os.getenv("SKRIBBY_BOT_NAME", "Acordito")
+    SKRIBBY_CONCURRENT_LIMIT = int(os.getenv("SKRIBBY_CONCURRENT_LIMIT", "25"))
     SKRIBBY_INITIAL_CHAT_MESSAGE = os.getenv("SKRIBBY_INITIAL_CHAT_MESSAGE", "")
     SKRIBBY_CUSTOM_VOCABULARY = os.getenv("SKRIBBY_CUSTOM_VOCABULARY", "")
     PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")  # URL pública p/ webhook + avatar

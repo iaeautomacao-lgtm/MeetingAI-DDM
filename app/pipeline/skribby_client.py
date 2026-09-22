@@ -14,6 +14,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+ACTIVE_BOT_STATUSES = frozenset({
+    "booting",
+    "joining",
+    "waiting_to_record",
+    "breakout_waiting_room",
+    "recording",
+    "leaving",
+    "processing",
+    "transcribing",
+})
+
+
 # ── Config ──────────────────────────────────────────────────────────────────────
 
 def _base() -> str:
@@ -232,6 +244,14 @@ def classify_bot_issue(
         "acao": "Tente novamente. Se repetir, verifique a chave/API do Skribby e os logs internos.",
         "tecnico": " ".join(x for x in (status, stop_reason, detail) if x),
     }
+
+
+def concurrent_bot_limit() -> int:
+    """Limite contratado; PAYG permite 25 por organização."""
+    try:
+        return max(1, int(os.getenv("SKRIBBY_CONCURRENT_LIMIT", "25")))
+    except (TypeError, ValueError):
+        return 25
 
     if status == "scheduled":
         issue.update({

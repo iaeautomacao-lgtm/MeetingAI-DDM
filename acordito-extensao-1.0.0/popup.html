@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Acordito</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+<header class="top">
+  <img src="icons/icon.png" alt="" class="mark">
+  <div>
+    <div class="brand">Meeting DDM</div>
+    <div class="sub">Registrar reunião</div>
+  </div>
+  <a href="#" id="cfg" class="cfg" title="Configurações">&#9881;</a>
+</header>
+
+<div id="aviso" class="aviso hidden"></div>
+
+<form id="form">
+  <div class="field">
+    <label for="url">Link da reunião *</label>
+    <input type="url" id="url" placeholder="https://teams.microsoft.com/..." required autocomplete="off">
+    <div class="row-mini">
+      <button type="button" id="btnAba" class="mini">Usar aba atual</button>
+      <button type="button" id="btnColar" class="mini">Colar link</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="titulo">Título</label>
+    <input type="text" id="titulo" placeholder="Ex.: Alinhamento Comercial" autocomplete="off">
+  </div>
+
+  <div class="grid">
+    <div class="field">
+      <label for="data_reuniao">Data e hora</label>
+      <input type="datetime-local" id="data_reuniao">
+    </div>
+    <div class="field">
+      <label for="setor">Setor</label>
+      <select id="setor"><option value="">Selecione...</option></select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="usuarioEmail">Seu e-mail corporativo *</label>
+    <input type="email" id="usuarioEmail" placeholder="nome@ddm.adv.br" required autocomplete="email">
+    <div class="user-status" id="usuarioStatus" role="status"></div>
+  </div>
+
+  <div class="field">
+    <label for="solicitante">Seu nome</label>
+    <input type="text" id="solicitante" placeholder="Preenchido pelo cadastro" readonly>
+  </div>
+
+  <div class="field">
+    <label for="visibilidade_setor">Quem pode ver a reunião?</label>
+    <select id="visibilidade_setor">
+      <option value="gestores">Somente gestores do setor</option>
+      <option value="todos">Todos do setor</option>
+    </select>
+  </div>
+
+  <div class="grid">
+    <div class="field">
+      <label for="modalidade">Formato</label>
+      <select id="modalidade">
+        <option value="online">Online</option>
+        <option value="presencial">Presencial</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="local_reuniao">Local</label>
+      <select id="local_reuniao">
+        <option value="Online">Online</option>
+        <option value="Sede RJ">Sede RJ</option>
+        <option value="Sede SP">Sede SP</option>
+        <option value="Cliente">Cliente</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="cliente">Cliente envolvido</label>
+    <input type="text" id="cliente" placeholder="Nome do cliente, se houver" autocomplete="off">
+  </div>
+
+  <button class="btn" id="btn" type="submit">Enviar Acordito</button>
+</form>
+
+<div class="msg hidden" id="msg"></div>
+<div class="foot" id="foot"></div>
+
+<script type="module" src="popup.js"></script>
+</body>
+</html>

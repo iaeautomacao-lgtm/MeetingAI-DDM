@@ -94,7 +94,14 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
     <div class="field full">
       <label>Setores envolvidos *</label>
       <div class="sector-picker" id="setores"></div>
-      <div class="sector-help">Marque todos os setores envolvidos. O primeiro marcado será o setor principal e os demais também verão a reunião.</div>
+      <div class="sector-help">Marque todos os setores envolvidos. O primeiro marcado será o principal.</div>
+    </div>
+    <div class="field full">
+      <label for="visibilidade_setor">Quem pode ver a reunião?</label>
+      <select id="visibilidade_setor">
+        <option value="gestores">Somente gestores dos setores envolvidos</option>
+        <option value="todos">Todos dos setores envolvidos</option>
+      </select>
     </div>
     <div class="field">
       <label for="modalidade">Formato da reunião</label>
@@ -159,6 +166,7 @@ async function enviar(ev){
   const data=dataInput ? new Date(dataInput).toISOString() : '';
   const solicitante=document.getElementById('solicitante').value.trim();
   const setor=setoresSelecionados[0]||'';
+  const visibilidade_setor=document.getElementById('visibilidade_setor').value;
   const modalidade=document.getElementById('modalidade').value;
   const local_reuniao=document.getElementById('local_reuniao').value;
   const cliente=document.getElementById('cliente').value.trim();
@@ -167,7 +175,7 @@ async function enviar(ev){
   if(!setor){ showMsg('Marque ao menos um setor envolvido.',false); return; }
   const btn=document.getElementById('btn'); btn.disabled=true; btn.textContent='Enviando...';
   try{
-    const body={meeting_url:url,titulo,data,solicitante,setor,setores:setoresSelecionados,modalidade,local_reuniao,cliente};
+    const body={meeting_url:url,titulo,data,solicitante,setor,setores:setoresSelecionados,visibilidade_setor,modalidade,local_reuniao,cliente};
     const r=await fetch(BASE+'/api/gravacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.msg||d.erro||('HTTP '+r.status));

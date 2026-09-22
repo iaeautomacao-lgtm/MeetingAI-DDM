@@ -55,9 +55,9 @@ def create_app(config_class=Config):
     )
 
     # A extensão Chrome roda em origem chrome-extension:// — precisa de CORS.
-    # Liberado SÓ nos endpoints já públicos e SEM Allow-Credentials, ou seja,
+    # Liberado apenas nos endpoints públicos da extensão e SEM Allow-Credentials, ou seja,
     # o cookie de sessão do diretor nunca é enviado nem aceito por essa via.
-    _EXT_PATHS = ("/api/health", "/api/setores", "/api/gravacoes")
+    _EXT_PATHS = ("/api/health", "/api/setores", "/api/gravacoes", "/api/extensao/usuario")
 
     def _origem_extensao(origin):
         if not origin.startswith("chrome-extension://"):

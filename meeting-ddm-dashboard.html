@@ -648,6 +648,18 @@ body.detalhe-aberto .right-sidebar { display: none; }
 .share-users-list .setor-chip small { color:var(--gray); font-size:10px; }
 .share-users-list .setor-chip.active small { color:rgba(255,255,255,.75); }
 .share-empty { width:100%; padding:28px 12px; text-align:center; color:var(--gray); font-size:12px; }
+.user-picker { border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; background:#fff; }
+.user-picker .share-search { margin:0; border-bottom:1px solid var(--border); }
+.modal .user-picker .share-search input { border:0; border-radius:0; background:#fff; padding:10px 12px 10px 39px; }
+.user-picker .share-search svg { top:11px; }
+.user-select-list { max-height:172px; overflow-y:auto; padding:5px; }
+.modal .user-select-row { display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:9px; margin:0; padding:8px 9px; border-radius:7px; cursor:pointer; color:var(--ink); }
+.modal .user-select-row:hover { background:var(--ddm-orange-50); }
+.modal .user-select-row.selected { background:#fff4ed; }
+.modal .user-select-row input { width:16px; height:16px; margin:0; padding:0; accent-color:var(--ddm-orange); }
+.user-select-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; }
+.user-select-sector { color:var(--gray); font-size:10px; white-space:nowrap; }
+.user-picker-foot { padding:6px 10px; border-top:1px solid var(--border); color:var(--gray); font-size:10px; font-weight:600; }
 .logout-item { color: var(--danger) !important; }
 .logout-item:hover { background: #FDECEC !important; }
 
@@ -1134,7 +1146,14 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <label>Quem pode ver a reunião?</label>
     <select id="m-visibilidade-setor"><option value="gestores">Somente gestores dos setores envolvidos</option><option value="todos">Todos dos setores envolvidos</option></select>
     <label>Compartilhar com usuários cadastrados</label>
-    <div class="setor-multi" id="m-share-users"></div>
+    <div class="user-picker">
+      <div class="share-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.8-3.8"></path></svg>
+        <input type="search" id="m-share-search" placeholder="Buscar usuário ou setor" oninput="filtrarUsuariosFormulario('m',this.value)">
+      </div>
+      <div class="user-select-list" id="m-share-users"></div>
+      <div class="user-picker-foot" id="m-share-count">Nenhum usuário selecionado</div>
+    </div>
     <div class="t-sub" style="margin-top:4px">Em reuniões para todos, selecione outras pessoas que também poderão abrir a reunião.</div>
     <label>Formato da reunião</label>
     <select id="m-modalidade">
@@ -1190,7 +1209,14 @@ body.detalhe-aberto .right-sidebar { display: none; }
     <label>Cliente envolvido</label>
     <input type="text" id="e-cliente" placeholder="Nome do cliente, se houver">
     <label>Compartilhar com usuários cadastrados</label>
-    <div class="setor-multi" id="e-share-users"></div>
+    <div class="user-picker">
+      <div class="share-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.8-3.8"></path></svg>
+        <input type="search" id="e-share-search" placeholder="Buscar usuário ou setor" oninput="filtrarUsuariosFormulario('e',this.value)">
+      </div>
+      <div class="user-select-list" id="e-share-users"></div>
+      <div class="user-picker-foot" id="e-share-count">Nenhum usuário selecionado</div>
+    </div>
     <div class="t-sub" style="margin-top:4px">Selecione as pessoas que poderão abrir esta reunião no painel.</div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="fecharEditarReuniao()">Cancelar</button>
@@ -3110,6 +3136,7 @@ let _SETORES_CACHE = null;
 let USUARIOS_COMPARTILHAMENTO = [];
 let USUARIOS_COMPARTILHADOS = [];
 let USUARIOS_COMPARTILHAMENTO_FILTRO = '';
+const USUARIOS_FORM_FILTRO = {m:'',e:''};
 
 async function carregarUsuariosCompartilhamento(){
   try { USUARIOS_COMPARTILHAMENTO = await apiGet('/api/reunioes/compartilhamento/usuarios') || []; }
@@ -3119,13 +3146,35 @@ async function carregarUsuariosCompartilhamento(){
 }
 
 function renderUsuariosCompartilhamento(){
-  const boxes=[document.getElementById('m-share-users'),document.getElementById('e-share-users')].filter(Boolean);
-  if(!boxes.length) return;
-  const html=USUARIOS_COMPARTILHAMENTO.length ? USUARIOS_COMPARTILHAMENTO.map((u,i)=>{
-    const ativo=USUARIOS_COMPARTILHADOS.includes(u.email);
-    return `<button type="button" class="setor-chip ${ativo?'active':''}" onclick="toggleUsuarioCompartilhamento(${i})"><span>${esc(u.nome)}</span><small>${esc(u.setor||u.email)}</small></button>`;
-  }).join('') : '<span class="t-sub">Nenhum outro usuário aprovado disponível.</span>';
-  boxes.forEach(box=>{ box.innerHTML=html; });
+  ['m','e'].forEach(prefixo=>{
+    const box=document.getElementById(prefixo+'-share-users');
+    if(!box) return;
+    const filtro=textoBuscaCompartilhamento(USUARIOS_FORM_FILTRO[prefixo]);
+    const visiveis=USUARIOS_COMPARTILHAMENTO.map((u,index)=>({u,index})).filter(({u})=>{
+      if(!filtro) return true;
+      const setores=Array.isArray(u.setores)?u.setores.join(' '):'';
+      return textoBuscaCompartilhamento(`${u.nome||''} ${u.email||''} ${u.setor||''} ${setores}`).includes(filtro);
+    }).sort((a,b)=>{
+      const aSelecionado=USUARIOS_COMPARTILHADOS.includes(a.u.email)?0:1;
+      const bSelecionado=USUARIOS_COMPARTILHADOS.includes(b.u.email)?0:1;
+      return aSelecionado-bSelecionado || String(a.u.nome||'').localeCompare(String(b.u.nome||''),'pt-BR');
+    });
+    box.innerHTML=visiveis.length ? visiveis.map(({u,index})=>{
+      const ativo=USUARIOS_COMPARTILHADOS.includes(u.email);
+      return `<label class="user-select-row ${ativo?'selected':''}"><input type="checkbox" ${ativo?'checked':''} onchange="toggleUsuarioCompartilhamento(${index})"><span class="user-select-name">${esc(u.nome)}</span><span class="user-select-sector">${esc(u.setor||u.email)}</span></label>`;
+    }).join('') : '<div class="share-empty">Nenhum usuário encontrado.</div>';
+    const count=document.getElementById(prefixo+'-share-count');
+    if(count){
+      const total=USUARIOS_COMPARTILHADOS.length;
+      count.textContent=total ? `${total} usuário${total===1?'':'s'} selecionado${total===1?'':'s'}` : 'Nenhum usuário selecionado';
+    }
+  });
+}
+
+function filtrarUsuariosFormulario(prefixo,valor){
+  if(!(prefixo in USUARIOS_FORM_FILTRO)) return;
+  USUARIOS_FORM_FILTRO[prefixo]=valor||'';
+  renderUsuariosCompartilhamento();
 }
 
 function toggleUsuarioCompartilhamento(index){
@@ -3242,6 +3291,9 @@ function setoresSelecionados(containerId){
 async function abrirEditarReuniao(){
   const r=_reuniaoAtual;
   if(!r){ toast('Abra uma reunião primeiro.'); return; }
+  USUARIOS_FORM_FILTRO.e='';
+  const buscaUsuariosEdicao=document.getElementById('e-share-search');
+  if(buscaUsuariosEdicao) buscaUsuariosEdicao.value='';
   _editandoReuniaoId = r.id;
   document.getElementById('e-titulo').value = r.titulo || '';
   document.getElementById('e-data').value = valorDatetimeLocal(r.data);
@@ -3336,6 +3388,9 @@ async function salvarEdicaoReuniao(){
 async function novaReuniao(){
   const m=document.getElementById('modal'); m.style.display='flex';
   document.getElementById('m-visibilidade-setor').value='gestores';
+  USUARIOS_FORM_FILTRO.m='';
+  const buscaUsuariosNova=document.getElementById('m-share-search');
+  if(buscaUsuariosNova) buscaUsuariosNova.value='';
   USUARIOS_COMPARTILHADOS=[];
   await carregarUsuariosCompartilhamento();
   const aviso=m.querySelector('.modal-alert-full');

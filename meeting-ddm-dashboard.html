@@ -904,7 +904,7 @@ body.detalhe-aberto .right-sidebar { display: none; }
         <div class="meeting-filter-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filtrar reuniões</div>
         <div class="meeting-filter-field"><label for="reuniao-filtro-de">De</label><input type="date" id="reuniao-filtro-de"></div>
         <div class="meeting-filter-field"><label for="reuniao-filtro-ate">Até</label><input type="date" id="reuniao-filtro-ate"></div>
-        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><input type="search" id="reuniao-filtro-usuario" list="reuniao-usuarios-opcoes" placeholder="Todos os usuários"><datalist id="reuniao-usuarios-opcoes"></datalist></div>
+        <div class="meeting-filter-field meeting-filter-user"><label for="reuniao-filtro-usuario">Usuário</label><select id="reuniao-filtro-usuario"><option value="">Todos os usuários</option></select></div>
         <div class="meeting-filter-field meeting-filter-client"><label for="reuniao-filtro-cliente">Cliente</label><input type="search" id="reuniao-filtro-cliente" list="reuniao-clientes-opcoes" placeholder="Todos os clientes"><datalist id="reuniao-clientes-opcoes"></datalist></div>
         <div class="meeting-filter-field meeting-filter-local"><label for="reuniao-filtro-local">Local</label><select id="reuniao-filtro-local"><option value="">Todos os locais</option></select></div>
         <button type="submit" class="meeting-filter-apply">Filtrar</button>
@@ -2547,8 +2547,12 @@ async function carregarOpcoesFiltrosReunioes(){
   REUNIOES_OPCOES_FILTRO_PROMISE=(async()=>{
     try{
       const opcoes=await apiGet('/api/reunioes/filtros');
-      const usuarios=document.getElementById('reuniao-usuarios-opcoes');
-      if(usuarios) usuarios.innerHTML=asList(opcoes.usuarios).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
+      const usuarios=document.getElementById('reuniao-filtro-usuario');
+      if(usuarios){
+        const atual=usuarios.value;
+        usuarios.innerHTML='<option value="">Todos os usuários</option>'+asList(opcoes.usuarios).map(valor=>`<option value="${esc(valor)}">${esc(valor)}</option>`).join('');
+        usuarios.value=atual;
+      }
       const clientes=document.getElementById('reuniao-clientes-opcoes');
       if(clientes) clientes.innerHTML=asList(opcoes.clientes).map(valor=>`<option value="${esc(valor)}"></option>`).join('');
       const locais=document.getElementById('reuniao-filtro-local');

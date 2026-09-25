@@ -86,6 +86,14 @@ class Config:
     IMAP_USER = os.getenv("IMAP_USER", "")
     IMAP_PASSWORD = os.getenv("IMAP_PASSWORD", "")
 
+    # Envio de e-mail. Em cPanel, o app tenta primeiro o sendmail local.
+    SENDMAIL_PATH = os.getenv("SENDMAIL_PATH", "/usr/sbin/sendmail")
+    SMTP_HOST = os.getenv("SMTP_HOST", os.getenv("IMAP_HOST", "mail.grupoddm.ia.br"))
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+    SMTP_USER = os.getenv("SMTP_USER", os.getenv("IMAP_USER", "wanoreply@grupoddm.ia.br"))
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", os.getenv("IMAP_PASSWORD", ""))
+    SMTP_FROM = os.getenv("SMTP_FROM", os.getenv("SMTP_USER", "wanoreply@grupoddm.ia.br"))
+
     TEAMS_DOMAIN = os.getenv("TEAMS_DOMAIN", "ddm.adv.br")
     # domínios corporativos aceitos (e-mail interno) — separados por vírgula
     CORP_DOMAINS = os.getenv("CORP_DOMAINS", "ddm.adv.br,grupoddm.com.br")

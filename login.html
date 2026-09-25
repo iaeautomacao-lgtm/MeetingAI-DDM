@@ -29,6 +29,7 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
 .ok{background:#E7F6EC;color:#1E7B45;padding:12px;border-radius:var(--r-md);font-size:13px;margin-bottom:18px;display:none;text-align:left;line-height:1.5;}
 .foot{margin-top:24px;font-size:12px;color:var(--gray);}
 .foot a{color:var(--ddm-orange);text-decoration:none;font-weight:600;}
+.minor-link{display:inline-block;margin-top:12px;color:var(--ddm-orange);font-size:12px;font-weight:600;text-decoration:none;}
 </style>
 </head>
 <body>
@@ -50,6 +51,24 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
     <label for="senha">Senha</label>
     <input type="password" id="senha" placeholder="••••••••" required>
     <button class="btn" type="submit">Entrar</button>
+    <a class="minor-link" href="#" onclick="mostrarRecuperacao(event)">Esqueci minha senha</a>
+  </form>
+
+  <!-- RECUPERAR SENHA -->
+  <form id="form-recuperar" onsubmit="solicitarCodigoSenha(event)" style="display:none">
+    <label for="f-email">E-mail cadastrado</label>
+    <input type="email" id="f-email" placeholder="voce@ddm.adv.br" required>
+    <button class="btn" type="submit">Enviar código</button>
+  </form>
+
+  <form id="form-redefinir" onsubmit="redefinirSenha(event)" style="display:none">
+    <label for="f-codigo">Código recebido por e-mail</label>
+    <input type="text" id="f-codigo" placeholder="000000" inputmode="numeric" maxlength="6" required>
+    <label for="f-senha">Nova senha</label>
+    <input type="password" id="f-senha" placeholder="mín. 6 caracteres" minlength="6" required>
+    <label for="f-senha2">Confirme a nova senha</label>
+    <input type="password" id="f-senha2" placeholder="repita a senha" minlength="6" required>
+    <button class="btn" type="submit">Redefinir senha</button>
   </form>
 
   <!-- SOLICITAR ACESSO (auto-cadastro, requer aprovação) -->
@@ -78,6 +97,8 @@ input:focus,select:focus{border-color:var(--ddm-orange);}
   <div class="foot">
     <a href="#" id="link-toggle" onclick="toggle(event)">Ainda não tem acesso? Solicitar</a>
     <br><br>
+    <a href="#" id="link-login" onclick="mostrarLogin(event)" style="display:none">← Voltar ao login</a>
+    <br><br>
     <a href="/">← Registrar uma reunião</a>
   </div>
 </div>
@@ -92,22 +113,55 @@ function toggle(ev){
   ev.preventDefault();
   const login=document.getElementById('form-login');
   const reg=document.getElementById('form-registro');
+  const rec=document.getElementById('form-recuperar');
+  const redef=document.getElementById('form-redefinir');
   const link=document.getElementById('link-toggle');
+  const linkLogin=document.getElementById('link-login');
   const tit=document.getElementById('titulo');
   const sub=document.getElementById('subtitulo');
   const modoLogin = login.style.display!=='none';
   clearMsg();
   if(modoLogin){
-    login.style.display='none'; reg.style.display='block';
+    login.style.display='none'; reg.style.display='block'; rec.style.display='none'; redef.style.display='none';
     link.textContent='← Voltar ao login';
+    linkLogin.style.display='none';
     tit.textContent='Solicitar acesso'; sub.textContent='Cadastro precisa ser aprovado pelo administrador';
     document.getElementById('r-email').value=document.getElementById('email').value;
     carregarSetores();
   }else{
-    login.style.display='block'; reg.style.display='none';
+    login.style.display='block'; reg.style.display='none'; rec.style.display='none'; redef.style.display='none';
     link.textContent='Ainda não tem acesso? Solicitar';
+    linkLogin.style.display='none';
     tit.textContent='Acesso Executivo'; sub.textContent='Acesse o painel do Meeting DDM';
   }
+}
+
+function mostrarLogin(ev){
+  if(ev) ev.preventDefault();
+  clearMsg();
+  document.getElementById('form-login').style.display='block';
+  document.getElementById('form-registro').style.display='none';
+  document.getElementById('form-recuperar').style.display='none';
+  document.getElementById('form-redefinir').style.display='none';
+  document.getElementById('link-toggle').style.display='inline';
+  document.getElementById('link-toggle').textContent='Ainda não tem acesso? Solicitar';
+  document.getElementById('link-login').style.display='none';
+  document.getElementById('titulo').textContent='Acesso Executivo';
+  document.getElementById('subtitulo').textContent='Acesse o painel do Meeting DDM';
+}
+
+function mostrarRecuperacao(ev){
+  ev.preventDefault();
+  clearMsg();
+  document.getElementById('form-login').style.display='none';
+  document.getElementById('form-registro').style.display='none';
+  document.getElementById('form-recuperar').style.display='block';
+  document.getElementById('form-redefinir').style.display='none';
+  document.getElementById('link-toggle').style.display='none';
+  document.getElementById('link-login').style.display='inline';
+  document.getElementById('titulo').textContent='Recuperar senha';
+  document.getElementById('subtitulo').textContent='Receba um código no seu e-mail cadastrado';
+  document.getElementById('f-email').value=document.getElementById('email').value.trim();
 }
 
 async function entrar(ev){
@@ -120,6 +174,40 @@ async function entrar(ev){
     const d=await r.json().catch(()=>({}));
     if(d.pendente){ showErr('Seu cadastro ainda está aguardando aprovação do administrador.'); return; }
     showErr('Credenciais inválidas.');
+  }catch(e){ showErr('Erro de conexão.'); }
+}
+
+async function solicitarCodigoSenha(ev){
+  ev.preventDefault(); clearMsg();
+  const email=document.getElementById('f-email').value.trim();
+  try{
+    const r=await fetch('/api/auth/esqueci-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ showErr(d.msg || d.erro || 'Não foi possível enviar o código.'); return; }
+    showOk(d.msg || 'Código enviado. Verifique seu e-mail.');
+    document.getElementById('form-recuperar').style.display='none';
+    document.getElementById('form-redefinir').style.display='block';
+    document.getElementById('subtitulo').textContent='Informe o código recebido e crie uma nova senha';
+    document.getElementById('f-codigo').focus();
+  }catch(e){ showErr('Erro de conexão.'); }
+}
+
+async function redefinirSenha(ev){
+  ev.preventDefault(); clearMsg();
+  const email=document.getElementById('f-email').value.trim();
+  const codigo=document.getElementById('f-codigo').value.trim();
+  const senha=document.getElementById('f-senha').value;
+  const senha2=document.getElementById('f-senha2').value;
+  if(senha!==senha2){ showErr('As senhas não conferem.'); return; }
+  try{
+    const r=await fetch('/api/auth/redefinir-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,senha})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ showErr(d.msg || d.erro || 'Não foi possível redefinir a senha.'); return; }
+    showOk('Senha redefinida. Você já pode entrar com a nova senha.');
+    document.getElementById('senha').value='';
+    document.getElementById('email').value=email;
+    document.getElementById('form-redefinir').reset();
+    setTimeout(()=>mostrarLogin(),900);
   }catch(e){ showErr('Erro de conexão.'); }
 }
 

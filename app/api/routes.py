@@ -5,11 +5,16 @@ from __future__ import annotations
 
 import os
 import json
+import random
+import smtplib
+import subprocess
 import uuid
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from flask import request, jsonify, current_app
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from app.api import bp
@@ -30,6 +35,7 @@ from app.auth import (
     definir_gestor,
     atualizar_nome,
     alterar_senha,
+    redefinir_senha,
     login_session,
     logout_session,
     is_authed,
@@ -589,6 +595,239 @@ def auth_senha():
         "nao_encontrado": "Conta não encontrada.",
     }
     return jsonify({"erro": motivo, "msg": msgs.get(motivo, "Erro ao trocar senha.")}), 400
+
+
+def _garantir_tabela_reset_senha(cursor):
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS senha_resets (
+          id CHAR(36) PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          codigo_hash VARCHAR(255) NOT NULL,
+          expira_em DATETIME NOT NULL,
+          usado_em DATETIME NULL,
+          criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_senha_resets_email (email),
+          INDEX idx_senha_resets_expira (expira_em)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+
+def _smtp_config():
+    cfg = current_app.config
+    return {
+        "host": (cfg.get("SMTP_HOST") or os.getenv("SMTP_HOST") or "").strip(),
+        "port": int(cfg.get("SMTP_PORT") or os.getenv("SMTP_PORT") or 465),
+        "user": (cfg.get("SMTP_USER") or os.getenv("SMTP_USER") or "").strip(),
+        "password": cfg.get("SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD") or "",
+        "from": (
+            cfg.get("SMTP_FROM")
+            or os.getenv("SMTP_FROM")
+            or cfg.get("SMTP_USER")
+            or os.getenv("SMTP_USER")
+            or "wanoreply@grupoddm.ia.br"
+        ).strip(),
+    }
+
+
+def _mensagem_reset_senha(destino: str, codigo: str) -> EmailMessage:
+    remetente = (
+        current_app.config.get("SMTP_FROM")
+        or os.getenv("SMTP_FROM")
+        or "wanoreply@grupoddm.ia.br"
+    )
+    msg = EmailMessage()
+    msg["Subject"] = "Código para redefinir sua senha - Meeting DDM"
+    msg["From"] = remetente
+    msg["To"] = destino
+    msg.set_content(
+        "\n".join([
+            "Olá,",
+            "",
+            f"Seu código para redefinir a senha do Meeting DDM é: {codigo}",
+            "",
+            "Ele expira em 15 minutos. Se você não solicitou essa alteração, ignore este e-mail.",
+            "",
+            "Meeting DDM",
+        ])
+    )
+    return msg
+
+
+def _enviar_por_sendmail(msg: EmailMessage) -> bool:
+    caminho = (os.getenv("SENDMAIL_PATH") or "/usr/sbin/sendmail").strip()
+    if os.name == "nt" or not os.path.exists(caminho):
+        return False
+    proc = subprocess.run(
+        [caminho, "-t", "-oi"],
+        input=msg.as_bytes(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=20,
+    )
+    if proc.returncode != 0:
+        erro = proc.stderr.decode("utf-8", "ignore").strip()
+        raise RuntimeError(f"Falha no sendmail local: {erro or proc.returncode}")
+    return True
+
+
+def _enviar_codigo_reset_senha(destino: str, codigo: str) -> None:
+    msg = _mensagem_reset_senha(destino, codigo)
+    if _enviar_por_sendmail(msg):
+        return
+
+    cfg = _smtp_config()
+    if not cfg["host"] or not cfg["user"] or not cfg["password"]:
+        raise RuntimeError("Envio de e-mail não configurado: sendmail local indisponível e SMTP sem senha.")
+
+    if cfg["port"] == 465:
+        with smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=20) as smtp:
+            smtp.login(cfg["user"], cfg["password"])
+            smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=20) as smtp:
+            smtp.starttls()
+            smtp.login(cfg["user"], cfg["password"])
+            smtp.send_message(msg)
+
+
+@bp.post("/auth/esqueci-senha")
+def auth_esqueci_senha():
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    resposta_generica = {
+        "ok": True,
+        "msg": "Se o e-mail estiver cadastrado, enviaremos um código para redefinir a senha.",
+    }
+
+    if not email or not dominio_permitido(email):
+        return jsonify(resposta_generica), 200
+
+    acesso = _buscar_acesso(email)
+    if not acesso or not acesso.get("ativo"):
+        return jsonify(resposta_generica), 200
+
+    connection = None
+    cursor = None
+    try:
+        codigo = f"{random.randint(0, 999999):06d}"
+        expira_em = datetime.now() + timedelta(minutes=15)
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        _garantir_tabela_reset_senha(cursor)
+        cursor.execute(
+            """
+            DELETE FROM senha_resets
+            WHERE email = %s AND (usado_em IS NOT NULL OR expira_em < NOW())
+            """,
+            (email,),
+        )
+        cursor.execute(
+            """
+            SELECT criado_em
+            FROM senha_resets
+            WHERE email = %s AND usado_em IS NULL AND expira_em >= NOW()
+            ORDER BY criado_em DESC
+            LIMIT 1
+            """,
+            (email,),
+        )
+        existente = cursor.fetchone()
+        if existente:
+            criado_em = existente.get("criado_em")
+            if criado_em and datetime.now() - criado_em < timedelta(minutes=2):
+                connection.commit()
+                return jsonify(resposta_generica), 200
+
+        cursor.execute(
+            """
+            INSERT INTO senha_resets (id, email, codigo_hash, expira_em)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                str(uuid.uuid4()),
+                email,
+                generate_password_hash(codigo, method="pbkdf2:sha256"),
+                expira_em.strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        connection.commit()
+        _enviar_codigo_reset_senha(email, codigo)
+        return jsonify(resposta_generica), 200
+    except Exception as exc:
+        if connection is not None:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        current_app.logger.exception("Erro ao enviar código de recuperação de senha")
+        return jsonify({"erro": "falha_ao_enviar_codigo", "msg": str(exc)}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
+
+
+@bp.post("/auth/redefinir-senha")
+def auth_redefinir_senha():
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    codigo = "".join(ch for ch in str(body.get("codigo") or "") if ch.isdigit())
+    senha = body.get("senha", "")
+
+    if not email or not codigo or len(codigo) != 6:
+        return jsonify({"erro": "dados_invalidos", "msg": "Informe e-mail e código de 6 dígitos."}), 400
+    if len(str(senha or "")) < 6:
+        return jsonify({"erro": "senha_curta", "msg": "A nova senha precisa de no mínimo 6 caracteres."}), 400
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_mysql_connection()
+        cursor = connection.cursor(dictionary=True)
+        _garantir_tabela_reset_senha(cursor)
+        cursor.execute(
+            """
+            SELECT id, codigo_hash
+            FROM senha_resets
+            WHERE email = %s AND usado_em IS NULL AND expira_em >= NOW()
+            ORDER BY criado_em DESC
+            LIMIT 1
+            """,
+            (email,),
+        )
+        reset = cursor.fetchone()
+        if not reset or not check_password_hash(reset.get("codigo_hash") or "", codigo):
+            return jsonify({"erro": "codigo_invalido", "msg": "Código inválido ou expirado."}), 400
+
+        ok, motivo = redefinir_senha(email, senha)
+        if not ok:
+            msg = "Não foi possível redefinir a senha."
+            if motivo == "senha_curta":
+                msg = "A nova senha precisa de no mínimo 6 caracteres."
+            return jsonify({"erro": motivo, "msg": msg}), 400
+
+        cursor.execute(
+            "UPDATE senha_resets SET usado_em = NOW() WHERE id = %s",
+            (reset["id"],),
+        )
+        connection.commit()
+        return jsonify({"ok": True}), 200
+    except Exception as exc:
+        if connection is not None:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        current_app.logger.exception("Erro ao redefinir senha")
+        return jsonify({"erro": "falha_ao_redefinir_senha", "msg": str(exc)}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if connection is not None and connection.is_connected():
+            connection.close()
 
 
 # ── Gestão de acessos (somente admin) ─────────────────────────────────────────

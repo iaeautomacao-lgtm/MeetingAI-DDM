@@ -622,6 +622,19 @@ def alterar_senha(
     return True, "ok"
 
 
+def redefinir_senha(email: str, senha_nova: str) -> tuple[bool, str]:
+    email = (email or "").strip().lower()
+
+    if not _buscar_acesso(email):
+        return False, "nao_encontrado"
+
+    if len(str(senha_nova or "")) < 6:
+        return False, "senha_curta"
+
+    _update(email, {"senha_hash": _hash(senha_nova)})
+    return True, "ok"
+
+
 def rejeitar_acesso(email: str) -> bool:
     email = (email or "").strip().lower()
 
